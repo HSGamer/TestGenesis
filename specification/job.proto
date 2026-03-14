@@ -44,6 +44,12 @@ message JobStatus {
 
 message JobResult {
   JobStatus status = 1;
-  string report_json = 2;
-  google.protobuf.Struct summary = 3;
+  repeated StepReport steps = 2;
+  repeated string logs = 3;
+  google.protobuf.Struct summary = 4;
+}
+
+message StepReport {
+  string name = 1; // command/step name
+  JobStatus status = 2;
 }
