@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package uap.job;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+message JobRequest {
+  google.protobuf.Struct runtime_env = 1;
+  uap.common.Payload payload = 2;
+}
+
+message JobCommand {
+  oneof command {
+    uap.common.HelpCommand help = 1;
+    uap.common.StopCommand stop = 2;
+    string custom = 3;
+  }
+}
+
+message JobResponse {
+  google.protobuf.Timestamp timestamp = 1;
+  oneof response {
+    JobStatus status = 2;
+    uap.common.Telemetry telemetry = 3;
+    JobResult result = 4;
+  }
+}
+
+message JobStatus {
+  enum State {
+    UNKNOWN = 0;
+    ACKNOWLEDGED = 1;
+    INVALID = 2;
+    EXECUTING = 3;
+    PAUSED = 4;
+    COMPLETED = 5;
+    FAILED = 6;
+  }
+  State state = 1;
+  string message = 2;
+}
+
+message JobResult {
+  JobStatus status = 1;
+  string report_json = 2;
+  google.protobuf.Struct summary = 3;
+}

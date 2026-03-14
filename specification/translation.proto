@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package uap.translation;
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+message TranslationInit {
+  string target_format = 1;
+  uap.common.Payload payload = 2;
+}
+
+message TranslationCommand {
+  oneof command {
+    uap.common.HelpCommand help = 1;
+    uap.common.StopCommand stop = 2;
+    string custom = 3;
+  }
+}
+
+message TranslationResponse {
+  google.protobuf.Timestamp timestamp = 1;
+  oneof response {
+    TranslationStatus status = 2;
+    uap.common.Telemetry telemetry = 3;
+    TranslationResult result = 4;
+  }
+}
+
+message TranslationStatus {
+  enum State {
+    UNKNOWN = 0;
+    ACKNOWLEDGED = 1;
+    INVALID = 2;
+    PROCESSING = 3;
+    WAITING_FOR_FEEDBACK = 4;
+    COMPLETED = 5;
+    FAILED = 6;
+  }
+  State state = 1;
+  string message = 2;
+}
+
+message TranslationResult {
+  TranslationStatus status = 1;
+  uap.common.Payload translated_payload = 2;
+  string translation_log = 3;
+}

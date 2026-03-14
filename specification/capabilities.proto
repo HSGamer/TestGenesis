@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package uap.capabilities;
+
+message Capability {
+  string id = 1;
+  oneof type {
+    TestCapability test = 2;
+    TranslationCapability translation = 3;
+  }
+}
+
+message TestCapability {
+  string test_type = 1; // e.g., "selenium-side", "playwright-js"
+}
+
+message TranslationCapability {
+  string from_type = 1;
+  string to_type = 2;
+}
+
+message Capabilities {
+  repeated Capability items = 1;
+}

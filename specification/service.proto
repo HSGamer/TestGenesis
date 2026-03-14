@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package uap.service;
+
+import "capabilities.proto";
+import "job.proto";
+import "translation.proto";
+import "google/protobuf/empty.proto";
+
+service UniversalAgent {
+  // CMS retrieves what test formats and translations the agent supports.
+  rpc GetCapabilities(google.protobuf.Empty) returns (uap.capabilities.Capabilities);
+
+  // Bi-directional streaming for job execution.
+  rpc RunJob(stream RunJobRequest) returns (stream uap.job.JobResponse);
+
+  // Bi-directional streaming for script translation.
+  rpc Translate(stream TranslateRequest) returns (stream uap.translation.TranslationResponse);
+}
+
+message RunJobRequest {
+  oneof request {
+    uap.job.JobRequest job_init = 1;
+    uap.job.JobCommand command = 2;
+  }
+}
+
+message TranslateRequest {
+  oneof request {
+    uap.translation.TranslationInit translation_init = 1;
+    uap.translation.TranslationCommand command = 2;
+  }
+}

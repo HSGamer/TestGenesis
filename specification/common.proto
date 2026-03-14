@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package uap.common;
+
+import "google/protobuf/struct.proto";
+
+message Payload {
+  string type = 1; // e.g., "side", "python"
+  oneof content {
+    bytes raw_data = 2;
+    google.protobuf.Struct structured_data = 3;
+  }
+}
+
+message Telemetry {
+  string message = 1;
+  oneof extra {
+    google.protobuf.Struct metadata = 2;
+    bytes blob = 3;
+  }
+  // The type identifier for the 'extra' content.
+  // For 'blob', this should be a MIME type (e.g. "image/png").
+  // For 'metadata', this identifies the schema or purpose (e.g. "metric", "error-details").
+  string extra_type = 4;
+}
+
+message HelpCommand {}
+message StopCommand {}
