@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package uap.common;
+package uap.v1;
 
 import "google/protobuf/struct.proto";
 

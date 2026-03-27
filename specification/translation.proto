@@ -1,19 +1,19 @@
 syntax = "proto3";
 
-package uap.translation;
+package uap.v1;
 
 import "google/protobuf/timestamp.proto";
 import "common.proto";
 
 message TranslationInit {
   string target_format = 1;
-  uap.common.Payload payload = 2;
+  uap.v1.Payload payload = 2;
 }
 
 message TranslationCommand {
   oneof command {
-    uap.common.HelpCommand help = 1;
-    uap.common.StopCommand stop = 2;
+    uap.v1.HelpCommand help = 1;
+    uap.v1.StopCommand stop = 2;
     string custom = 3;
   }
 }
@@ -22,7 +22,7 @@ message TranslationResponse {
   google.protobuf.Timestamp timestamp = 1;
   oneof response {
     TranslationStatus status = 2;
-    uap.common.Telemetry telemetry = 3;
+    uap.v1.Telemetry telemetry = 3;
     TranslationResult result = 4;
   }
 }
@@ -43,6 +43,6 @@ message TranslationStatus {
 
 message TranslationResult {
   TranslationStatus status = 1;
-  uap.common.Payload translated_payload = 2;
+  uap.v1.Payload translated_payload = 2;
   string translation_log = 3;
 }

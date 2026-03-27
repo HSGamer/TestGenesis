@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package uap.job;
+package uap.v1;
 
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
@@ -8,13 +8,13 @@ import "common.proto";
 
 message JobRequest {
   google.protobuf.Struct runtime_env = 1;
-  uap.common.Payload payload = 2;
+  uap.v1.Payload payload = 2;
 }
 
 message JobCommand {
   oneof command {
-    uap.common.HelpCommand help = 1;
-    uap.common.StopCommand stop = 2;
+    uap.v1.HelpCommand help = 1;
+    uap.v1.StopCommand stop = 2;
     string custom = 3;
   }
 }
@@ -23,7 +23,7 @@ message JobResponse {
   google.protobuf.Timestamp timestamp = 1;
   oneof response {
     JobStatus status = 2;
-    uap.common.Telemetry telemetry = 3;
+    uap.v1.Telemetry telemetry = 3;
     JobResult result = 4;
   }
 }

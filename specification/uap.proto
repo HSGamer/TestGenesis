@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package uap.v1;
+
+import "capabilities.proto";
+import "job.proto";
+import "translation.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// UniversalHub - The central management service (CMS).
+// All Agents connect to the Hub as clients, fulfilling the "Passive Agent" goal.
+service UniversalHub {
+  // --- Control Plane (Long-lived) ---
+
+  // Initial registration of the Agent's identity and capabilities.
+  rpc Register(uap.v1.Capabilities) returns (RegistrationResponse);
+
+  // A long-lived stream where the Agent waits for directives from the Hub.
+  rpc Listen(AgentIdentity) returns (stream HubDirective);
+
+  // --- Execution Plane (Per-Session) ---
+
+  // Dedicated session for running a specific test job.
+  // Initiated by the Agent upon receiving a 'RunJob' directive.
+  // The Agent MUST send a session_id as the first message to correlate
+  // this stream with the JobAssignment from the Listen stream.
+  rpc ExecuteJob(stream ExecuteJobMessage) returns (stream JobInstruction);
+
+  // Dedicated session for interactive script translation.
+  // Initiated by the Agent upon receiving a 'StartTranslation' directive.
+  // The Agent MUST send a session_id as the first message to correlate
+  // this stream with the TranslationAssignment from the Listen stream.
+  rpc Translate(stream TranslateMessage) returns (stream TranslationInstruction);
+}
+
+// Identification for the Agent, typically used for session correlation.
+message AgentIdentity {
+  string agent_id = 1;
+}
+
+message RegistrationResponse {
+  string agent_id = 1;
+  google.protobuf.Timestamp server_time = 2;
+}
+
+// High-level directive sent over the Control Plane (Listen stream).
+message HubDirective {
+  oneof instruction {
+    JobAssignment run_job = 1;
+    TranslationAssignment start_translation = 2;
+    google.protobuf.Empty heartbeat_request = 3;
+  }
+}
+
+message JobAssignment {
+  string session_id = 1;
+}
+
+message TranslationAssignment {
+  string session_id = 1;
+}
+
+// --- Execution Plane: Job ---
+
+// Message sent by the Agent over an ExecuteJob stream.
+// The first message MUST be a session_id. All subsequent messages are JobResponses.
+message ExecuteJobMessage {
+  oneof content {
+    string session_id = 1;          // First message: correlate with JobAssignment
+    uap.v1.JobResponse update = 2;  // Subsequent: telemetry, status, result
+  }
+}
+
+// Instruction sent from the Hub to the Agent over an ExecuteJob stream.
+message JobInstruction {
+  oneof content {
+    uap.v1.JobRequest job_init = 1;
+    uap.v1.JobCommand command = 2;
+  }
+}
+
+// --- Execution Plane: Translation ---
+
+// Message sent by the Agent over a Translate stream.
+// The first message MUST be a session_id. All subsequent messages are TranslationResponses.
+message TranslateMessage {
+  oneof content {
+    string session_id = 1;                    // First message: correlate with TranslationAssignment
+    uap.v1.TranslationResponse update = 2;    // Subsequent: telemetry, status, result
+  }
+}
+
+// Instruction sent from the Hub to the Agent over a Translate stream.
+message TranslationInstruction {
+  oneof content {
+    uap.v1.TranslationInit translation_init = 1;
+    uap.v1.TranslationCommand command = 2;
+  }
+}

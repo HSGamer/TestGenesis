@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package uap.capabilities;
+package uap.v1;
 
 message Capability {
   string id = 1;
