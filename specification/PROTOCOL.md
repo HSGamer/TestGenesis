@@ -25,7 +25,7 @@ sequenceDiagram
     participant H as Universal Hub (CMS)
 
     Note over A,H: Phase 1 — Registration
-    A->>H: Register(Capabilities)
+    A->>H: Register(display_name, Capabilities)
     H-->>A: RegistrationResponse (agent_id, server_time)
 
     Note over A,H: Phase 2 — Listening (Long-lived)
@@ -40,7 +40,7 @@ sequenceDiagram
 ```
 
 ### Step 1: Registration
-Upon startup, the Agent calls the `Register` unary RPC with its list of **Capabilities** (test types it can run, translation pairs it supports). The Hub assigns a unique `agent_id` and returns the current server time for clock synchronization.
+Upon startup, the Agent calls the `Register` unary RPC with a `RegistrationRequest` containing its **display name** (a human-readable identifier) and its list of **Capabilities** (test types it can run, translation pairs it supports). The Hub assigns a unique `agent_id` and returns the current server time for clock synchronization.
 
 ### Step 2: Listening for Work
 The Agent establishes a long-lived `Listen` server-streaming RPC. It remains idle while waiting for `HubDirective` messages:

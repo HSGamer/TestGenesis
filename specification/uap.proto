@@ -14,7 +14,7 @@ service UniversalHub {
   // --- Control Plane (Long-lived) ---
 
   // Initial registration of the Agent's identity and capabilities.
-  rpc Register(uap.v1.Capabilities) returns (RegistrationResponse);
+  rpc Register(RegistrationRequest) returns (RegistrationResponse);
 
   // A long-lived stream where the Agent waits for directives from the Hub.
   rpc Listen(AgentIdentity) returns (stream HubDirective);
@@ -37,6 +37,11 @@ service UniversalHub {
 // Identification for the Agent, typically used for session correlation.
 message AgentIdentity {
   string agent_id = 1;
+}
+
+message RegistrationRequest {
+  string display_name = 1;
+  uap.v1.Capabilities capabilities = 2;
 }
 
 message RegistrationResponse {
