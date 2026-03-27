@@ -1,3 +1,19 @@
+// uap.proto — Universal Agent Protocol (UAP) v1 Service Definition.
+//
+// This is the primary entry point of the UAP specification. It defines
+// the UniversalHub gRPC service that the CMS (Hub) implements, and all
+// Execution Agents connect to as clients.
+//
+// The protocol follows a "Passive Agent" model: the Agent initiates all
+// connections to the Hub, allowing seamless operation behind corporate
+// firewalls and NAT environments.
+//
+// The service is split into two logical planes:
+//   1. Control Plane — Registration and long-lived instruction listening.
+//   2. Execution Plane — Per-session streams for jobs and translations.
+//
+// See PROTOCOL.md for the full lifecycle documentation and sequence diagrams.
+
 syntax = "proto3";
 
 package uap.v1;
@@ -8,98 +24,188 @@ import "translation.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
-// UniversalHub - The central management service (CMS).
-// All Agents connect to the Hub as clients, fulfilling the "Passive Agent" goal.
+// UniversalHub is the central management service hosted by the CMS.
+// All Agents connect to this service as gRPC clients.
 service UniversalHub {
-  // --- Control Plane (Long-lived) ---
 
-  // Initial registration of the Agent's identity and capabilities.
+  // =====================================================================
+  // Control Plane (Long-lived)
+  // =====================================================================
+
+  // Register announces the Agent to the Hub with a human-readable name
+  // and a list of capabilities (supported test formats, translation pairs).
+  //
+  // Called once when the Agent starts up.
+  // Returns a Hub-assigned agent_id for subsequent session correlation.
   rpc Register(RegistrationRequest) returns (RegistrationResponse);
 
-  // A long-lived stream where the Agent waits for directives from the Hub.
+  // Listen establishes a long-lived server-streaming connection where the
+  // Agent waits for work assignments from the Hub.
+  //
+  // The Hub pushes HubDirective messages through this stream whenever
+  // it has a job or translation for this Agent to execute.
+  // This stream remains open for the Agent's entire lifecycle.
   rpc Listen(AgentIdentity) returns (stream HubDirective);
 
-  // --- Execution Plane (Per-Session) ---
+  // =====================================================================
+  // Execution Plane (Per-Session)
+  // =====================================================================
 
-  // Dedicated session for running a specific test job.
-  // Initiated by the Agent upon receiving a 'RunJob' directive.
-  // The Agent MUST send a session_id as the first message to correlate
-  // this stream with the JobAssignment from the Listen stream.
+  // ExecuteJob opens a dedicated bi-directional stream for a single test
+  // job execution session.
+  //
+  // Triggered when the Agent receives a JobAssignment from the Listen stream.
+  // The Agent MUST send the session_id as the first ExecuteJobMessage to
+  // correlate this stream with the original JobAssignment directive.
+  //
+  // After correlation, the Hub sends the JobRequest (via JobInstruction),
+  // and the Agent streams back status updates, telemetry, and the final result.
   rpc ExecuteJob(stream ExecuteJobMessage) returns (stream JobInstruction);
 
-  // Dedicated session for interactive script translation.
-  // Initiated by the Agent upon receiving a 'StartTranslation' directive.
-  // The Agent MUST send a session_id as the first message to correlate
-  // this stream with the TranslationAssignment from the Listen stream.
+  // Translate opens a dedicated bi-directional stream for a single script
+  // translation session.
+  //
+  // Triggered when the Agent receives a TranslationAssignment from the Listen stream.
+  // The Agent MUST send the session_id as the first TranslateMessage to
+  // correlate this stream with the original TranslationAssignment directive.
+  //
+  // After correlation, the Hub sends the TranslationInit (via TranslationInstruction),
+  // and the Agent streams back status updates, telemetry, and the final result.
   rpc Translate(stream TranslateMessage) returns (stream TranslationInstruction);
 }
 
-// Identification for the Agent, typically used for session correlation.
+// =====================================================================
+// Control Plane Messages
+// =====================================================================
+
+// AgentIdentity identifies a registered Agent.
+// Used by the Listen RPC to associate the stream with a known Agent.
 message AgentIdentity {
+  // The unique identifier assigned to this Agent by the Hub during registration.
   string agent_id = 1;
 }
 
+// RegistrationRequest is sent by the Agent when it first connects to the Hub.
 message RegistrationRequest {
+  // A human-readable name for this Agent, displayed in the CMS dashboard.
+  // Examples: "Selenium Agent - Build Server 3", "Playwright Linux Runner".
   string display_name = 1;
+
+  // The full list of test and translation capabilities this Agent supports.
   uap.v1.Capabilities capabilities = 2;
 }
 
+// RegistrationResponse is returned by the Hub after a successful registration.
 message RegistrationResponse {
+  // The unique identifier assigned to this Agent by the Hub.
+  // The Agent must use this in all subsequent interactions (Listen, sessions).
   string agent_id = 1;
+
+  // The Hub's current server time, useful for clock synchronization
+  // and correlating timestamps in telemetry logs.
   google.protobuf.Timestamp server_time = 2;
 }
 
-// High-level directive sent over the Control Plane (Listen stream).
+// HubDirective is a message pushed by the Hub to the Agent over the
+// long-lived Listen stream. It carries instructions for the Agent to act on.
 message HubDirective {
   oneof instruction {
+    // Instructs the Agent to start a new test job execution session.
     JobAssignment run_job = 1;
+
+    // Instructs the Agent to start a new script translation session.
     TranslationAssignment start_translation = 2;
+
+    // A connectivity check. The Agent should remain connected.
+    // No explicit response is required; the Hub monitors stream health.
     google.protobuf.Empty heartbeat_request = 3;
   }
 }
 
+// JobAssignment directs the Agent to open a new ExecuteJob session.
+// The Agent should call ExecuteJob and send this session_id as the first message.
 message JobAssignment {
+  // A Hub-generated unique identifier for this job session.
+  // Used to correlate the ExecuteJob stream with this directive.
   string session_id = 1;
 }
 
+// TranslationAssignment directs the Agent to open a new Translate session.
+// The Agent should call Translate and send this session_id as the first message.
 message TranslationAssignment {
+  // A Hub-generated unique identifier for this translation session.
+  // Used to correlate the Translate stream with this directive.
   string session_id = 1;
 }
 
-// --- Execution Plane: Job ---
+// =====================================================================
+// Execution Plane Messages: Job
+// =====================================================================
 
-// Message sent by the Agent over an ExecuteJob stream.
-// The first message MUST be a session_id. All subsequent messages are JobResponses.
+// ExecuteJobMessage is the Agent-to-Hub message type for the ExecuteJob stream.
+//
+// Message ordering contract:
+//   1. First message: MUST set 'session_id' to correlate with the JobAssignment.
+//   2. All subsequent messages: MUST set 'update' with JobResponse payloads.
 message ExecuteJobMessage {
   oneof content {
-    string session_id = 1;          // First message: correlate with JobAssignment
-    uap.v1.JobResponse update = 2;  // Subsequent: telemetry, status, result
+    // The session identifier from the JobAssignment directive.
+    // MUST be the first message sent on this stream.
+    string session_id = 1;
+
+    // A job response containing status updates, telemetry, or the final result.
+    // Sent for all messages after the initial session_id.
+    uap.v1.JobResponse update = 2;
   }
 }
 
-// Instruction sent from the Hub to the Agent over an ExecuteJob stream.
+// JobInstruction is the Hub-to-Agent message type for the ExecuteJob stream.
+//
+// Message ordering contract:
+//   1. First instruction: MUST be 'job_init' containing the full JobRequest.
+//   2. Subsequent instructions: 'command' messages (help, stop, or custom).
 message JobInstruction {
   oneof content {
+    // The initial job configuration. Sent once after the Agent's session_id.
     uap.v1.JobRequest job_init = 1;
+
+    // An interactive command sent during job execution.
     uap.v1.JobCommand command = 2;
   }
 }
 
-// --- Execution Plane: Translation ---
+// =====================================================================
+// Execution Plane Messages: Translation
+// =====================================================================
 
-// Message sent by the Agent over a Translate stream.
-// The first message MUST be a session_id. All subsequent messages are TranslationResponses.
+// TranslateMessage is the Agent-to-Hub message type for the Translate stream.
+//
+// Message ordering contract:
+//   1. First message: MUST set 'session_id' to correlate with the TranslationAssignment.
+//   2. All subsequent messages: MUST set 'update' with TranslationResponse payloads.
 message TranslateMessage {
   oneof content {
-    string session_id = 1;                    // First message: correlate with TranslationAssignment
-    uap.v1.TranslationResponse update = 2;    // Subsequent: telemetry, status, result
+    // The session identifier from the TranslationAssignment directive.
+    // MUST be the first message sent on this stream.
+    string session_id = 1;
+
+    // A translation response containing status updates, telemetry, or the final result.
+    // Sent for all messages after the initial session_id.
+    uap.v1.TranslationResponse update = 2;
   }
 }
 
-// Instruction sent from the Hub to the Agent over a Translate stream.
+// TranslationInstruction is the Hub-to-Agent message type for the Translate stream.
+//
+// Message ordering contract:
+//   1. First instruction: MUST be 'translation_init' containing the TranslationInit.
+//   2. Subsequent instructions: 'command' messages (help, stop, or custom).
 message TranslationInstruction {
   oneof content {
+    // The initial translation configuration. Sent once after the Agent's session_id.
     uap.v1.TranslationInit translation_init = 1;
+
+    // An interactive command sent during translation.
     uap.v1.TranslationCommand command = 2;
   }
 }

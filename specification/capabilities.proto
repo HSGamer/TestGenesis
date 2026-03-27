@@ -1,24 +1,56 @@
+// capabilities.proto — Agent capability declarations for the Universal Agent Protocol (UAP).
+//
+// When an Agent registers with the Hub, it announces what it can do
+// via a list of Capability objects. The Hub uses these to match
+// incoming work requests to the correct Agent.
+
 syntax = "proto3";
 
 package uap.v1;
 
+// Capability is a single feature that an Agent supports.
+// Each capability has a unique 'id' (assigned by the Agent) and
+// a polymorphic 'type' indicating whether it is a test execution
+// capability or a script translation capability.
 message Capability {
+  // A unique identifier for this capability within the Agent.
+  // Used for deduplication and selective capability queries.
   string id = 1;
+
+  // The specific capability type. Exactly one must be set.
   oneof type {
+    // Indicates the Agent can execute tests of a given format.
     TestCapability test = 2;
+
+    // Indicates the Agent can translate scripts between two formats.
     TranslationCapability translation = 3;
   }
 }
 
+// TestCapability declares that the Agent can execute test payloads
+// of a specific format.
 message TestCapability {
-  string test_type = 1; // e.g., "selenium-side", "playwright-js"
+  // The test format identifier that this Agent supports.
+  // Must match the Payload.type field in job requests.
+  // Examples: "selenium-side", "playwright-js", "cypress", "python-pytest".
+  string test_type = 1;
 }
 
+// TranslationCapability declares that the Agent can convert scripts
+// from one format to another.
 message TranslationCapability {
+  // The source format this Agent can read from.
+  // Must match the Payload.type field in translation requests.
   string from_type = 1;
+
+  // The target format this Agent can produce.
+  // Must match the TranslationInit.target_format field.
   string to_type = 2;
 }
 
+// Capabilities is the top-level container for all capabilities
+// that an Agent declares during registration.
 message Capabilities {
+  // The full list of capabilities supported by this Agent.
   repeated Capability items = 1;
 }

@@ -1,28 +1,69 @@
+// common.proto — Shared message types for the Universal Agent Protocol (UAP).
+//
+// This file defines the foundational data structures reused across
+// job execution, script translation, and telemetry reporting.
+
 syntax = "proto3";
 
 package uap.v1;
 
 import "google/protobuf/struct.proto";
 
+// Payload represents a polymorphic test artifact or script.
+// It can carry either raw binary data (e.g., a Python script file)
+// or structured data (e.g., a Selenium IDE .side project as JSON).
+//
+// The 'type' field acts as a format identifier that Agents use to
+// determine whether they can process this payload. It must match
+// one of the Agent's declared TestCapability.test_type values.
 message Payload {
-  string type = 1; // e.g., "side", "python"
+  // A format identifier for the content (e.g., "side", "python", "playwright-js").
+  string type = 1;
+
+  // The actual content of the payload. Exactly one must be set.
   oneof content {
+    // Raw binary content (e.g., a script file, a ZIP archive).
     bytes raw_data = 2;
+
+    // Structured content represented as a JSON-like key-value map.
+    // Useful for test definitions that are natively structured (e.g., Selenium .side format).
     google.protobuf.Struct structured_data = 3;
   }
 }
 
+// Telemetry represents a single real-time log entry streamed from
+// the Agent to the Hub during job execution or translation.
+//
+// At its simplest, it is a plain text log line. The optional 'extra'
+// field allows attaching rich data such as screenshots, performance
+// metrics, or structured error details.
 message Telemetry {
+  // The primary human-readable log message.
   string message = 1;
+
+  // Optional rich attachment. At most one may be set.
   oneof extra {
+    // Structured metadata (e.g., performance counters, error context).
     google.protobuf.Struct metadata = 2;
+
+    // Raw binary data (e.g., a PNG screenshot, a HAR file).
     bytes blob = 3;
   }
-  // The type identifier for the 'extra' content.
-  // For 'blob', this should be a MIME type (e.g. "image/png").
-  // For 'metadata', this identifies the schema or purpose (e.g. "metric", "error-details").
+
+  // Identifies the type of the 'extra' content so consumers can
+  // interpret it correctly.
+  //   - For 'blob': use a MIME type (e.g., "image/png", "application/har+json").
+  //   - For 'metadata': use a schema name (e.g., "metric", "error-details", "help").
+  //   - Leave empty if 'extra' is not set.
   string extra_type = 4;
 }
 
+// HelpCommand is a built-in command that every Agent MUST support.
+// When received, the Agent must respond with a Telemetry message
+// listing all available commands and their descriptions.
 message HelpCommand {}
+
+// StopCommand is a built-in command that every Agent MUST support.
+// When received, the Agent must gracefully terminate the current
+// session, send a terminal status with a partial result, and close the stream.
 message StopCommand {}
