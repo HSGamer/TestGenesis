@@ -7,6 +7,9 @@ syntax = "proto3";
 
 package uap.v1;
 
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
 import "google/protobuf/struct.proto";
 
 // Payload represents a polymorphic test artifact or script.

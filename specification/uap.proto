@@ -18,6 +18,9 @@ syntax = "proto3";
 
 package uap.v1;
 
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
 import "capabilities.proto";
 import "job.proto";
 import "translation.proto";

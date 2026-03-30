@@ -1,0 +1,17 @@
+# buf.gen.yaml Configuration
+# This file simplifies the generation process by defining all plugins and options in once place.
+version: v2
+plugins:
+  # Base ES/TypeScript message and enum generation
+  - remote: buf.build/bufbuild/es:v1.10.0
+    out: src/generated
+    opt:
+      - target=ts
+      - import_extension=.js
+
+  # ConnectRPC service generation
+  - remote: buf.build/connectrpc/es:v1.6.1
+    out: src/generated
+    opt:
+      - target=ts
+      - import_extension=.js

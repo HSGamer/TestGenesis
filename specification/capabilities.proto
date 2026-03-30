@@ -8,6 +8,9 @@ syntax = "proto3";
 
 package uap.v1;
 
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
 // Capability is a single feature that an Agent supports.
 // Each capability has a unique 'id' (assigned by the Agent) and
 // a polymorphic 'type' indicating whether it is a test execution

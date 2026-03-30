@@ -1,0 +1,12 @@
+# Node.js dependencies
+node_modules/
+
+# Build artifacts
+dist/
+src/generated/
+
+# Log files
+*.log
+
+# OS files
+.DS_Store

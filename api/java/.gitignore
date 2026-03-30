@@ -1,0 +1,18 @@
+# Gradle build directories
+build/
+.gradle/
+
+# IDE files
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+bin/
+out/
+
+# Log files
+*.log
+
+# OS files
+.DS_Store
