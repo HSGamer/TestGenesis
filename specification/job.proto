@@ -4,8 +4,14 @@
 // A job session is a dedicated bi-directional stream between the Agent and
 // the Hub, isolated from other sessions and the control plane.
 //
-// Lifecycle: JobRequest → JobStatus(ACKNOWLEDGED) → JobStatus(EXECUTING) →
-//            Telemetry... → JobStatus(COMPLETED|FAILED) → JobResult → stream closes.
+// Lifecycle: 
+//   1.  Control Plane: Listen (Request display_name + capabilities) 
+//                       → RegistrationResponse (agent_id) 
+//                       → JobAssignment (session_id).
+//   2.  Execution Plane: Execute (session_id) 
+//                       → JobRequest → JobStatus(ACKNOWLEDGED) 
+//                       → JobStatus(EXECUTING) → Telemetry... 
+//                       → JobStatus(COMPLETED|FAILED) → JobResult.
 
 syntax = "proto3";
 
@@ -16,13 +22,90 @@ option java_multiple_files = true;
 
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 import "common.proto";
+import "capabilities.proto";
+
+// Service for dispatching and executing test jobs.
+service JobHub {
+  // Listen establishes a long-lived server-streaming connection where the
+  // Agent waits for job assignments from the Hub.
+  //
+  // The Agent announces its name and supported test formats through the request.
+  // The Hub sends its current time as the first message, and its directives
+  // for subsequent messages.
+  rpc Listen(JobListenRequest) returns (stream JobListenResponse);
+
+  // Execute opens a dedicated bi-directional stream for a test job execution.
+  //
+  // Triggered when the Agent receives a JobAssignment from the Listen stream.
+  // The Agent MUST send the session_id as the first message to correlate
+  // this stream with the original JobAssignment directive.
+  rpc Execute(stream ExecuteJobMessage) returns (stream JobInstruction);
+}
+
+// ─── Control Plane: Job ─────────────────────────────────────────
+
+// JobListenRequest is sent once by the Agent when it connects to the JobHub.
+message JobListenRequest {
+  // A human-readable name for this Agent.
+  string display_name = 1;
+
+  // The list of test formats this Agent can execute.
+  repeated uap.v1.TestCapability capabilities = 2;
+}
+
+// JobListenResponse is streamed from the Hub to the Agent over the JobHub.Listen.
+message JobListenResponse {
+  oneof content {
+    // The Hub's registration response. Sent as the first message.
+    RegistrationResponse registration = 1;
+
+    // Instructs the Agent to start a test job.
+    JobAssignment run_job = 2;
+
+    // A connectivity check.
+    google.protobuf.Empty heartbeat_request = 3;
+  }
+}
+
+// JobAssignment directs the Agent to open a new Execute session on JobHub.
+message JobAssignment {
+  // A Hub-generated unique identifier for this job session.
+  string session_id = 1;
+}
+
+// ─── Execution Plane: Job ───────────────────────────────────────
+
+// ExecuteJobMessage is the Agent-to-Hub message type for the Execute stream.
+message ExecuteJobMessage {
+  oneof content {
+    // The session identifier from the JobAssignment directive.
+    // MUST be the first message sent on this stream.
+    string session_id = 1;
+
+    // A job response containing updates.
+    uap.v1.JobResponse update = 2;
+  }
+}
+
+// JobInstruction is the Hub-to-Agent message type for the Execute stream.
+message JobInstruction {
+  oneof content {
+    // The initial job configuration. Sent once after the Agent's session_id.
+    uap.v1.JobRequest job_init = 1;
+
+    // An interactive command sent during job execution.
+    uap.v1.JobCommand command = 2;
+  }
+}
+
+// ─── Core Message Components: Job ───────────────────────────────
 
 // JobRequest is the initial configuration sent by the Hub to start a test job.
 // It contains everything the Agent needs to set up and run the test.
 message JobRequest {
   // Environment variables and configuration for the test runtime.
-  // Examples: browser type, viewport size, base URL, timeout settings.
   google.protobuf.Struct runtime_env = 1;
 
   // The test payload to execute. The Payload.type field determines
@@ -34,8 +117,6 @@ message JobRequest {
 // job session to control or interact with the running test.
 //
 // The Agent MUST implement the 'help' and 'stop' commands.
-// Custom commands are Agent-specific and should be documented in the
-// Agent's help output.
 message JobCommand {
   oneof command {
     // Request a list of all available commands. The Agent must respond
@@ -46,8 +127,7 @@ message JobCommand {
     // FAILED status and a partial JobResult before closing the stream.
     uap.v1.StopCommand stop = 2;
 
-    // An Agent-specific custom command sent as a plain string.
-    // Unrecognized commands should be reported via Telemetry.
+    // An Agent-specific custom command.
     string custom = 3;
   }
 }
@@ -73,63 +153,36 @@ message JobResponse {
 }
 
 // JobStatus represents the current state of a job session.
-// Status transitions follow the state machine defined in PROTOCOL.md.
 message JobStatus {
   enum State {
-    // Default value. Should not be used in practice.
     UNKNOWN = 0;
-
-    // The Agent has received and accepted the job request.
     ACKNOWLEDGED = 1;
-
-    // The payload is invalid or unsupported. Terminal state — stream closes.
     INVALID = 2;
-
-    // The test is actively running.
     EXECUTING = 3;
-
-    // The test is temporarily paused (e.g., waiting for a resource).
     PAUSED = 4;
-
-    // The test completed successfully. Terminal state.
     COMPLETED = 5;
-
-    // The test failed, was stopped, or encountered an error. Terminal state.
     FAILED = 6;
   }
-
   // The current state of the job.
   State state = 1;
-
   // An optional human-readable message providing context for this state.
-  // Examples: "Browser launched", "Step 3 failed: element not found",
-  //           "Stopped by Hub command".
   string message = 2;
 }
 
 // JobResult is the final summary sent by the Agent when a job session ends.
-// It is always the last meaningful message before the stream closes.
 message JobResult {
   // The terminal status of the job (COMPLETED or FAILED).
   JobStatus status = 1;
-
   // A detailed breakdown of each test step/command that was executed.
   repeated StepReport steps = 2;
-
   // Global log lines collected during the entire execution.
   repeated string logs = 3;
-
-  // An optional structured summary for custom metrics, timing data,
-  // or any Agent-specific metadata the Hub may want to store.
+  // An optional structured summary for custom metrics.
   google.protobuf.Struct summary = 4;
 }
 
-// StepReport describes the outcome of a single test step or command
-// within a job execution.
+// StepReport describes the outcome of a single test step or command.
 message StepReport {
-  // The name or identifier of the test step (e.g., "click #submit", "open /login").
   string name = 1;
-
-  // The final status of this individual step.
   JobStatus status = 2;
 }

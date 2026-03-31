@@ -11,6 +11,7 @@ option java_package = "me.hsgamer.testgenesis.uap.v1";
 option java_multiple_files = true;
 
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 
 // Payload represents a polymorphic test artifact or script.
 // It can carry either raw binary data (e.g., a Python script file)
@@ -70,3 +71,13 @@ message HelpCommand {}
 // When received, the Agent must gracefully terminate the current
 // session, send a terminal status with a partial result, and close the stream.
 message StopCommand {}
+
+// RegistrationResponse is returned by the Hub after a successful registration.
+// Sent as the first message on any Listen stream.
+message RegistrationResponse {
+  // The unique identifier assigned to this Agent by the Hub.
+  string agent_id = 1;
+
+  // The Hub's current server time.
+  google.protobuf.Timestamp server_time = 2;
+}

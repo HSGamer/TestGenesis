@@ -1,15 +1,17 @@
 // translation.proto — Script translation messages for the Universal Agent Protocol (UAP).
 //
-// This file defines all messages involved in a single script translation session.
-// A translation session converts a test script from one format to another
-// (e.g., Selenium IDE .side → Playwright JavaScript).
+// This file defines all messages involved in a single translation session.
+// A translation session is a dedicated bi-directional stream between the
+// Agent and the Hub, isolated from other sessions and the control plane.
 //
-// Like job sessions, each translation is a dedicated bi-directional stream,
-// fully isolated from the control plane and other sessions.
-//
-// Lifecycle: TranslationInit → TranslationStatus(ACKNOWLEDGED) →
-//            TranslationStatus(PROCESSING) → Telemetry... →
-//            TranslationStatus(COMPLETED|FAILED) → TranslationResult → stream closes.
+// Lifecycle:
+//   1.  Control Plane: Listen (Request display_name + capabilities) 
+//                       → RegistrationResponse (agent_id) 
+//                       → TranslationAssignment (session_id).
+//   2.  Execution Plane: Translate (session_id) 
+//                       → TranslationInit → TranslationStatus(ACKNOWLEDGED) 
+//                       → TranslationStatus(PROCESSING) → Telemetry... 
+//                       → TranslationStatus(COMPLETED|FAILED) → TranslationResult.
 
 syntax = "proto3";
 
@@ -19,112 +21,151 @@ option java_package = "me.hsgamer.testgenesis.uap.v1";
 option java_multiple_files = true;
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 import "common.proto";
+import "capabilities.proto";
 
-// TranslationInit is the initial request sent by the Hub to start a
-// translation session. The source format is inferred from the payload's
-// type field, so only the target format needs to be specified explicitly.
+// Service for dispatching and executing script translations.
+service TranslationHub {
+  // Listen establishes a long-lived server-streaming connection where the
+  // Agent waits for script translation assignments from the Hub.
+  //
+  // The Agent announces its name and translation capabilities through the request.
+  // The Hub sends its current time as the first message, and its directives
+  // for subsequent messages.
+  rpc Listen(TranslationListenRequest) returns (stream TranslationListenResponse);
+
+  // Translate opens a dedicated bi-directional stream for a script translation.
+  //
+  // Triggered when the Agent receives a TranslationAssignment from the Listen stream.
+  // The Agent MUST send the session_id as the first message to correlate
+  // this stream with the original TranslationAssignment directive.
+  rpc Translate(stream TranslateMessage) returns (stream TranslationInstruction);
+}
+
+// ─── Control Plane: Translation ─────────────────────────────────
+
+// TranslationListenRequest is sent once by the Agent when it connects to the TranslationHub.
+message TranslationListenRequest {
+  // A human-readable name for this Agent.
+  string display_name = 1;
+
+  // The list of translation capabilities this Agent supports.
+  repeated uap.v1.TranslationCapability capabilities = 2;
+}
+
+// TranslationListenResponse is streamed from the Hub over the TranslationHub.Listen.
+message TranslationListenResponse {
+  oneof content {
+    // The Hub's registration response. Sent as the first message.
+    RegistrationResponse registration = 1;
+
+    // Instructs the Agent to start a script translation.
+    TranslationAssignment start_translation = 2;
+
+    // A connectivity check.
+    google.protobuf.Empty heartbeat_request = 3;
+  }
+}
+
+// TranslationAssignment directs the Agent to open a new Translate session.
+message TranslationAssignment {
+  // A Hub-generated unique identifier for this translation session.
+  string session_id = 1;
+}
+
+// ─── Execution Plane: Translation ───────────────────────────────
+
+// TranslateMessage is the Agent-to-Hub message type for the Translate stream.
+message TranslateMessage {
+  oneof content {
+    // The session identifier from the TranslationAssignment directive.
+    // MUST be the first message sent on this stream.
+    string session_id = 1;
+
+    // A translation response containing updates.
+    TranslationResponse update = 2;
+  }
+}
+
+// TranslationInstruction is the Hub-to-Agent message type for the Translate stream.
+message TranslationInstruction {
+  oneof content {
+    // The initial translation configuration. Sent once after the Agent's session_id.
+    uap.v1.TranslationInit translation_init = 1;
+
+    // An interactive command sent during translation.
+    uap.v1.TranslationCommand command = 2;
+  }
+}
+
+// ─── Core Message Components: Translation ───────────────────────
+
+// TranslationInit is the initial configuration sent by the Hub to start a translation.
 message TranslationInit {
-  // The desired output format for the translated script.
-  // Must match a TranslationCapability.to_type declared by this Agent.
-  // Examples: "playwright-js", "python-pytest", "cypress".
+  // The target script format (e.g., "playwright-js", "cypress", "k6").
   string target_format = 1;
 
-  // The source script to translate.
-  // The Payload.type field identifies the source format (e.g., "selenium-side").
+  // The source script payload to translate. The Payload.type field determines
+  // the source format.
   uap.v1.Payload payload = 2;
 }
 
-// TranslationCommand is a message sent by the Hub to the Agent during
-// an active translation session to control the process or provide feedback.
-//
-// The Agent MUST implement the 'help' and 'stop' commands.
+// TranslationCommand is a message sent by the Hub during an active translation session.
 message TranslationCommand {
   oneof command {
-    // Request a list of all available commands. The Agent must respond
-    // with a Telemetry message containing command descriptions.
+    // Request a list of commands.
     uap.v1.HelpCommand help = 1;
 
-    // Forcefully stop the translation. The Agent must send a terminal
-    // FAILED status and a partial TranslationResult before closing.
+    // Stop the translation.
     uap.v1.StopCommand stop = 2;
 
-    // An Agent-specific custom command (e.g., "skip-unsupported", "verbose").
-    // Useful for providing interactive feedback during ambiguous conversions.
+    // A custom command.
     string custom = 3;
   }
 }
 
-// TranslationResponse is a polymorphic message streamed from the Agent to
-// the Hub during a translation session. Each message carries exactly one of:
-// a status update, a telemetry log entry, or the final result.
+// TranslationResponse is a polymorphic message streamed from the Agent during translation.
 message TranslationResponse {
-  // When this message was generated by the Agent.
+  // When this message was generated.
   google.protobuf.Timestamp timestamp = 1;
 
-  // The content of this response. Exactly one must be set.
+  // The content. Exactly one must be set.
   oneof response {
-    // A lifecycle status update (e.g., ACKNOWLEDGED, PROCESSING, COMPLETED).
+    // A status update (e.g., ACKNOWLEDGED, PROCESSING, COMPLETED).
     TranslationStatus status = 2;
 
-    // A real-time log entry (e.g., conversion progress, warnings).
+    // Real-time telemetry log lines.
     uap.v1.Telemetry telemetry = 3;
 
-    // The final translation output. Sent once, just before the stream closes.
+    // The final result.
     TranslationResult result = 4;
   }
 }
 
-// TranslationStatus represents the current state of a translation session.
-// Status transitions follow the state machine defined in PROTOCOL.md.
+// TranslationStatus represents the state of a translation session.
 message TranslationStatus {
   enum State {
-    // Default value. Should not be used in practice.
     UNKNOWN = 0;
-
-    // The Agent has received and accepted the translation request.
     ACKNOWLEDGED = 1;
-
-    // The source payload or target format is unsupported. Terminal state — stream closes.
     INVALID = 2;
-
-    // The Agent is actively converting the script.
     PROCESSING = 3;
-
-    // The Agent has encountered an ambiguity and is waiting for the Hub
-    // to provide clarification via a custom TranslationCommand.
-    // Examples: unsupported command mapping, ambiguous selector strategy.
-    WAITING_FOR_FEEDBACK = 4;
-
-    // The translation completed successfully. Terminal state.
-    COMPLETED = 5;
-
-    // The translation failed or was stopped. Terminal state.
-    FAILED = 6;
+    COMPLETED = 4;
+    FAILED = 5;
   }
-
-  // The current state of the translation.
   State state = 1;
-
-  // An optional human-readable message providing context for this state.
-  // Examples: "Converting 15 test cases", "Unsupported command: waitForPopUp",
-  //           "Stopped by Hub command".
   string message = 2;
 }
 
-// TranslationResult is the final output sent by the Agent when a
-// translation session ends. It is the last meaningful message before
-// the stream closes.
+// TranslationResult is the final outcome of a script translation session.
 message TranslationResult {
-  // The terminal status of the translation (COMPLETED or FAILED).
+  // The terminal status.
   TranslationStatus status = 1;
 
-  // The translated script in the target format.
-  // The Payload.type field will reflect the target_format from TranslationInit.
-  // May be empty or partial if the translation failed.
+  // The successfully translated script payload.
+  // Optional: only set if status is COMPLETED.
   uap.v1.Payload translated_payload = 2;
 
-  // A human-readable log of the conversion process, including any
-  // warnings, skipped elements, or mapping decisions made by the Agent.
+  // Global translation logs (e.g., warnings about unsupported features).
   string translation_log = 3;
 }
