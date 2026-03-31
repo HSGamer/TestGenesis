@@ -36,17 +36,7 @@ public class JobHubService extends JobHubGrpc.JobHubImplBase {
         String agentId = UUID.randomUUID().toString();
         System.out.printf("Job Agent '%s' registered: %s%n", request.getDisplayName(), agentId);
 
-        // 1. Send RegistrationResponse as the first message
-        responseObserver.onNext(JobListenResponse.newBuilder()
-                .setRegistration(RegistrationResponse.newBuilder()
-                        .setAgentId(agentId)
-                        .setServerTime(com.google.protobuf.Timestamp.newBuilder()
-                                .setSeconds(System.currentTimeMillis() / 1000)
-                                .build())
-                        .build())
-                .build());
-
-        listeners.put(agentId, responseObserver);
+        // The Hub waits for work to dispatch...
     }
 
     @Override
@@ -101,11 +91,7 @@ public class JobAgent {
                 .setDisplayName("Java Job Runner")
                 .addCapabilities(TestCapability.newBuilder().setTestType("selenium-side").build())
                 .build(), new StreamObserver<>() {
-            @Override
-            public void onNext(JobListenResponse res) {
-                if (res.hasRegistration()) {
-                    System.out.println("Registered with ID: " + res.getRegistration().getAgentId());
-                } else if (res.hasRunJob()) {
+                if (res.hasRunJob()) {
                     String sessionId = res.getRunJob().getSessionId();
                     startJobSession(asyncStub, sessionId);
                 }

@@ -72,12 +72,3 @@ message HelpCommand {}
 // session, send a terminal status with a partial result, and close the stream.
 message StopCommand {}
 
-// RegistrationResponse is returned by the Hub after a successful registration.
-// Sent as the first message on any Listen stream.
-message RegistrationResponse {
-  // The unique identifier assigned to this Agent by the Hub.
-  string agent_id = 1;
-
-  // The Hub's current server time.
-  google.protobuf.Timestamp server_time = 2;
-}

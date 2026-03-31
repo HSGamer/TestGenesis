@@ -40,14 +40,11 @@ message JobListenRequest {
 // JobListenResponse is streamed from the Hub to the Agent over the JobHub.Listen.
 message JobListenResponse {
   oneof content {
-    // The Hub's registration response. Sent as the first message.
-    RegistrationResponse registration = 1;
-
     // Instructs the Agent to start a test job.
-    JobAssignment run_job = 2;
+    JobAssignment run_job = 1;
 
     // A connectivity check.
-    google.protobuf.Empty heartbeat_request = 3;
+    google.protobuf.Empty heartbeat_request = 2;
   }
 }
 

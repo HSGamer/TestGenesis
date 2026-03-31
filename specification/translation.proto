@@ -39,14 +39,11 @@ message TranslationListenRequest {
 // TranslationListenResponse is streamed from the Hub over the TranslationHub.Listen.
 message TranslationListenResponse {
   oneof content {
-    // The Hub's registration response. Sent as the first message.
-    RegistrationResponse registration = 1;
-
     // Instructs the Agent to start a script translation.
-    TranslationAssignment start_translation = 2;
+    TranslationAssignment start_translation = 1;
 
     // A connectivity check.
-    google.protobuf.Empty heartbeat_request = 3;
+    google.protobuf.Empty heartbeat_request = 2;
   }
 }
 

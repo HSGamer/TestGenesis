@@ -28,17 +28,6 @@ export default (router: ConnectRouter) =>
       const agentId = randomUUID();
       console.log(`Job Agent registered: ${request.displayName} (id: ${agentId})`);
 
-      // 1. Send RegistrationResponse as the first message
-      yield new JobListenResponse({
-        content: {
-          case: "registration",
-          value: new RegistrationResponse({
-            agentId,
-            serverTime: Timestamp.now(),
-          }),
-        },
-      });
-
       // Hub waits for work to dispatch...
     },
 
@@ -81,9 +70,7 @@ async function main() {
     displayName: "Node.js Job Runner",
     capabilities: [{ testType: "selenium-side" }]
   }))) {
-    if (res.content.case === "registration") {
-      console.log("Registered with ID: " + res.content.value.agentId);
-    } else if (res.content.case === "runJob") {
+    if (res.content.case === "runJob") {
       const sessionId = res.content.value.sessionId;
       startJobSession(client, sessionId);
     }
