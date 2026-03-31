@@ -79,7 +79,7 @@ async function main() {
   // 1. Listen (triggers registration and starts dispatcher)
   for await (const res of client.listen(new JobListenRequest({
     displayName: "Node.js Job Runner",
-    capabilities: [{ id: "selenium", testType: "selenium-side" }]
+    capabilities: [{ testType: "selenium-side" }]
   }))) {
     if (res.content.case === "registration") {
       console.log("Registered with ID: " + res.content.value.agentId);

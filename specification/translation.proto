@@ -3,15 +3,6 @@
 // This file defines all messages involved in a single translation session.
 // A translation session is a dedicated bi-directional stream between the
 // Agent and the Hub, isolated from other sessions and the control plane.
-//
-// Lifecycle:
-//   1.  Control Plane: Listen (Request display_name + capabilities) 
-//                       → RegistrationResponse (agent_id) 
-//                       → TranslationAssignment (session_id).
-//   2.  Execution Plane: Translate (session_id) 
-//                       → TranslationInit → TranslationStatus(ACKNOWLEDGED) 
-//                       → TranslationStatus(PROCESSING) → Telemetry... 
-//                       → TranslationStatus(COMPLETED|FAILED) → TranslationResult.
 
 syntax = "proto3";
 
@@ -23,23 +14,14 @@ option java_multiple_files = true;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 import "common.proto";
-import "capabilities.proto";
 
 // Service for dispatching and executing script translations.
 service TranslationHub {
   // Listen establishes a long-lived server-streaming connection where the
   // Agent waits for script translation assignments from the Hub.
-  //
-  // The Agent announces its name and translation capabilities through the request.
-  // The Hub sends its current time as the first message, and its directives
-  // for subsequent messages.
   rpc Listen(TranslationListenRequest) returns (stream TranslationListenResponse);
 
   // Translate opens a dedicated bi-directional stream for a script translation.
-  //
-  // Triggered when the Agent receives a TranslationAssignment from the Listen stream.
-  // The Agent MUST send the session_id as the first message to correlate
-  // this stream with the original TranslationAssignment directive.
   rpc Translate(stream TranslateMessage) returns (stream TranslationInstruction);
 }
 
@@ -70,8 +52,17 @@ message TranslationListenResponse {
 
 // TranslationAssignment directs the Agent to open a new Translate session.
 message TranslationAssignment {
-  // A Hub-generated unique identifier for this translation session.
   string session_id = 1;
+}
+
+// TranslationCapability declares that the Agent can convert scripts
+// from one format to another.
+message TranslationCapability {
+  // The source format this Agent can read from.
+  string from_type = 1;
+
+  // The target format this Agent can produce.
+  string to_type = 2;
 }
 
 // ─── Execution Plane: Translation ───────────────────────────────
@@ -79,11 +70,7 @@ message TranslationAssignment {
 // TranslateMessage is the Agent-to-Hub message type for the Translate stream.
 message TranslateMessage {
   oneof content {
-    // The session identifier from the TranslationAssignment directive.
-    // MUST be the first message sent on this stream.
     string session_id = 1;
-
-    // A translation response containing updates.
     TranslationResponse update = 2;
   }
 }
@@ -91,10 +78,7 @@ message TranslateMessage {
 // TranslationInstruction is the Hub-to-Agent message type for the Translate stream.
 message TranslationInstruction {
   oneof content {
-    // The initial translation configuration. Sent once after the Agent's session_id.
     uap.v1.TranslationInit translation_init = 1;
-
-    // An interactive command sent during translation.
     uap.v1.TranslationCommand command = 2;
   }
 }
@@ -103,42 +87,25 @@ message TranslationInstruction {
 
 // TranslationInit is the initial configuration sent by the Hub to start a translation.
 message TranslationInit {
-  // The target script format (e.g., "playwright-js", "cypress", "k6").
   string target_format = 1;
-
-  // The source script payload to translate. The Payload.type field determines
-  // the source format.
   uap.v1.Payload payload = 2;
 }
 
 // TranslationCommand is a message sent by the Hub during an active translation session.
 message TranslationCommand {
   oneof command {
-    // Request a list of commands.
     uap.v1.HelpCommand help = 1;
-
-    // Stop the translation.
     uap.v1.StopCommand stop = 2;
-
-    // A custom command.
     string custom = 3;
   }
 }
 
 // TranslationResponse is a polymorphic message streamed from the Agent during translation.
 message TranslationResponse {
-  // When this message was generated.
   google.protobuf.Timestamp timestamp = 1;
-
-  // The content. Exactly one must be set.
   oneof response {
-    // A status update (e.g., ACKNOWLEDGED, PROCESSING, COMPLETED).
     TranslationStatus status = 2;
-
-    // Real-time telemetry log lines.
     uap.v1.Telemetry telemetry = 3;
-
-    // The final result.
     TranslationResult result = 4;
   }
 }
@@ -159,13 +126,7 @@ message TranslationStatus {
 
 // TranslationResult is the final outcome of a script translation session.
 message TranslationResult {
-  // The terminal status.
   TranslationStatus status = 1;
-
-  // The successfully translated script payload.
-  // Optional: only set if status is COMPLETED.
   uap.v1.Payload translated_payload = 2;
-
-  // Global translation logs (e.g., warnings about unsupported features).
   string translation_log = 3;
 }

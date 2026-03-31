@@ -99,7 +99,7 @@ public class JobAgent {
 
         asyncStub.listen(JobListenRequest.newBuilder()
                 .setDisplayName("Java Job Runner")
-                .addCapabilities(TestCapability.newBuilder().setId("selenium").setTestType("selenium-side").build())
+                .addCapabilities(TestCapability.newBuilder().setTestType("selenium-side").build())
                 .build(), new StreamObserver<>() {
             @Override
             public void onNext(JobListenResponse res) {
