@@ -52,11 +52,18 @@ public class JobHubService extends JobHubGrpc.JobHubImplBase {
 
     @Override
     public StreamObserver<JobResponse> execute(StreamObserver<JobInstruction> responseObserver) {
-        // Implementation using 'uap-session-id' header via ServerCallInterceptor (not shown)
         return new StreamObserver<>() {
             @Override
             public void onNext(JobResponse msg) {
-                // Handle status/telemetry/result...
+                if (msg.hasTelemetry()) {
+                    Telemetry t = msg.getTelemetry();
+                    System.out.printf("[%s] [%s] %s%n", t.getSource(), t.getLevel(), t.getMessage());
+                } else if (msg.hasResult()) {
+                    JobResult r = msg.getResult();
+                    Summary s = r.getSummary();
+                    System.out.printf("Job %s. Started: %s, Duration: %ds%n", 
+                        r.getStatus().getState(), s.getStartTime(), s.getTotalDuration().getSeconds());
+                }
             }
             @Override public void onError(Throwable t) {}
             @Override public void onCompleted() { responseObserver.onCompleted(); }
@@ -82,6 +89,8 @@ import io.grpc.stub.MetadataUtils;
 import io.grpc.stub.StreamObserver;
 import me.hsgamer.testgenesis.uap.v1.*;
 import com.google.protobuf.Empty;
+import com.google.protobuf.Duration;
+import com.google.protobuf.Timestamp;
 
 public class JobAgent {
     public static void main(String[] args) throws InterruptedException {

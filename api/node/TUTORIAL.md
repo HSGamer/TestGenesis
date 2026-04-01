@@ -44,7 +44,14 @@ export default (router: ConnectRouter) =>
       console.log(`Job session started: ${sessionId}`);
       
       for await (const message of requests) {
-        console.log(`Received update for ${sessionId}:`, message.response.case);
+        if (message.response.case === "telemetry") {
+          const t = message.response.value;
+          console.log(`[${t.source}] [${t.level}] ${t.message}`);
+        } else if (message.response.case === "result") {
+          const r = message.response.value;
+          const s = r.summary;
+          console.log(`Job ${r.status?.state}. Started: ${s?.startTime?.toDate()}, Duration: ${s?.totalDuration?.seconds}s`);
+        }
       }
     },
   });

@@ -13,6 +13,7 @@ option java_multiple_files = true;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/duration.proto";
 import "common.proto";
 
 // Service for dispatching and executing script translations.
@@ -127,4 +128,10 @@ message TranslationResult {
   TranslationStatus status = 1;
   uap.v1.Payload translated_payload = 2;
   string translation_log = 3;
+
+  // Final summary about the translation session.
+  uap.v1.Summary summary = 4;
+
+  // Translation-level artifacts (e.g., intermediate graphs, diffs).
+  repeated uap.v1.Attachment attachments = 5;
 }
