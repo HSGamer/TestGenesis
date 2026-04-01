@@ -174,12 +174,15 @@ export class JobProcessor {
                 state: cmd.state === CommandStates.PASSED ? JobStatus_State.COMPLETED : JobStatus_State.FAILED,
                 message: cmd.timestamp.find(t => t.message)?.message
               }),
-              duration: msToDuration(stepEnd.getTime() - stepStart.getTime()),
-              metadata: Struct.fromJson({
-                id: cmd.id,
-                command: cmd.command.command,
-                target: cmd.command.target ?? null,
-                value: cmd.command.value ?? null,
+              summary: new Summary({
+                startTime: Timestamp.fromDate(stepStart),
+                totalDuration: msToDuration(stepEnd.getTime() - stepStart.getTime()),
+                metadata: Struct.fromJson({
+                  id: cmd.id,
+                  command: cmd.command.command,
+                  target: cmd.command.target ?? null,
+                  value: cmd.command.value ?? null,
+                })
               })
             });
           }),

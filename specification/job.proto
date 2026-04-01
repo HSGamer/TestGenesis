@@ -139,9 +139,6 @@ message JobResult {
 
   // Job-level artifacts (e.g., full log files, screen recordings).
   repeated uap.v1.Attachment attachments = 5;
-
-  // Context about this specific run (e.g., {"run_index": 1, "is_warmup": false}).
-  google.protobuf.Struct run_context = 6;
 }
 
 // StepReport describes the outcome of a single test step or command.
@@ -149,12 +146,9 @@ message StepReport {
   string name = 1;
   JobStatus status = 2;
 
-  // The duration taken to execute this step.
-  google.protobuf.Duration duration = 3;
-
-  // Engine-specific step metadata (e.g., DOM selector, actual value).
-  google.protobuf.Struct metadata = 5;
+  // Outcome summary of the step, including timing and metadata.
+  uap.v1.Summary summary = 3;
 
   // Step-level artifacts (e.g., screenshot taken at failure).
-  repeated uap.v1.Attachment attachments = 6;
+  repeated uap.v1.Attachment attachments = 4;
 }
