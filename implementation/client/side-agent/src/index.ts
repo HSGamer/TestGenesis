@@ -4,15 +4,15 @@ import {
   JobHub,
   JobListenRequest,
   JobListenResponse,
-  ExecuteJobMessage,
   JobResponse,
   JobStatus,
   JobStatus_State,
   JobResult,
   StepReport,
   Telemetry,
+  JobRegistration,
 } from "uap-node";
-import { Timestamp, Struct } from "@bufbuild/protobuf";
+import { Timestamp, Struct, Empty } from "@bufbuild/protobuf";
 import { parseArgs } from "node:util";
 import { TestLogger, TestRunner } from "@hsgamer/side-engine";
 import { Builder, WebDriver } from "selenium-webdriver";
@@ -90,14 +90,39 @@ async function main() {
   let delay = 1000;
   while (!isShuttingDown) {
     try {
-      // Register with the Hub and announce 'selenium-side' capability.
-      const listenRequest = new JobListenRequest({
-        displayName: CLIENT_NAME,
-        capabilities: [{ testType: "selenium-side" }],
-      });
-
       console.log(`[Listen] Connecting to JobHub at ${HUB_URL}...`);
-      for await (const directive of client.listen(listenRequest)) {
+
+      /**
+       * Async generator for the bi-directional Listen request stream.
+       * - Sends initial registration.
+       * - Sends periodic 'ready' signals (heartbeats).
+       */
+      async function* generateListenRequests(): AsyncGenerator<JobListenRequest> {
+        // 1. Send initial registration
+        yield new JobListenRequest({
+          content: {
+            case: "registration",
+            value: new JobRegistration({
+              displayName: CLIENT_NAME,
+              capabilities: [{ testType: "selenium-side" }],
+            }),
+          },
+        });
+
+        // 2. Periodic Ready/Heartbeat signal
+        while (!isShuttingDown) {
+          yield new JobListenRequest({
+            content: {
+              case: "ready",
+              value: new Empty(),
+            },
+          });
+          // Heartbeat every 30 seconds
+          await new Promise((resolve) => setTimeout(resolve, 30000));
+        }
+      }
+
+      for await (const directive of client.listen(generateListenRequests())) {
         if (isShuttingDown) break;
         delay = 1000; // Reset backoff on successful communication.
 
@@ -119,29 +144,24 @@ async function main() {
 
 /**
  * Manages a single bi-directional test execution session (Execute RPC).
- * Handles the session handshake and translates Hub instructions into engine actions.
+ * The session_id is passed via gRPC/Connect headers for correlation.
  */
 async function executeJob(sessionId: string) {
-  const outboundQueue: ExecuteJobMessage[] = [];
+  const outboundQueue: JobResponse[] = [];
   let resolveOutbound: (() => void) | null = null;
 
   /**
    * Utility to push a JobResponse update into the outbound stream.
    */
   function pushUpdate(response: JobResponse["response"]) {
-    outboundQueue.push(new ExecuteJobMessage({
-      content: { case: "update", value: new JobResponse({ timestamp: Timestamp.now(), response }) }
-    }));
+    outboundQueue.push(new JobResponse({ timestamp: Timestamp.now(), response }));
     if (resolveOutbound) { resolveOutbound(); resolveOutbound = null; }
   }
 
   /**
    * Async generator that yields messages from the outbound queue to the Hub.
    */
-  async function* sendMessages(): AsyncGenerator<ExecuteJobMessage> {
-    // 1. First message MUST be the session_id to correlate the stream on the Hub.
-    yield new ExecuteJobMessage({ content: { case: "sessionId", value: sessionId } });
-    
+  async function* sendMessages(): AsyncGenerator<JobResponse> {
     while (!isShuttingDown) {
       if (outboundQueue.length > 0) yield outboundQueue.shift()!;
       else await new Promise<void>((r) => (resolveOutbound = r));
@@ -149,8 +169,11 @@ async function executeJob(sessionId: string) {
   }
 
   try {
-    const session = client.execute(sendMessages());
-    console.log(`[Job ${sessionId}] Execution session established.`);
+    // Initiate the Execute stream, passing the session_id in the headers.
+    const session = client.execute(sendMessages(), {
+      headers: { "uap-session-id": sessionId }
+    });
+    console.log(`[Job ${sessionId}] Execution session established via headers.`);
 
     for await (const instruction of session) {
       if (isShuttingDown) break;

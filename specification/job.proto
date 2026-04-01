@@ -18,18 +18,29 @@ import "common.proto";
 
 // Service for dispatching and executing test jobs.
 service JobHub {
-  // Listen establishes a long-lived server-streaming connection where the
-  // Agent waits for job assignments from the Hub.
-  rpc Listen(JobListenRequest) returns (stream JobListenResponse);
+  // Listen establishes a long-lived bi-directional streaming connection where the
+  // Agent waits for job assignments and signals its readiness.
+  rpc Listen(stream JobListenRequest) returns (stream JobListenResponse);
 
   // Execute opens a dedicated bi-directional stream for a test job execution.
-  rpc Execute(stream ExecuteJobMessage) returns (stream JobInstruction);
+  rpc Execute(stream JobResponse) returns (stream JobInstruction);
 }
 
 // ─── Control Plane: Job ─────────────────────────────────────────
 
-// JobListenRequest is sent once by the Agent when it connects to the JobHub.
+// JobListenRequest is streamed from the Agent to the Hub over the JobHub.Listen.
 message JobListenRequest {
+  oneof content {
+    // Initial registration packet sent once by the Agent upon connection.
+    JobRegistration registration = 1;
+
+    // Heartbeat and pull signal. Indicates the Agent is idle and ready for a job.
+    google.protobuf.Empty ready = 2;
+  }
+}
+
+// JobRegistration contains the identity and capabilities of the Agent.
+message JobRegistration {
   // A human-readable name for this Agent.
   string display_name = 1;
 
@@ -42,9 +53,6 @@ message JobListenResponse {
   oneof content {
     // Instructs the Agent to start a test job.
     JobAssignment run_job = 1;
-
-    // A connectivity check.
-    google.protobuf.Empty heartbeat_request = 2;
   }
 }
 
@@ -64,17 +72,6 @@ message TestCapability {
 
 // ─── Execution Plane: Job ───────────────────────────────────────
 
-// ExecuteJobMessage is the Agent-to-Hub message type for the Execute stream.
-message ExecuteJobMessage {
-  oneof content {
-    // The session identifier from the JobAssignment directive.
-    // MUST be the first message sent on this stream.
-    string session_id = 1;
-
-    // A job response containing updates.
-    uap.v1.JobResponse update = 2;
-  }
-}
 
 // JobInstruction is the Hub-to-Agent message type for the Execute stream.
 message JobInstruction {

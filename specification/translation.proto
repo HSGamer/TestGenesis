@@ -17,18 +17,29 @@ import "common.proto";
 
 // Service for dispatching and executing script translations.
 service TranslationHub {
-  // Listen establishes a long-lived server-streaming connection where the
-  // Agent waits for script translation assignments from the Hub.
-  rpc Listen(TranslationListenRequest) returns (stream TranslationListenResponse);
+  // Listen establishes a long-lived bi-directional streaming connection where the
+  // Agent waits for script translation assignments and signals its readiness.
+  rpc Listen(stream TranslationListenRequest) returns (stream TranslationListenResponse);
 
   // Translate opens a dedicated bi-directional stream for a script translation.
-  rpc Translate(stream TranslateMessage) returns (stream TranslationInstruction);
+  rpc Translate(stream TranslationResponse) returns (stream TranslationInstruction);
 }
 
 // ─── Control Plane: Translation ─────────────────────────────────
 
-// TranslationListenRequest is sent once by the Agent when it connects to the TranslationHub.
+// TranslationListenRequest is streamed from the Agent to the Hub over the TranslationHub.Listen.
 message TranslationListenRequest {
+  oneof content {
+    // Initial registration packet sent once by the Agent upon connection.
+    TranslationRegistration registration = 1;
+
+    // Heartbeat and pull signal. Indicates the Agent is idle and ready for a translation.
+    google.protobuf.Empty ready = 2;
+  }
+}
+
+// TranslationRegistration contains the identity and capabilities of the Agent.
+message TranslationRegistration {
   // A human-readable name for this Agent.
   string display_name = 1;
 
@@ -41,9 +52,6 @@ message TranslationListenResponse {
   oneof content {
     // Instructs the Agent to start a script translation.
     TranslationAssignment start_translation = 1;
-
-    // A connectivity check.
-    google.protobuf.Empty heartbeat_request = 2;
   }
 }
 
@@ -64,13 +72,6 @@ message TranslationCapability {
 
 // ─── Execution Plane: Translation ───────────────────────────────
 
-// TranslateMessage is the Agent-to-Hub message type for the Translate stream.
-message TranslateMessage {
-  oneof content {
-    string session_id = 1;
-    TranslationResponse update = 2;
-  }
-}
 
 // TranslationInstruction is the Hub-to-Agent message type for the Translate stream.
 message TranslationInstruction {

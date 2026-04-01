@@ -16,78 +16,85 @@ The Hub services are split into `JobHub` and `TranslationHub`.
 ### 1.1 — JobHub Implementation
 
 ```typescript
-import { ConnectRouter } from "@connectrpc/connect";
+import { ConnectRouter, HandlerContext } from "@connectrpc/connect";
 import { JobHub } from "uap-node";
-import { JobListenRequest, JobListenResponse, RegistrationResponse, JobAssignment } from "uap-node";
-import { Timestamp } from "@bufbuild/protobuf";
+import { JobListenRequest, JobListenResponse, JobAssignment, JobResponse, JobInstruction } from "uap-node";
 import { randomUUID } from "crypto";
 
 export default (router: ConnectRouter) =>
   router.service(JobHub, {
-    async *listen(request: JobListenRequest): AsyncGenerator<JobListenResponse> {
-      const agentId = randomUUID();
-      console.log(`Job Agent registered: ${request.displayName} (id: ${agentId})`);
-
-      // Hub waits for work to dispatch...
+    async *listen(requests: AsyncIterable<JobListenRequest>): AsyncGenerator<JobListenResponse> {
+      let agentName = "";
+      for await (const req of requests) {
+        if (req.content.case === "registration") {
+          agentName = req.content.value.displayName;
+          console.log(`Job Agent registered: ${agentName}`);
+        } else if (req.content.case === "ready") {
+          console.log(`Agent ${agentName} is ready for work (heartbeat received)`);
+          // Check queue and dispatch job if available
+          // yield new JobListenResponse({ content: { case: "runJob", value: ... } });
+        }
+      }
     },
 
-    async *execute(requests: AsyncIterable<ExecuteJobMessage>): AsyncGenerator<JobInstruction> {
-      let sessionId = "";
+    async *execute(requests: AsyncIterable<JobResponse>, context: HandlerContext): AsyncGenerator<JobInstruction> {
+      const sessionId = context.requestHeader.get("uap-session-id");
+      if (!sessionId) throw new Error("Missing 'uap-session-id' header");
+      
+      console.log(`Job session started: ${sessionId}`);
+      
       for await (const message of requests) {
-        if (message.content.case === "sessionId") {
-          sessionId = message.content.value;
-          console.log(`Job session started: ${sessionId}`);
-          // Send JobRequest...
-        }
+        console.log(`Received update for ${sessionId}:`, message.response.case);
       }
     },
   });
 ```
 
 ### 1.2 — TranslationHub Implementation
-The `TranslationHub` follows the same async generator pattern using `TranslationHub`, `TranslationListenRequest`, and `TranslateMessage`.
+The `TranslationHub` follows the same bi-directional pattern for `Listen` and `Translate`.
 
 ---
 
 ## Part 2: Implementing the Agent (Client)
-
-The Agent connects to the Hub services as needed.
 
 ### 2.1 — Agent Listening for Jobs
 
 ```typescript
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createClient } from "@connectrpc/connect";
-import { JobHub } from "uap-node";
-import { JobListenRequest, ExecuteJobMessage, JobResponse, JobStatus, JobStatus_State, JobResult } from "uap-node";
+import { JobHub, JobListenRequest, JobRegistration } from "uap-node";
+import { Empty } from "@bufbuild/protobuf";
 
 async function main() {
   const transport = createGrpcTransport({ baseUrl: "http://localhost:9090", httpVersion: "2" });
   const client = createClient(JobHub, transport);
 
-  // 1. Listen (triggers registration and starts dispatcher)
-  for await (const res of client.listen(new JobListenRequest({
-    displayName: "Node.js Job Runner",
-    capabilities: [{ testType: "selenium-side" }]
-  }))) {
+  // 1. Create a generator for bi-directional Listen requests
+  async function* generateRequests() {
+    // Send registration first
+    yield new JobListenRequest({
+      content: {
+        case: "registration",
+        value: new JobRegistration({
+          displayName: "Node.js Job Runner",
+          capabilities: [{ testType: "selenium-side" }]
+        })
+      }
+    });
+
+    // Send 'ready' heartbeat every 30 seconds
+    while (true) {
+      await new Promise(r => setTimeout(r, 30000));
+      yield new JobListenRequest({ content: { case: "ready", value: new Empty() } });
+    }
+  }
+
+  // 2. Listen for assignments
+  for await (const res of client.listen(generateRequests())) {
     if (res.content.case === "runJob") {
       const sessionId = res.content.value.sessionId;
-      startJobSession(client, sessionId);
+      // startJobSession...
     }
   }
 }
-
-async function startJobSession(client: ReturnType<typeof createClient<typeof JobHub>>, sessionId: string) {
-  async function* sendMessages(): AsyncGenerator<ExecuteJobMessage> {
-    // 1. First message: session_id
-    yield new ExecuteJobMessage({ content: { case: "sessionId", value: sessionId } });
-    // 2. Subsequent status/telemetry updates...
-  }
-
-  for await (const instruction of client.execute(sendMessages())) {
-    // Handle JobRequest and Commands...
-  }
-}
-
-main().catch(console.error);
 ```

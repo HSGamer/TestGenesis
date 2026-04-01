@@ -21,40 +21,43 @@ import io.grpc.stub.StreamObserver;
 import me.hsgamer.testgenesis.uap.v1.JobHubGrpc;
 import me.hsgamer.testgenesis.uap.v1.JobListenRequest;
 import me.hsgamer.testgenesis.uap.v1.JobListenResponse;
-import me.hsgamer.testgenesis.uap.v1.RegistrationResponse;
-import me.hsgamer.testgenesis.uap.v1.ExecuteJobMessage;
+import me.hsgamer.testgenesis.uap.v1.JobResponse;
 import me.hsgamer.testgenesis.uap.v1.JobInstruction;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class JobHubService extends JobHubGrpc.JobHubImplBase {
-    private final ConcurrentHashMap<String, StreamObserver<JobListenResponse>> listeners = new ConcurrentHashMap<>();
-
     @Override
-    public void listen(JobListenRequest request, StreamObserver<JobListenResponse> responseObserver) {
-        String agentId = UUID.randomUUID().toString();
-        System.out.printf("Job Agent '%s' registered: %s%n", request.getDisplayName(), agentId);
-
-        // The Hub waits for work to dispatch...
-    }
-
-    @Override
-    public StreamObserver<ExecuteJobMessage> execute(StreamObserver<JobInstruction> responseObserver) {
+    public StreamObserver<JobListenRequest> listen(StreamObserver<JobListenResponse> responseObserver) {
         return new StreamObserver<>() {
-            private String sessionId;
+            private String agentName;
 
             @Override
-            public void onNext(ExecuteJobMessage msg) {
-                if (msg.hasSessionId()) {
-                    sessionId = msg.getSessionId();
-                    System.out.printf("Job session started: %s%n", sessionId);
-                    // Hub sends JobRequest...
-                } else if (msg.hasUpdate()) {
-                    // Handle status/telemetry/result...
+            public void onNext(JobListenRequest req) {
+                if (req.hasRegistration()) {
+                    agentName = req.getRegistration().getDisplayName();
+                    System.out.printf("Job Agent '%s' registered.%n", agentName);
+                } else if (req.hasReady()) {
+                    System.out.printf("Agent '%s' is ready for work.%n", agentName);
+                    // Check queue and dispatch:
+                    // responseObserver.onNext(JobListenResponse.newBuilder().setRunJob(...).build());
                 }
             }
 
+            @Override public void onError(Throwable t) {}
+            @Override public void onCompleted() { responseObserver.onCompleted(); }
+        };
+    }
+
+    @Override
+    public StreamObserver<JobResponse> execute(StreamObserver<JobInstruction> responseObserver) {
+        // Implementation using 'uap-session-id' header via ServerCallInterceptor (not shown)
+        return new StreamObserver<>() {
+            @Override
+            public void onNext(JobResponse msg) {
+                // Handle status/telemetry/result...
+            }
             @Override public void onError(Throwable t) {}
             @Override public void onCompleted() { responseObserver.onCompleted(); }
         };
@@ -63,7 +66,7 @@ public class JobHubService extends JobHubGrpc.JobHubImplBase {
 ```
 
 ### 1.2 — TranslationHub Implementation
-The `TranslationHub` follows the same pattern using `TranslationHubGrpc.TranslationHubImplBase`.
+The `TranslationHub` follows the same bi-directional pattern for `Listen` and `Translate`.
 
 ---
 
@@ -74,43 +77,56 @@ The `TranslationHub` follows the same pattern using `TranslationHubGrpc.Translat
 ```java
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
+import io.grpc.stub.MetadataUtils;
 import io.grpc.stub.StreamObserver;
-import me.hsgamer.testgenesis.uap.v1.JobHubGrpc;
-import me.hsgamer.testgenesis.uap.v1.JobListenRequest;
-import me.hsgamer.testgenesis.uap.v1.JobListenResponse;
-import me.hsgamer.testgenesis.uap.v1.TestCapability;
-import me.hsgamer.testgenesis.uap.v1.ExecuteJobMessage;
-import me.hsgamer.testgenesis.uap.v1.JobInstruction;
+import me.hsgamer.testgenesis.uap.v1.*;
+import com.google.protobuf.Empty;
 
 public class JobAgent {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 9090).usePlaintext().build();
         JobHubGrpc.JobHubStub asyncStub = JobHubGrpc.newStub(channel);
 
-        asyncStub.listen(JobListenRequest.newBuilder()
-                .setDisplayName("Java Job Runner")
-                .addCapabilities(TestCapability.newBuilder().setTestType("selenium-side").build())
-                .build(), new StreamObserver<>() {
+        StreamObserver<JobListenRequest> listenStream = asyncStub.listen(new StreamObserver<>() {
+            @Override
+            public void onNext(JobListenResponse res) {
                 if (res.hasRunJob()) {
                     String sessionId = res.getRunJob().getSessionId();
                     startJobSession(asyncStub, sessionId);
                 }
             }
-
             @Override public void onError(Throwable t) {}
             @Override public void onCompleted() {}
         });
+
+        // 1. Send Registration
+        listenStream.onNext(JobListenRequest.newBuilder()
+                .setRegistration(JobRegistration.newBuilder()
+                        .setDisplayName("Java Job Runner")
+                        .addCapabilities(TestCapability.newBuilder().setTestType("selenium-side").build())
+                        .build())
+                .build());
+
+        // 2. Send periodic Ready signals (heartbeats)
+        while (true) {
+            Thread.sleep(30000);
+            listenStream.onNext(JobListenRequest.newBuilder()
+                    .setReady(Empty.getDefaultInstance())
+                    .build());
+        }
     }
 
     private static void startJobSession(JobHubGrpc.JobHubStub stub, String sessionId) {
-        StreamObserver<ExecuteJobMessage> stream = stub.execute(new StreamObserver<>() {
+        Metadata metadata = new Metadata();
+        metadata.put(Metadata.Key.of("uap-session-id", Metadata.ASCII_STRING_MARSHALLER), sessionId);
+
+        JobHubGrpc.JobHubStub sessionStub = MetadataUtils.attachHeaders(stub, metadata);
+        sessionStub.execute(new StreamObserver<>() {
             @Override public void onNext(JobInstruction ins) { /* Handle initialization/commands */ }
             @Override public void onError(Throwable t) {}
             @Override public void onCompleted() {}
         });
-
-        // First message: session_id
-        stream.onNext(ExecuteJobMessage.newBuilder().setSessionId(sessionId).build());
     }
 }
 ```
