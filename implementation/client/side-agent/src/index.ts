@@ -1,6 +1,6 @@
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createClient } from "@connectrpc/connect";
-import { JobHub, JobListenRequest, JobListenResponse, JobRegistration } from "uap-node";
+import { AgentHub, ListenRequest, AgentRegistration, Capability, JobHub } from "uap-node";
 import { Empty } from "@bufbuild/protobuf";
 import { WebDriver } from "selenium-webdriver";
 import { CONFIG } from "./config";
@@ -10,12 +10,13 @@ import { JobProcessor } from "./job-processor";
 const activeDrivers = new Set<WebDriver>();
 let isShuttingDown = false;
 
-// Initialize the ConnectRPC transport and client for the JobHub service.
+// Initialize clients for both the Control Plane (AgentHub) and Execution Plane (JobHub).
 const transport = createGrpcTransport({ baseUrl: CONFIG.HUB_URL, httpVersion: "2" });
-const client = createClient(JobHub, transport);
+const agentClient = createClient(AgentHub, transport);
+const jobClient = createClient(JobHub, transport);
 
 /**
- * Main application loop. Establishes the control plane connection (Listen)
+ * Main application loop. Establishes the unified control plane connection (Listen)
  * and maintains it with an exponential backoff strategy upon failure.
  */
 async function main() {
@@ -24,56 +25,82 @@ async function main() {
 
   while (!isShuttingDown) {
     try {
-      console.log(`[Listen] Connecting to JobHub at ${CONFIG.HUB_URL}...`);
+      // 1. Unary registration phase to obtain a session identity.
+      console.log(`[Register] Connecting to AgentHub at ${CONFIG.HUB_URL}...`);
+      const registration = await agentClient.register(new AgentRegistration({
+        displayName: CONFIG.CLIENT_NAME,
+        capabilities: [
+          new Capability({
+            format: {
+              case: "test",
+              value: {
+                type: "selenium-side",
+                payloads: [
+                  { type: "selenium-side", isRequired: true, isRepeatable: false }
+                ]
+              }
+            }
+          })
+        ],
+      }));
 
-      async function* generateListenRequests(): AsyncGenerator<JobListenRequest> {
-        // 1. Send initial registration
-        yield new JobListenRequest({
-          event: {
-            case: "registration",
-            value: new JobRegistration({
-              displayName: CONFIG.CLIENT_NAME,
-              capabilities: [
-                { 
-                  type: "selenium-side", 
-                  payloads: [
-                    { type: "selenium-side", isRequired: true, isRepeatable: false }
-                  ] 
-                }
-              ],
-            }),
-          },
-        });
+      const clientId = registration.clientId;
+      console.log(`[Register] Success! Assigned Client ID: ${clientId}`);
 
-        // 2. Periodic Ready/Heartbeat signal
+      // 2. Control plane connection (Listen) using the session Identity in headers.
+      console.log(`[Listen] Establishing control stream...`);
+      const requestQueue: ListenRequest[] = [];
+
+      async function* generateListenRequests(): AsyncGenerator<ListenRequest> {
         while (!isShuttingDown) {
-          yield new JobListenRequest({ event: { case: "ready", value: new Empty() } });
-          // Heartbeat every 30 seconds
-          await new Promise((resolve) => setTimeout(resolve, 30000));
+          if (requestQueue.length > 0) {
+            yield requestQueue.shift()!;
+          } else {
+            // No more pulsing; we just wait for queue items.
+            // A short delay to prevent spinning, but ideally we'd use a Trigger/Deferred.
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
         }
       }
 
-      for await (const directive of client.listen(generateListenRequests())) {
-        if (isShuttingDown) break;
-        delay = 1000; // Reset backoff on successful communication.
+      // We pass the clientId in the headers for session identification.
+      const listenStream = agentClient.listen(generateListenRequests(), { 
+        headers: { "x-client-id": clientId } 
+      });
 
-        if (directive.event.case === "runJob") {
-          const sessionId = directive.event.value.sessionId;
-          console.log(`[Listen] Received Job Assignment: ${sessionId}`);
+      for await (const response of listenStream) {
+        if (isShuttingDown || !listenStream) break;
+        delay = 1000;
+
+        if (response.event.case === "jobProposal") {
+          const proposal = response.event.value;
+          console.log(`[Listen] Received Job Proposal: ${proposal.sessionId} (${proposal.testType})`);
           
-          // Delegate job execution to the modular JobProcessor.
+          requestQueue.push(new ListenRequest({
+            event: {
+              case: "jobAcceptance",
+              value: { sessionId: proposal.sessionId, accepted: true }
+            }
+          }));
+
           const processor = new JobProcessor(
-            sessionId,
-            client,
+            proposal.sessionId,
+            jobClient,
             (driver) => activeDrivers.add(driver),
             (driver) => activeDrivers.delete(driver)
           );
           processor.process().catch(console.error);
         }
       }
+
+      // If the Hub closes the stream, we assume a shutdown is requested.
+      if (!isShuttingDown) {
+        console.log("[Listen] Stream closed by Hub. Signaling shutdown.");
+        await shutdown();
+      }
     } catch (err) {
       if (isShuttingDown) break;
-      console.error(`[Listen] Connection error: ${err}. Retrying in ${delay}ms...`);
+      console.error(`[Handshake] Error: ${err}. Retrying in ${delay}ms...`);
       await new Promise((resolve) => setTimeout(resolve, delay));
       delay = Math.min(delay * 2, 60000);
     }

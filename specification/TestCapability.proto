@@ -15,5 +15,5 @@ message TestCapability {
   string type = 1;
 
   // The specific payload types and their requirements.
-  repeated PayloadRequirement payloads = 2; // (Imported from PayloadRequirement.proto)
+  repeated PayloadRequirement payloads = 2;
 }

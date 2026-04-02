@@ -1,0 +1,19 @@
+// TranslationAcceptance.proto — Agent response to a translation proposal for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TranslationAcceptance is sent by the Agent to the Hub to confirm or reject a translation proposal.
+message TranslationAcceptance {
+  // The unique session ID for the proposed translation.
+  string session_id = 1;
+
+  // Whether the translation is accepted or not.
+  bool accepted = 2;
+
+  // Optional reason for rejection.
+  string reason = 3;
+}

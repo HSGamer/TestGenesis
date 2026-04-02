@@ -1,0 +1,14 @@
+// AgentRegistrationResponse.proto — Response to Agent registration for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// AgentRegistrationResponse provides the Agent with a unique session ID.
+message AgentRegistrationResponse {
+  // A unique identifier assigned by the Hub to this specific Agent session.
+  // This ID MUST be provided in the 'x-client-id' header of the 'Listen' RPC.
+  string client_id = 1;
+}

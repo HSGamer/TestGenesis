@@ -1,0 +1,22 @@
+// Capability.proto — Multiplexed capability discovery for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "TestCapability.proto";
+import "TranslationCapability.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// Capability allows an Agent to specify its support for different domains.
+message Capability {
+  // Use oneof to multiplex between testing and translation formats.
+  oneof format {
+    // Capability for executing automated tests.
+    TestCapability test = 1;
+
+    // Capability for translating scripts between formats.
+    TranslationCapability translation = 2;
+  }
+}

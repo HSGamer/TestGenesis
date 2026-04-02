@@ -16,7 +16,7 @@ message TranslationResult {
   TranslationStatus status = 1;
 
   // The list of translated scripts / projects.
-  repeated Payload payloads = 2; // (Imported from Payload.proto)
+  repeated Payload payloads = 2;
 
   // Combined logs for the translation process.
   string translation_log = 3;

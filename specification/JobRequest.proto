@@ -14,5 +14,5 @@ message JobRequest {
   string test_type = 1;
 
   // The collection of test projects, configurations, and data.
-  repeated Payload payloads = 2; // (Imported from Payload.proto)
+  repeated Payload payloads = 2;
 }

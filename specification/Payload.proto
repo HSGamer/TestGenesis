@@ -18,7 +18,7 @@ message Payload {
   string type = 1;
 
   // The actual files that make up the payload.
-  repeated Attachment content = 2; // (Imported from Attachment.proto)
+  repeated Attachment content = 2;
 
   // Optional metadata associated with this specific payload.
   google.protobuf.Struct metadata = 3;

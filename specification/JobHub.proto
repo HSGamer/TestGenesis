@@ -3,8 +3,6 @@ syntax = "proto3";
 
 package uap.v1;
 
-import "JobListenRequest.proto";
-import "JobListenResponse.proto";
 import "JobInstruction.proto";
 import "JobResponse.proto";
 
@@ -13,10 +11,6 @@ option java_multiple_files = true;
 
 // Service for dispatching and executing test jobs.
 service JobHub {
-  // Listen establishes a long-lived bi-directional streaming connection where the
-  // Agent waits for job assignments and signals its readiness.
-  rpc Listen(stream JobListenRequest) returns (stream JobListenResponse);
-
   // Execute opens a dedicated bi-directional stream for a test job execution session.
   // Highly isolated and multi-plexed via instructions and response events.
   rpc Execute(stream JobResponse) returns (stream JobInstruction);

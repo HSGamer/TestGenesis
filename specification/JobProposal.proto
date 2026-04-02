@@ -1,0 +1,16 @@
+// JobProposal.proto — Server-initiated job query for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// JobProposal is sent by the Hub to the Agent to query its readiness for a job.
+message JobProposal {
+  // A unique session ID for the proposed job.
+  string session_id = 1;
+
+  // The format type of the job (e.g., selenium-side).
+  string test_type = 2;
+}

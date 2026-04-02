@@ -1,0 +1,23 @@
+// ListenResponse.proto — Unified control plane response for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "JobProposal.proto";
+import "TranslationProposal.proto";
+import "google/protobuf/empty.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// ListenResponse is the Hub-to-Agent envelope for the unified control stream.
+message ListenResponse {
+  // Multiplexed control plane events.
+  oneof event {
+    // Initial registration packet sent once by the Agent upon connection.
+    JobProposal job_proposal = 1;
+
+    // Heartbeat and pull signal (Agent idle and ready).
+    TranslationProposal translation_proposal = 2;
+  }
+}

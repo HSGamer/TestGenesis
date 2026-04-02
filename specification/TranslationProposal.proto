@@ -1,0 +1,19 @@
+// TranslationProposal.proto — Server-initiated translation query for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TranslationProposal is sent by the Hub to the Agent to query its readiness for a translation session.
+message TranslationProposal {
+  // A unique session ID for the proposed translation.
+  string session_id = 1;
+
+  // The format type of the source scripts.
+  string source_type = 2;
+
+  // The target format type for the translation.
+  string target_type = 3;
+}
