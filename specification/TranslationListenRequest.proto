@@ -1,0 +1,22 @@
+// TranslationListenRequest.proto — Control plane request envelope for the Universal Agent Protocol (UAP) translation.
+syntax = "proto3";
+
+package uap.v1;
+
+import "google/protobuf/empty.proto";
+import "TranslationRegistration.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TranslationListenRequest is the Agent-to-Hub message type for the Listen stream.
+message TranslationListenRequest {
+  // The specific control plane event.
+  oneof event {
+    // Initial registration packet.
+    TranslationRegistration registration = 1;
+
+    // Heartbeat and pull signal (Agent ready for translation).
+    google.protobuf.Empty ready = 2;
+  }
+}

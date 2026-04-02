@@ -1,0 +1,18 @@
+// TranslationStatus.proto — Status reporting for the Universal Agent Protocol (UAP) translations.
+syntax = "proto3";
+
+package uap.v1;
+
+import "TranslationState.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TranslationStatus represents the state of a script translation session.
+message TranslationStatus {
+  // The normalized state of the translation.
+  TranslationState state = 1;
+
+  // Optional human-readable message providing additional context.
+  string message = 2;
+}

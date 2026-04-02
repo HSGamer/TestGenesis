@@ -1,0 +1,22 @@
+// JobInstruction.proto — Modular job instruction envelope for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "JobRequest.proto";
+import "JobCommand.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// JobInstruction is the Hub-to-Agent message type for the Execute stream.
+message JobInstruction {
+  // The specific instruction event.
+  oneof event {
+    // The initial job configuration.
+    JobRequest job_init = 1;
+
+    // An interactive command sent during job execution.
+    JobCommand command = 2;
+  }
+}

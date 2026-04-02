@@ -1,6 +1,6 @@
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createClient } from "@connectrpc/connect";
-import { JobHub, JobListenRequest, JobRegistration } from "uap-node";
+import { JobHub, JobListenRequest, JobListenResponse, JobRegistration } from "uap-node";
 import { Empty } from "@bufbuild/protobuf";
 import { WebDriver } from "selenium-webdriver";
 import { CONFIG } from "./config";
@@ -29,18 +29,25 @@ async function main() {
       async function* generateListenRequests(): AsyncGenerator<JobListenRequest> {
         // 1. Send initial registration
         yield new JobListenRequest({
-          content: {
+          event: {
             case: "registration",
             value: new JobRegistration({
               displayName: CONFIG.CLIENT_NAME,
-              capabilities: [{ testType: "selenium-side" }],
+              capabilities: [
+                { 
+                  type: "selenium-side", 
+                  payloads: [
+                    { type: "selenium-side", isRequired: true, isRepeatable: false }
+                  ] 
+                }
+              ],
             }),
           },
         });
 
         // 2. Periodic Ready/Heartbeat signal
         while (!isShuttingDown) {
-          yield new JobListenRequest({ content: { case: "ready", value: new Empty() } });
+          yield new JobListenRequest({ event: { case: "ready", value: new Empty() } });
           // Heartbeat every 30 seconds
           await new Promise((resolve) => setTimeout(resolve, 30000));
         }
@@ -50,8 +57,8 @@ async function main() {
         if (isShuttingDown) break;
         delay = 1000; // Reset backoff on successful communication.
 
-        if (directive.content.case === "runJob") {
-          const sessionId = directive.content.value.sessionId;
+        if (directive.event.case === "runJob") {
+          const sessionId = directive.event.value.sessionId;
           console.log(`[Listen] Received Job Assignment: ${sessionId}`);
           
           // Delegate job execution to the modular JobProcessor.

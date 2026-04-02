@@ -1,0 +1,19 @@
+// PayloadRequirement.proto — Capability selector for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// PayloadRequirement defines if a specific Payload.type is needed or supported.
+message PayloadRequirement {
+  // The format identifier (Payload.type) of the required content.
+  string type = 1;
+
+  // If true, the session cannot proceed without this payload.
+  bool is_required = 2;
+
+  // If true, the session can handle multiple distinct payloads of this type.
+  bool is_repeatable = 3;
+}

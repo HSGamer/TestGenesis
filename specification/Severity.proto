@@ -1,0 +1,18 @@
+// Severity.proto — Shared severity levels for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// Severity levels for telemetry and other ranked signals.
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  SEVERITY_TRACE = 1;
+  SEVERITY_DEBUG = 2;
+  SEVERITY_INFO = 3;
+  SEVERITY_WARN = 4;
+  SEVERITY_ERROR = 5;
+  SEVERITY_FATAL = 6;
+}

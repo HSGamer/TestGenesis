@@ -1,0 +1,30 @@
+// Telemetry.proto — Standardized logging and rich signal messages for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "google/protobuf/timestamp.proto";
+import "Severity.proto";
+import "Attachment.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// Telemetry represents a single real-time log entry streamed from
+// the Agent to the Hub during job execution or translation.
+message Telemetry {
+  // The primary human-readable log message.
+  string message = 1;
+
+  // Rich attachments for this log entry (e.g., a screenshot).
+  repeated Attachment attachments = 2;
+
+  // The timestamp of the telemetry event.
+  google.protobuf.Timestamp timestamp = 3;
+
+  // The severity level of this telemetry entry.
+  Severity severity = 4;
+
+  // The source of this telemetry (e.g., "stdout", "stderr", "selenium-engine").
+  string source = 5;
+}

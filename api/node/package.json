@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "generate-proto": "rm -rf src/generated && mkdir -p src/generated && npx buf generate ../../specification",
+    "generate-proto": "rm -rf src/generated && mkdir -p src/generated && npx buf generate ../../specification && node scripts/generate-index.js",
     "build": "npm run generate-proto && tsc",
     "clean": "rm -rf dist src/generated"
   },

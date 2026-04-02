@@ -2,12 +2,14 @@ import {
   JobHub, 
   JobResponse, 
   JobStatus, 
-  JobStatus_State, 
+  JobState, 
   JobResult, 
   StepReport, 
   Telemetry, 
-  Telemetry_Severity, 
+  Severity, 
   Summary, 
+  Payload,
+  Attachment,
 } from "uap-node";
 import { Timestamp, Struct } from "@bufbuild/protobuf";
 import { TestLogger, TestRunner } from "@hsgamer/side-engine";
@@ -51,13 +53,10 @@ export class JobProcessor {
       console.log(`[Job ${this.sessionId}] Execution session established.`);
 
       for await (const instruction of session) {
-        if (instruction.content.case === "jobInit") {
-          await this.runSideTest(
-            instruction.content.value.payload as any,
-            instruction.content.value.runtimeEnv!
-          );
-        } else if (instruction.content.case === "command") {
-          console.log(`[Job ${this.sessionId}] Received command: ${instruction.content.case}`);
+        if (instruction.event.case === "jobInit") {
+          await this.runSideTest(instruction.event.value);
+        } else if (instruction.event.case === "command") {
+          console.log(`[Job ${this.sessionId}] Received command: ${instruction.event.case}`);
         }
       }
     } catch (err) {
@@ -70,8 +69,8 @@ export class JobProcessor {
   /**
    * Pushes a status update or result back to the Hub.
    */
-  private pushUpdate(response: JobResponse["response"]) {
-    this.outboundQueue.push(new JobResponse({ timestamp: Timestamp.now(), response }));
+  private pushUpdate(event: JobResponse["event"]) {
+    this.outboundQueue.push(new JobResponse({ timestamp: Timestamp.now(), event }));
     if (this.resolveOutbound) {
       this.resolveOutbound();
       this.resolveOutbound = null;
@@ -81,13 +80,13 @@ export class JobProcessor {
   /**
    * Streams telemetry (logs) back to the Hub with correct severity and source.
    */
-  private streamLog(message: string, level = Telemetry_Severity.INFO) {
+  private streamLog(message: string, severity = Severity.INFO) {
     this.pushUpdate({
       case: "telemetry",
       value: new Telemetry({
         message,
         timestamp: Timestamp.now(),
-        level,
+        severity,
         source: "selenium-engine",
       }),
     });
@@ -109,30 +108,72 @@ export class JobProcessor {
   /**
    * Core execution logic: sets up the driver, runs the test, and reports results.
    */
-  private async runSideTest(payload: any, runtimeEnv: Struct) {
-    if (payload.type !== "selenium-side") {
+  private async runSideTest(request: any) {
+    const { testType, payloads } = request;
+
+    // 1. Find the primary project payload based on the requested testType
+    const payload = payloads.find((p: any) => p.type === testType);
+    if (!payload) {
       this.pushUpdate({ 
         case: "status", 
-        value: new JobStatus({ state: JobStatus_State.INVALID, message: "Type mismatch: expected selenium-side" }) 
+        value: new JobStatus({ 
+          state: JobState.INVALID, 
+          message: `No compatible '${testType}' payload found in the request` 
+        }) 
       });
       return;
     }
 
-    const sideCommands = JSON.parse(
-      payload.content.case === "rawData" 
-        ? new TextDecoder().decode(payload.content.value) 
-        : JSON.stringify(payload.content.value.toJson())
-    );
+    // 2. Discover runtime environment from payloads if provided
+    const envPayload = payloads.find((p: any) => p.type === "runtime-env");
+    let browser = "chrome";
+    if (envPayload) {
+      const configAttachment = envPayload.content[0];
+      if (configAttachment) {
+        try {
+          const config = JSON.parse(new TextDecoder().decode(configAttachment.data));
+          browser = config.browser || browser;
+        } catch (e) {}
+      }
+    }
 
-    this.pushUpdate({ case: "status", value: new JobStatus({ state: JobStatus_State.ACKNOWLEDGED, message: "Initializing Selenium engine..." }) });
+    // 3. Find .side content in the primary payload attachments
+    const attachment = payload.content.find((a: any) => 
+      a.name.endsWith(".side") || a.mimeType === "application/json"
+    ) || payload.content[0];
+
+    if (!attachment) {
+      this.pushUpdate({ 
+        case: "status", 
+        value: new JobStatus({ 
+          state: JobState.INVALID, 
+          message: "Compatible payload found but it has no file content (attachments)" 
+        }) 
+      });
+      return;
+    }
+
+    let sideCommands: any[];
+    try {
+      const rawContent = new TextDecoder().decode(attachment.data);
+      sideCommands = JSON.parse(rawContent);
+    } catch (e: any) {
+      this.pushUpdate({ 
+        case: "status", 
+        value: new JobStatus({ 
+          state: JobState.INVALID, 
+          message: `Failed to parse .side JSON content: ${e.message}` 
+        }) 
+      });
+      return;
+    }
+
+    this.pushUpdate({ case: "status", value: new JobStatus({ state: JobState.ACKNOWLEDGED, message: "Initializing Selenium engine..." }) });
 
     const test: TestShape = { id: this.sessionId, name: "UAP Session Job", commands: sideCommands };
     const driverBuilder = new Builder();
     if (CONFIG.SELENIUM_REMOTE_URL) driverBuilder.usingServer(CONFIG.SELENIUM_REMOTE_URL);
     
-    const browser = runtimeEnv.fields["selenium_browser"]?.kind.case === "stringValue" 
-      ? runtimeEnv.fields["selenium_browser"].kind.value 
-      : "chrome";
     driverBuilder.forBrowser(browser);
 
     const logger = new TestLogger();
@@ -154,39 +195,33 @@ export class JobProcessor {
       // For this cleanup, we'll prefix internal logs.
       this.streamLog(`Session started for browser: ${browser}`);
 
-      this.pushUpdate({ case: "status", value: new JobStatus({ state: JobStatus_State.EXECUTING, message: "Running test steps..." }) });
+      this.pushUpdate({ case: "status", value: new JobStatus({ state: JobState.RUNNING, message: "Running test steps..." }) });
       await testRunner.run();
 
       const report = (await testRunner.createReport(logger)) as TestReport;
-      const finalState = report.state === PlaybackStates.FINISHED ? JobStatus_State.COMPLETED : JobStatus_State.FAILED;
+      const finalState = report.state === PlaybackStates.FINISHED ? JobState.COMPLETED : JobState.FAILED;
       const sessionEndTime = new Date();
 
       this.pushUpdate({
         case: "result",
         value: new JobResult({
           status: new JobStatus({ state: finalState }),
-          steps: report.commands.map((cmd) => {
+          reports: report.commands.map((cmd) => {
             const stepStart = cmd.timestamp.length > 0 ? cmd.timestamp[0].timestamp : new Date();
             const stepEnd = cmd.timestamp.length > 0 ? cmd.timestamp[cmd.timestamp.length - 1].timestamp : new Date();
             return new StepReport({
               name: `${cmd.command.command} ${cmd.command.target}`,
-              status: new JobStatus({ 
-                state: cmd.state === CommandStates.PASSED ? JobStatus_State.COMPLETED : JobStatus_State.FAILED,
-                message: cmd.timestamp.find(t => t.message)?.message
-              }),
+              status: cmd.state === CommandStates.PASSED ? "COMPLETED" : "FAILED",
+              metadata: {
+                id: cmd.id,
+                command: cmd.command.command,
+              },
               summary: new Summary({
                 startTime: Timestamp.fromDate(stepStart),
                 totalDuration: msToDuration(stepEnd.getTime() - stepStart.getTime()),
-                metadata: Struct.fromJson({
-                  id: cmd.id,
-                  command: cmd.command.command,
-                  target: cmd.command.target ?? null,
-                  value: cmd.command.value ?? null,
-                })
               })
             });
           }),
-          logs: report.logs,
           summary: new Summary({
             startTime: Timestamp.fromDate(sessionStartTime),
             totalDuration: msToDuration(sessionEndTime.getTime() - sessionStartTime.getTime()),
@@ -201,7 +236,7 @@ export class JobProcessor {
 
       this.pushUpdate({ case: "status", value: new JobStatus({ state: finalState }) });
     } catch (err: any) {
-      this.pushUpdate({ case: "status", value: new JobStatus({ state: JobStatus_State.FAILED, message: `Execution Error: ${err.message}` }) });
+      this.pushUpdate({ case: "status", value: new JobStatus({ state: JobState.FAILED, message: `Execution Error: ${err.message}` }) });
     }
   }
 

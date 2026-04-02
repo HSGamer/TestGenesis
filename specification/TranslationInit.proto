@@ -1,0 +1,18 @@
+// TranslationInit.proto — Translation session configuration for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "Payload.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TranslationInit is the initial configuration sent by the Hub to start a translation.
+message TranslationInit {
+  // THE target format this session should produce (e.g., "playwright-py").
+  string target_format = 1;
+
+  // The source payloads to be translated.
+  repeated Payload payloads = 2; // (Imported from Payload.proto)
+}

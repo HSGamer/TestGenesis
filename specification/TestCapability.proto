@@ -1,0 +1,19 @@
+// TestCapability.proto — Modular job capability for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "PayloadRequirement.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TestCapability declares that the Agent can execute test payloads
+// of a specific format.
+message TestCapability {
+  // The primary format identifier (e.g., "selenium-side").
+  string type = 1;
+
+  // The specific payload types and their requirements.
+  repeated PayloadRequirement payloads = 2; // (Imported from PayloadRequirement.proto)
+}

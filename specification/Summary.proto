@@ -1,0 +1,23 @@
+// Summary.proto — Standardized overview messages for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// Summary provides a standardized overview of a test or translation session.
+message Summary {
+  // The total execution time of the session.
+  google.protobuf.Duration total_duration = 1;
+
+  // When the session execution actually started.
+  google.protobuf.Timestamp start_time = 2;
+
+  // Flexible metadata store for engine-specific details (e.g., browser metrics).
+  google.protobuf.Struct metadata = 3;
+}

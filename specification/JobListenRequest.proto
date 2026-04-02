@@ -1,0 +1,22 @@
+// JobListenRequest.proto — Control plane request envelope for the Universal Agent Protocol (UAP) test jobs.
+syntax = "proto3";
+
+package uap.v1;
+
+import "google/protobuf/empty.proto";
+import "JobRegistration.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// JobListenRequest is the Agent-to-Hub message type for the Listen stream.
+message JobListenRequest {
+  // The specific control plane event.
+  oneof event {
+    // Initial registration packet.
+    JobRegistration registration = 1;
+
+    // Heartbeat and pull signal (Agent ready for job).
+    google.protobuf.Empty ready = 2;
+  }
+}

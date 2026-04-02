@@ -1,0 +1,30 @@
+// TranslationResponse.proto — Modular translation response envelope for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "google/protobuf/timestamp.proto";
+import "TranslationStatus.proto";
+import "Telemetry.proto";
+import "TranslationResult.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TranslationResponse is a polymorphic message streamed from the Agent during translation.
+message TranslationResponse {
+  // When this response event was sent.
+  google.protobuf.Timestamp timestamp = 1;
+
+  // The specific translation events.
+  oneof event {
+    // Current status update from the Agent.
+    TranslationStatus status = 2;
+
+    // Real-time telemetry log entry.
+    Telemetry telemetry = 3;
+
+    // The final result of the translation session.
+    TranslationResult result = 4;
+  }
+}

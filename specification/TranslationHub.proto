@@ -1,0 +1,23 @@
+// TranslationHub.proto — Service definition for the Universal Agent Protocol (UAP) script translation.
+syntax = "proto3";
+
+package uap.v1;
+
+import "TranslationListenRequest.proto";
+import "TranslationListenResponse.proto";
+import "TranslationInit.proto";
+import "TranslationResponse.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// Service for script translation.
+service TranslationHub {
+  // Listen establishes a long-lived bi-directional streaming connection where the
+  // Agent waits for translation assignments and signals its readiness.
+  rpc Listen(stream TranslationListenRequest) returns (stream TranslationListenResponse);
+
+  // Bi-directional stream for a single translation session.
+  // Highly isolated and multi-plexed via instructions and response events.
+  rpc Translate(stream TranslationResponse) returns (stream TranslationInit);
+}

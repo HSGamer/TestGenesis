@@ -1,0 +1,28 @@
+// Payload.proto — Modular test artifact or script for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "Attachment.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// Payload represents a polymorphic test artifact or script.
+// A single payload (e.g., a test project) can be composed of
+// multiple physical files via the attachment list.
+message Payload {
+  // A format identifier for the content (e.g., "selenium-side", "playwright-py").
+  string type = 1;
+
+  // The actual files that make up the payload.
+  repeated Attachment content = 2; // (Imported from Attachment.proto)
+
+  // Optional metadata associated with this specific payload.
+  google.protobuf.Struct metadata = 3;
+
+  // Optional timestamp representing when this payload was created or last modified.
+  google.protobuf.Timestamp timestamp = 4;
+}

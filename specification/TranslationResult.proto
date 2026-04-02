@@ -1,0 +1,26 @@
+// TranslationResult.proto — Final translation outcome for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "TranslationStatus.proto";
+import "Payload.proto";
+import "Summary.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TranslationResult is the final outcome of an execution session.
+message TranslationResult {
+  // Final status of the translation process.
+  TranslationStatus status = 1;
+
+  // The list of translated scripts / projects.
+  repeated Payload payloads = 2; // (Imported from Payload.proto)
+
+  // Combined logs for the translation process.
+  string translation_log = 3;
+
+  // Summary information for the entire session.
+  Summary summary = 4;
+}

@@ -1,0 +1,22 @@
+// TranslationCapability.proto — Modular translation capability for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "PayloadRequirement.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TranslationCapability declares that the Agent can convert scripts
+// from one format to another.
+message TranslationCapability {
+  // The primary format identifier (e.g., "side-to-playwright").
+  string type = 1;
+
+  // The source formats this capability requires (input requirements).
+  repeated PayloadRequirement source_payloads = 2; // (Imported from PayloadRequirement.proto)
+
+  // The format identifiers this capability will produce (output types and guarantees).
+  repeated PayloadRequirement target_payloads = 3;
+}
