@@ -36,7 +36,11 @@ sequenceDiagram
 The Agent establishes a long-lived, bi-directional **`Listen`** stream. This stream handles all capability domains concurrently.
 
 > [!IMPORTANT]
-> **Identity via Headers**: The Agent MUST provide its assigned `client_id` in the `x-client-id` GRPCRPC header for every `Listen` call. Identification is NOT handled within the stream's payload.
+> **Identity via Headers**:
+> - **Control Plane (`AgentHub`)**: The Agent MUST provide its assigned `client_id` in the `x-client-id` header for the `Listen` call.
+> - **Execution Planes (`JobHub`, `TranslationHub`)**: The Agent MUST provide the `session_id` in the `x-session-id` header for all execution stream calls (`Execute`, `Translate`).
+>
+> Identification is NOT handled within the message payloads to ensure maximum isolation and performance.
 
 ---
 
@@ -54,7 +58,7 @@ sequenceDiagram
     H-->>A: ListenResponse (Proposal: session_id, task_type)
     alt Agent accepts
         A->>H: ListenRequest (Acceptance: session_id, accepted: true)
-        A->>EH: Open Execution Stream (session_id)
+        A->>EH: Open Execution Stream (Header: x-session-id=session_id)
     else Agent rejects
         A->>H: ListenRequest (Acceptance: session_id, accepted: false)
     end
@@ -76,8 +80,8 @@ sequenceDiagram
     participant A as Execution Agent
     participant H as Domain Hub service
 
-    Note over A,H: Session Initiation
-    A->>H: ExecutionResponse (session_id)
+    Note over A,H: Session Initiation (Header: x-session-id)
+    A->>H: ExecutionResponse (First message / Acknowledgement)
     H-->>A: Instruction (Init: JobRequest / TranslationInit)
 
     Note over A,H: Asynchronous Execution

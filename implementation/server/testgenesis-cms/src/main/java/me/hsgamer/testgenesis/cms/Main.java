@@ -4,6 +4,7 @@ import io.helidon.config.Config;
 import io.helidon.logging.common.LogConfig;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.grpc.GrpcRouting;
+import me.hsgamer.testgenesis.cms.grpc.IdInterceptor;
 
 /**
  * TestGenesis CMS — Central Management Server.
@@ -32,20 +33,9 @@ public class Main {
 
     /**
      * Build the gRPC routing for UAP protocol services.
-     * <p>
-     * Register your service implementations here:
-     * <pre>{@code
-     * return GrpcRouting.builder()
-     *         .service(new AgentHubService())
-     *         .service(new JobHubService())
-     *         .service(new TranslationHubService());
-     * }</pre>
      */
     static GrpcRouting.Builder grpcRouting() {
-        return GrpcRouting.builder();
-        // TODO: Register UAP protocol services
-        //  .service(new AgentHubService())
-        //  .service(new JobHubService())
-        //  .service(new TranslationHubService())
+        return GrpcRouting.builder()
+                .intercept(new IdInterceptor());
     }
 }

@@ -12,6 +12,7 @@ option java_multiple_files = true;
 // Service for script translation.
 service TranslationHub {
   // Bi-directional stream for a single translation session.
+  // The Agent MUST provide the session_id in the 'x-session-id' header.
   // Highly isolated and multi-plexed via instructions and response events.
   rpc Translate(stream TranslationResponse) returns (stream TranslationInit);
 }
