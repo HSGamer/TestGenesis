@@ -11,6 +11,8 @@ public interface TranslationSession {
 
     void addStatusConsumer(Consumer<TranslationStatus> status);
 
+    void addResultConsumer(Consumer<TranslationResult> result);
+
     TranslationStatus getStatus();
 
     TranslationResult getResult();

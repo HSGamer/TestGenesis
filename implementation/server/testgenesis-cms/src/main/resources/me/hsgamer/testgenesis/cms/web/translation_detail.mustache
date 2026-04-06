@@ -1,0 +1,145 @@
+{{> me/hsgamer/testgenesis/cms/web/header.mustache}}
+
+<div class="dashboard translation-detail">
+    <section>
+        <div class="header-with-action">
+            <nav class="breadcrumb">
+                <a href="/translations">Translations</a> / Detail #{{id}}
+            </nav>
+            <div class="header-main">
+                <h1>Translation Result #{{id}}</h1>
+                <span class="badge badge-target-format">{{targetFormat}}</span>
+            </div>
+        </div>
+
+        <div class="card detail-info-card" style="margin-top: 1.5rem;">
+            <div class="card-grid">
+                <div class="info-group">
+                    <label>Source Test</label>
+                    <p class="info-value">{{sourceTestName}}</p>
+                </div>
+                <div class="info-group">
+                    <label>Assigned Agent</label>
+                    <p class="info-value">{{agentName}}</p>
+                </div>
+                <div class="info-group">
+                    <label>Status</label>
+                    <p class="info-value">
+                        <span class="status-indicator status-{{status}}"></span>
+                        {{status}}
+                    </p>
+                </div>
+                <div class="info-group">
+                    <label>Requested At</label>
+                    <p class="info-value text-muted">{{requestedAt}}</p>
+                </div>
+                <div class="info-group">
+                    <label>Completed At</label>
+                    <p class="info-value text-muted">{{completedAt}}</p>
+                </div>
+                {{#resultPayloadId}}
+                <div class="info-group highlight">
+                    <label>Generated Payload</label>
+                    <p class="info-value">
+                        <code class="code-id">#{{resultPayloadId}}</code>
+                        <span class="text-hint">(Standalone Payload created)</span>
+                    </p>
+                </div>
+                {{/resultPayloadId}}
+            </div>
+        </div>
+
+        <div class="card log-card" style="margin-top: 2rem;">
+            <div class="card-header">
+                <h3>Translation Telemetry Log</h3>
+            </div>
+            <div class="card-body">
+                <div class="log-container">
+                    <pre class="log-pre">{{telemetryLog}}</pre>
+                    {{^telemetryLog}}
+                    <div class="empty-row">No telemetry logs available for this translation.</div>
+                    {{/telemetryLog}}
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+.translation-detail .header-main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.breadcrumb {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.breadcrumb a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.info-group label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.info-value {
+    font-weight: 500;
+}
+
+.info-group.highlight .info-value {
+    color: var(--primary-color);
+}
+
+.text-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-left: 0.5rem;
+}
+
+.log-container {
+    background: #1a1a1a;
+    border-radius: 8px;
+    padding: 1.5rem;
+    border: 1px solid #333;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.log-pre {
+    margin: 0;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    color: #e0e0e0;
+    white-space: pre-wrap;
+}
+
+.badge-target-format {
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary-color);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}
+</style>
+
+{{> me/hsgamer/testgenesis/cms/web/footer.mustache}}

@@ -1,0 +1,46 @@
+{{> me/hsgamer/testgenesis/cms/web/header.mustache}}
+
+<div class="dashboard">
+    <section>
+        <div class="section-header">
+            <h1>Tests Repository</h1>
+            <button class="btn btn-primary" onclick="alert('TODO: New Test Modal')">+ New Test Project</button>
+        </div>
+
+        <div class="card" style="margin-top: 1rem;">
+            <div class="card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Payloads</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#tests}}
+                        <tr>
+                            <td><code class="code-id">#{{id}}</code></td>
+                            <td style="font-weight: 500;">{{name}}</td>
+                            <td><span class="badge">{{testType}}</span></td>
+                            <td class="text-secondary">{{payloadCount}} items</td>
+                            <td>
+                                <button class="btn" onclick="location.href='/tests/run/{{id}}'">Execute</button>
+                            </td>
+                        </tr>
+                        {{/tests}}
+                        {{^tests}}
+                        <tr>
+                            <td colspan="5" class="empty-row">No test projects found in repository.</td>
+                        </tr>
+                        {{/tests}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+{{> me/hsgamer/testgenesis/cms/web/footer.mustache}}

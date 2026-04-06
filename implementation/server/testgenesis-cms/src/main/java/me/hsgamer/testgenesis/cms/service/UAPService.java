@@ -413,6 +413,7 @@ public class UAPService {
         private final TranslationTicket ticket;
         private final List<Consumer<Telemetry>> telemetryConsumers = new CopyOnWriteArrayList<>();
         private final List<Consumer<TranslationStatus>> statusConsumers = new CopyOnWriteArrayList<>();
+        private final List<Consumer<TranslationResult>> resultConsumers = new CopyOnWriteArrayList<>();
         private volatile TranslationStatus latestStatus;
         private volatile TranslationResult result;
 
@@ -438,6 +439,9 @@ public class UAPService {
             if (result.hasStatus()) {
                 updateStatus(result.getStatus());
             }
+            for (Consumer<TranslationResult> consumer : resultConsumers) {
+                consumer.accept(result);
+            }
         }
 
         @Override
@@ -448,6 +452,11 @@ public class UAPService {
         @Override
         public void addStatusConsumer(Consumer<TranslationStatus> consumer) {
             statusConsumers.add(consumer);
+        }
+
+        @Override
+        public void addResultConsumer(Consumer<TranslationResult> consumer) {
+            resultConsumers.add(consumer);
         }
 
         @Override

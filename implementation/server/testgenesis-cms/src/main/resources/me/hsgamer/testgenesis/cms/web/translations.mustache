@@ -1,0 +1,58 @@
+{{> me/hsgamer/testgenesis/cms/web/header.mustache}}
+
+<div class="dashboard">
+    <section>
+        <div class="section-header">
+            <h1>Script Translations</h1>
+            <button class="btn btn-primary" onclick="location.href='/'">New Translation</button>
+        </div>
+        
+        <div class="card results-card" style="margin-top: 1rem;">
+            <div class="card-header">
+                <h2>Translation History</h2>
+            </div>
+            <div class="card-body">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Source Test</th>
+                            <th>Target Format</th>
+                            <th>Agent</th>
+                            <th>Status</th>
+                            <th>Requested At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#translations}}
+                        <tr>
+                            <td><code class="code-id">#{{id}}</code></td>
+                            <td>{{sourceTestName}}</td>
+                            <td><span class="badge">{{targetFormat}}</span></td>
+                            <td>{{agentName}}</td>
+                            <td>
+                                <div style="display: flex; align-items: center;">
+                                    <span class="status-indicator status-{{status}}"></span>
+                                    <span>{{status}}</span>
+                                </div>
+                            </td>
+                            <td class="text-secondary" style="font-size: 0.8rem;">{{requestedAt}}</td>
+                            <td>
+                                <a href="/translations/{{id}}" class="btn">View Details</a>
+                            </td>
+                        </tr>
+                        {{/translations}}
+                        {{^translations}}
+                        <tr>
+                            <td colspan="7" class="empty-row">No translation history found.</td>
+                        </tr>
+                        {{/translations}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+{{> me/hsgamer/testgenesis/cms/web/footer.mustache}}

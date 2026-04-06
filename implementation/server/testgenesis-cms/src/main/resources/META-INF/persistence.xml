@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="3.0"
+             xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd">
+    <persistence-unit name="testgenesis" transaction-type="RESOURCE_LOCAL">
+        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+        <class>me.hsgamer.testgenesis.cms.db.entity.PayloadEntity</class>
+        <class>me.hsgamer.testgenesis.cms.db.entity.AttachmentEntity</class>
+        <class>me.hsgamer.testgenesis.cms.db.entity.TestResultEntity</class>
+        <class>me.hsgamer.testgenesis.cms.db.entity.TranslationEntity</class>
+        <class>me.hsgamer.testgenesis.cms.db.entity.TranslationResultEntity</class>
+        <class>me.hsgamer.testgenesis.cms.db.entity.TestEntity</class>
+        <properties>
+            <!-- Properties are primarily managed in application.yaml, but some provider-specific 
+                 defaults can remain here for consistency. -->
+            <property name="eclipselink.weaving" value="false"/>
+        </properties>
+    </persistence-unit>
+</persistence>
