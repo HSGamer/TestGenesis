@@ -84,11 +84,11 @@ sequenceDiagram
     A->>H: ExecutionResponse (First message / Acknowledgement)
     H-->>A: Instruction (Init: JobRequest / TranslationInit)
 
-    Note over A,H: Asynchronous Execution
+    Note over A,H: Asynchronous Execution (Jobs Only)
     par Agent streams telemetry
         A->>H: ExecutionResponse (status, telemetry, attachments)
-    and Hub sends mid-flight commands
-        H-->>A: Instruction (command: stop, help, custom)
+    and Hub sends mid-flight commands (JobHub Only)
+        H-->>A: JobInstruction (command: stop, help, custom)
     end
 
     Note over A,H: Terminal Phase
