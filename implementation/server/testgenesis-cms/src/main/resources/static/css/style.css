@@ -40,8 +40,13 @@ h1, h2, h3 {
     margin: 0;
 }
 
-h1 { font-size: 1.25rem; }
-h2 { font-size: 1rem; }
+h1 {
+    font-size: 1.25rem;
+}
+
+h2 {
+    font-size: 1rem;
+}
 
 .nav-links {
     display: flex;
@@ -150,8 +155,13 @@ h2 { font-size: 1rem; }
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.badge-ready { color: var(--success); }
-.badge-busy { color: var(--primary); }
+.badge-ready {
+    color: var(--success);
+}
+
+.badge-busy {
+    color: var(--primary);
+}
 
 .status-indicator {
     display: inline-block;
@@ -161,9 +171,18 @@ h2 { font-size: 1rem; }
     margin-right: 0.5rem;
 }
 
-.status-running { background: var(--primary); box-shadow: 0 0 8px var(--primary); }
-.status-completed { background: var(--success); }
-.status-failed { background: var(--danger); }
+.status-running {
+    background: var(--primary);
+    box-shadow: 0 0 8px var(--primary);
+}
+
+.status-completed {
+    background: var(--success);
+}
+
+.status-failed {
+    background: var(--danger);
+}
 
 .code-id {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

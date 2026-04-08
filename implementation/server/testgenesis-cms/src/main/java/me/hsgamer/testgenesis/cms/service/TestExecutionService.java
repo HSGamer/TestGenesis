@@ -2,13 +2,14 @@ package me.hsgamer.testgenesis.cms.service;
 
 import me.hsgamer.testgenesis.cms.core.JobSession;
 import me.hsgamer.testgenesis.cms.core.JobTicket;
-import me.hsgamer.testgenesis.cms.db.entity.TestEntity;
-import me.hsgamer.testgenesis.cms.db.entity.TestResultEntity;
-import me.hsgamer.testgenesis.cms.db.repository.TestRepository;
-import me.hsgamer.testgenesis.cms.db.repository.TestResultRepository;
+import me.hsgamer.testgenesis.cms.entity.TestProject;
+import me.hsgamer.testgenesis.cms.entity.TestResult;
+import me.hsgamer.testgenesis.cms.repository.TestProjectRepository;
+import me.hsgamer.testgenesis.cms.repository.TestResultRepository;
 import me.hsgamer.testgenesis.uap.v1.JobResult;
 import me.hsgamer.testgenesis.uap.v1.JobState;
 import me.hsgamer.testgenesis.uap.v1.JobStatus;
+import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -18,30 +19,30 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
-/**
- * Orchestrates test execution using manual wiring. No Service Registry is used here.
- */
+@Service
 public class TestExecutionService {
     private final Logger logger = Logger.getLogger(getClass().getName());
-    private final TestRepository testRepo;
+    private final TestProjectRepository testRepo;
     private final TestResultRepository resultRepo;
-    
+    private final UAPService uapService;
+
     // In-memory buffer for telemetry, only saved at the end
     private final Map<Long, StringBuilder> sessionTelemetry = new ConcurrentHashMap<>();
 
-    public TestExecutionService(TestRepository testRepo, TestResultRepository resultRepo) {
+    public TestExecutionService(TestProjectRepository testRepo, TestResultRepository resultRepo, UAPService uapService) {
         this.testRepo = testRepo;
         this.resultRepo = resultRepo;
+        this.uapService = uapService;
     }
 
     public CompletableFuture<Boolean> startTest(String agentId, Long testId) {
-        Optional<TestEntity> testOpt = testRepo.findById(testId);
+        Optional<TestProject> testOpt = testRepo.findById(testId);
         if (testOpt.isEmpty()) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Test not found: " + testId));
         }
 
-        TestEntity test = testOpt.get();
-        
+        TestProject test = testOpt.get();
+
         JobTicket ticket = new JobTicket(
                 test.getTestType(),
                 test.getPayloads().stream()
@@ -51,16 +52,16 @@ public class TestExecutionService {
                         .toList()
         );
 
-        return UAPService.INSTANCE.registerJob(agentId, ticket).thenApply(result -> {
+        return uapService.registerJob(agentId, ticket).thenApply(result -> {
             if (result.accepted()) {
                 JobSession session = result.session();
-                
-                TestResultEntity resultEntity = new TestResultEntity();
+
+                TestResult resultEntity = new TestResult();
                 resultEntity.setTest(test);
-                resultEntity.setAgentDisplayName(UAPService.INSTANCE.getAgents().get(agentId).displayName());
+                resultEntity.setAgentDisplayName(uapService.getAgents().get(agentId).displayName());
                 resultEntity.setStatus(JobState.JOB_STATE_RUNNING.name());
                 resultEntity = resultRepo.save(resultEntity);
-                
+
                 final Long resultId = resultEntity.getId();
                 sessionTelemetry.put(resultId, new StringBuilder());
 
@@ -69,16 +70,13 @@ public class TestExecutionService {
                     StringBuilder sb = sessionTelemetry.get(resultId);
                     if (sb != null) {
                         sb.append("[").append(Instant.now()).append("] ")
-                          .append(telemetry.getMessage()).append("\n");
+                                .append(telemetry.getMessage()).append("\n");
                     }
                 });
 
                 // Status updates (no DB flush for telemetry here)
                 session.addStatusConsumer(status -> updateResultStatus(resultId, status));
-                
-                // Final result persistence
-                // Note: Completion logic should call handleFinalResult
-                
+
                 return true;
             }
             return false;
@@ -89,11 +87,9 @@ public class TestExecutionService {
         resultRepo.findById(resultId).ifPresent(entity -> {
             entity.setStatus(status.getState().name());
             resultRepo.save(entity);
-            
+
             // If terminal state, finalize
             if (isTerminal(status.getState())) {
-                // In a real implementation, we'd wait for the final JobResult object
-                // but for now we'll trigger finalization on completion status
                 logger.info("TestResult %d entered terminal state: %s".formatted(resultId, status.getState()));
             }
         });
@@ -115,7 +111,7 @@ public class TestExecutionService {
                     entity.setTotalDuration(Duration.ofSeconds(summary.getTotalDuration().getSeconds()));
                 }
             }
-            
+
             // Save the buffered telemetry log at the end
             StringBuilder sb = sessionTelemetry.remove(resultId);
             if (sb != null) {

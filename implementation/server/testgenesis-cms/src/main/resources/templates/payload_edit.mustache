@@ -1,0 +1,171 @@
+{{> header}}
+
+<!-- JSON Editor Dependencies -->
+<link href="https://cdn.jsdelivr.net/npm/jsoneditor@9.10.2/dist/jsoneditor.min.css" rel="stylesheet" type="text/css">
+<script src="https://cdn.jsdelivr.net/npm/jsoneditor@9.10.2/dist/jsoneditor.min.js"></script>
+
+<div class="dashboard">
+    <section>
+        <div class="breadcrumb">
+            <a href="/payloads">Payload Management</a> / {{#isEdit}}
+            Edit Payload{{/isEdit}}{{^isEdit}}New Payload{{/isEdit}}
+        </div>
+
+        <div class="section-header">
+            <h1>{{#isEdit}}Edit Payload: {{payload.type}}{{/isEdit}}{{^isEdit}}New Payload{{/isEdit}}</h1>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Metadata & Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Configuration & Metadata</h2>
+                </div>
+                <div class="card-body">
+                    <form id="payload-form"
+                          action="{{#isEdit}}/payloads/update/{{payload.id}}{{/isEdit}}{{^isEdit}}/payloads/save{{/isEdit}}"
+                          method="POST" class="form-group">
+                        <div class="info-item">
+                            <label class="info-label">Payload Type</label>
+                            <input type="text" name="type" class="form-select" value="{{#payload}}{{type}}{{/payload}}"
+                                   placeholder="e.g. uap_script, test_case" required>
+                        </div>
+
+                        <div class="info-item" style="margin-top: 1.5rem;">
+                            <label class="info-label">Metadata (JSON)</label>
+                            <div id="jsoneditor" style="height: 300px; background: #fff;"></div>
+                            <input type="hidden" name="metadataJson" id="metadataJson">
+                        </div>
+
+                        <div class="action-buttons"
+                             style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                            <button type="submit" class="btn btn-primary" onclick="syncJson()">Save Changes</button>
+                            <a href="/payloads" class="btn">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Attachments -->
+            {{#isEdit}}
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Attachments</h2>
+                        <form action="/attachments/upload/{{payload.id}}" method="POST" enctype="multipart/form-data"
+                              style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="file" name="file" class="btn" style="padding: 0.2rem; border: none;" required>
+                            <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+                        </form>
+                    </div>
+                    <div class="card-body">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {{#attachments}}
+                                <tr>
+                                    <td style="font-weight: 500;">{{name}}</td>
+                                    <td class="text-secondary" style="font-size: 0.75rem;">{{contentType}}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            {{#isText}}
+                                                <button class="btn btn-sm" onclick="toggleEditor('{{id}}')">Edit Text
+                                                </button>
+                                            {{/isText}}
+                                            <a href="/attachments/download/{{id}}" class="btn btn-sm">Download</a>
+                                            <form action="/attachments/delete/{{id}}" method="POST"
+                                                  style="display:inline;"
+                                                  onsubmit="return confirm('Delete this attachment?')">
+                                                <button type="submit" class="btn btn-sm" style="color: var(--danger);">
+                                                    Remove
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {{#isText}}
+                                    <tr id="editor-row-{{id}}" style="display: none;">
+                                        <td colspan="3">
+                                            <div class="log-viewer"
+                                                 style="margin-top: 1rem; background: var(--surface); padding: 0;">
+                                                <form action="/attachments/update-text/{{id}}" method="POST">
+                                                    <textarea name="textContent"
+                                                              style="width: 100%; height: 300px; background: #1a1a1a; color: #82aaff; border: 1px solid var(--border); border-radius: 4px; padding: 1rem; font-family: monospace;">{{textContent}}</textarea>
+                                                    <div style="padding: 1rem; background: rgba(0,0,0,0.2); display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                                        <button type="submit" class="btn btn-primary btn-sm">Update
+                                                            File
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm"
+                                                                onclick="toggleEditor('{{id}}')">Cancel
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {{/isText}}
+                            {{/attachments}}
+                            {{^attachments}}
+                                <tr>
+                                    <td colspan="3" class="empty-row" style="padding: 2rem !important;">No attachments
+                                        found.
+                                    </td>
+                                </tr>
+                            {{/attachments}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {{/isEdit}}
+        </div>
+    </section>
+</div>
+
+<script>
+    // JSON Editor Initialization
+    const container = document.getElementById("jsoneditor");
+    const options = {
+        mode: 'code',
+        modes: ['code', 'text', 'tree', 'view'],
+        onChangeJSON: function (json) {
+            document.getElementById('metadataJson').value = JSON.stringify(json);
+        }
+    };
+    const editor = new JSONEditor(container, options);
+
+    const initialJson = {{{payload.metadataJson}}}{{^payload.metadataJson}}{}{{/payload.metadataJson}};
+    editor.set(initialJson);
+    document.getElementById('metadataJson').value = JSON.stringify(initialJson);
+
+    function syncJson() {
+        document.getElementById('metadataJson').value = JSON.stringify(editor.get());
+    }
+
+    function toggleEditor(id) {
+        const row = document.getElementById('editor-row-' + id);
+        row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+    }
+</script>
+
+<style>
+    /* JSONEditor overrides for dark theme alignment */
+    .jsoneditor {
+        border-color: var(--border) !important;
+    }
+
+    .jsoneditor-menu {
+        background-color: var(--border) !important;
+        border-bottom: 1px solid var(--border) !important;
+    }
+
+    .jsoneditor-footer {
+        display: none;
+    }
+</style>
+
+{{> footer}}
