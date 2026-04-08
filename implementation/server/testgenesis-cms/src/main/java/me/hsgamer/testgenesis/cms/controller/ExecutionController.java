@@ -23,14 +23,14 @@ public class ExecutionController {
 
     @GetMapping("/tests/run/{testId}")
     @ResponseBody
-    public String runTestOnFirstAgent(@PathVariable Long testId) {
+    public String runTestOnFirstAgent(@PathVariable(name = "testId") Long testId) {
         // This is a placeholder for triggering execution via the manager
         logger.info("Triggering test " + testId + " on first available agent");
         return "Test " + testId + " execution triggered.";
     }
 
     @GetMapping("/run-test")
-    public Object runTestWithParams(@RequestParam String agentId, @RequestParam Long testId) {
+    public Object runTestWithParams(@RequestParam(name = "agentId") String agentId, @RequestParam(name = "testId") Long testId) {
         return executionManager.startTest(agentId, testId).handle((ok, ex) -> {
             if (ex != null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + ex.getMessage());

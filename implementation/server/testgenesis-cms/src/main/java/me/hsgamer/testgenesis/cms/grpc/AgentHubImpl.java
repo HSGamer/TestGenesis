@@ -8,6 +8,9 @@ import me.hsgamer.testgenesis.uap.v1.*;
 import org.springframework.grpc.server.service.GrpcService;
 
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -15,6 +18,7 @@ import java.util.function.Consumer;
 @Slf4j
 public class AgentHubImpl extends AgentHubGrpc.AgentHubImplBase {
     private final UAPService uapService;
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     public AgentHubImpl(UAPService uapService) {
         this.uapService = uapService;
@@ -56,10 +60,27 @@ public class AgentHubImpl extends AgentHubGrpc.AgentHubImplBase {
         agent.listenerRef().set(responseObserver);
         log.info("Agent {} ({}) connected to Listen stream.", agentId, agent.displayName());
 
+        // Start heartbeat sender
+        var heartbeatFuture = scheduler.scheduleAtFixedRate(() -> {
+            try {
+                responseObserver.onNext(ListenResponse.newBuilder()
+                        .setHeartbeat(com.google.protobuf.Empty.getDefaultInstance())
+                        .build());
+            } catch (Exception e) {
+                log.debug("Failed to send heartbeat to agent {}", agentId);
+            }
+        }, 30, 30, TimeUnit.SECONDS);
+
         return new StreamObserver<>() {
             @Override
             public void onNext(ListenRequest value) {
-                if (value.hasJobAcceptance()) {
+                if (value.hasReady()) {
+                    log.info("Agent {} ({}) signaled ready.", agentId, agent.displayName());
+                } else if (value.hasHeartbeat()) {
+                    // Just a heartbeat, no-op
+                } else if (value.hasJobAcceptance()) {
+
+
                     JobAcceptance acceptance = value.getJobAcceptance();
                     Consumer<JobAcceptance> consumer = uapService.getPendingJobAcceptances().get(acceptance.getSessionId());
                     if (consumer != null) {
@@ -77,13 +98,15 @@ public class AgentHubImpl extends AgentHubGrpc.AgentHubImplBase {
             @Override
             public void onError(Throwable t) {
                 log.warn("Listen stream error from Agent {} ({})", agentId, agent.displayName(), t);
-                uapService.getInternalAgents().remove(agentId);
+                heartbeatFuture.cancel(true);
+                uapService.cleanupAgent(agentId);
             }
 
             @Override
             public void onCompleted() {
                 log.info("Agent {} ({}) disconnected.", agentId, agent.displayName());
-                uapService.getInternalAgents().remove(agentId);
+                heartbeatFuture.cancel(true);
+                uapService.cleanupAgent(agentId);
                 responseObserver.onCompleted();
             }
         };

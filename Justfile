@@ -16,6 +16,14 @@ build-node-api:
 build-side-agent:
     cd implementation/client/side-agent && npm install && npm run build
 
+# Run the Side Agent in development mode
+run-side-agent:
+    cd implementation/client/side-agent && npm run dev
+
+# Run the Spring Boot CMS
+run-cms:
+    cd implementation/server/testgenesis-cms && mvn spring-boot:run
+
 # Clean all generated build artifacts
 clean:
     cd api/java && mvn clean

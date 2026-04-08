@@ -11,7 +11,11 @@ const activeDrivers = new Set<WebDriver>();
 let isShuttingDown = false;
 
 // Initialize clients for both the Control Plane (AgentHub) and Execution Plane (JobHub).
-const transport = createGrpcTransport({ baseUrl: CONFIG.HUB_URL, httpVersion: "2" });
+const transport = createGrpcTransport({ 
+  baseUrl: CONFIG.HUB_URL, 
+  httpVersion: "2",
+});
+
 const agentClient = createClient(AgentHub, transport);
 const jobClient = createClient(JobHub, transport);
 
@@ -50,23 +54,57 @@ async function main() {
       // 2. Control plane connection (Listen) using the session Identity in headers.
       console.log(`[Listen] Establishing control stream...`);
       const requestQueue: ListenRequest[] = [];
+      let resolveNext: (() => void) | null = null;
 
-      async function* generateListenRequests(): AsyncGenerator<ListenRequest> {
-        while (!isShuttingDown) {
-          if (requestQueue.length > 0) {
-            yield requestQueue.shift()!;
-          } else {
-            // No more pulsing; we just wait for queue items.
-            // A short delay to prevent spinning, but ideally we'd use a Trigger/Deferred.
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
+      function pushRequest(req: ListenRequest) {
+        requestQueue.push(req);
+        if (resolveNext) {
+          resolveNext();
+          resolveNext = null;
         }
       }
+
+      async function* generateListenRequests(): AsyncGenerator<ListenRequest> {
+        // Yield initial ready signal to Hub
+        yield new ListenRequest({
+          event: {
+            case: "ready",
+            value: {}
+          }
+        });
+
+        // Set up heartbeat timer
+        const heartbeatInterval = setInterval(() => {
+          pushRequest(new ListenRequest({
+            event: {
+              case: "heartbeat",
+              value: {}
+            }
+          }));
+        }, 30000);
+
+        try {
+          while (!isShuttingDown) {
+            if (requestQueue.length > 0) {
+              const req = requestQueue.shift()!;
+              yield req;
+            } else {
+              await new Promise<void>((resolve) => {
+                resolveNext = resolve;
+              });
+            }
+          }
+        } finally {
+          clearInterval(heartbeatInterval);
+        }
+      }
+
 
       // We pass the clientId in the headers for session identification.
       const listenStream = agentClient.listen(generateListenRequests(), { 
         headers: { "x-client-id": clientId } 
       });
+
 
       for await (const response of listenStream) {
         if (isShuttingDown || !listenStream) break;
@@ -76,12 +114,13 @@ async function main() {
           const proposal = response.event.value;
           console.log(`[Listen] Received Job Proposal: ${proposal.sessionId} (${proposal.testType})`);
           
-          requestQueue.push(new ListenRequest({
+          pushRequest(new ListenRequest({
             event: {
               case: "jobAcceptance",
               value: { sessionId: proposal.sessionId, accepted: true }
             }
           }));
+
 
           const processor = new JobProcessor(
             proposal.sessionId,
@@ -90,8 +129,11 @@ async function main() {
             (driver) => activeDrivers.delete(driver)
           );
           processor.process().catch(console.error);
+        } else if (response.event.case === "heartbeat") {
+          console.log("[Listen] Received Heartbeat from Hub");
         }
       }
+
 
       // If the Hub closes the stream, we assume a shutdown is requested.
       if (!isShuttingDown) {
@@ -101,6 +143,7 @@ async function main() {
     } catch (err) {
       if (isShuttingDown) break;
       console.error(`[Handshake] Error: ${err}. Retrying in ${delay}ms...`);
+      console.log(err);
       await new Promise((resolve) => setTimeout(resolve, delay));
       delay = Math.min(delay * 2, 60000);
     }
@@ -123,6 +166,10 @@ async function shutdown() {
 
   await Promise.all(quitPromises);
   activeDrivers.clear();
+
+  // Give a small window for the gRPC stream completion to be flushed over HTTP/2
+  console.log("[Shutdown] Signaling stream completion...");
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 
   console.log("[Shutdown] Cleanup complete. Exiting.");
   process.exit(0);

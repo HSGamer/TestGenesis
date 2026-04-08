@@ -19,5 +19,9 @@ message ListenResponse {
 
     // Heartbeat and pull signal (Agent idle and ready).
     TranslationProposal translation_proposal = 2;
+
+    // Periodic heartbeat to keep the stream alive.
+    google.protobuf.Empty heartbeat = 3;
   }
+
 }

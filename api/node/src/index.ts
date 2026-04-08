@@ -27,7 +27,6 @@ export * from './generated/Telemetry_pb.js';
 export * from './generated/TestCapability_pb.js';
 export * from './generated/TranslationAcceptance_pb.js';
 export * from './generated/TranslationCapability_pb.js';
-export * from './generated/TranslationCommand_pb.js';
 export * from './generated/TranslationHub_connect.js';
 export * from './generated/TranslationInit_pb.js';
 export * from './generated/TranslationProposal_pb.js';

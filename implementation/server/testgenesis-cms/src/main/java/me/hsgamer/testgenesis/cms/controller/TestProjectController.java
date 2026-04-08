@@ -51,7 +51,7 @@ public class TestProjectController {
     }
 
     @GetMapping("/edit/{id}")
-    public String editTest(@PathVariable Long id, Model model) {
+    public String editTest(@PathVariable(name = "id") Long id, Model model) {
         TestProject test = testRepo.findById(id).orElseThrow();
         List<Long> selectedPayloadIds = test.getPayloads().stream().map(Payload::getId).toList();
 
@@ -76,10 +76,10 @@ public class TestProjectController {
     }
 
     @PostMapping("/save")
-    public String saveTest(@RequestParam(required = false) Long id,
-                           @RequestParam String name,
-                           @RequestParam String testType,
-                           @RequestParam(required = false) List<Long> payloadIds) {
+    public String saveTest(@RequestParam(name = "id", required = false) Long id,
+                           @RequestParam(name = "name") String name,
+                           @RequestParam(name = "testType") String testType,
+                           @RequestParam(name = "payloadIds", required = false) List<Long> payloadIds) {
         TestProject test;
         if (id != null) {
             test = testRepo.findById(id).orElse(new TestProject());
@@ -103,7 +103,7 @@ public class TestProjectController {
     }
 
     @PostMapping("/delete/{id}")
-    public String deleteTest(@PathVariable Long id) {
+    public String deleteTest(@PathVariable(name = "id") Long id) {
         testRepo.deleteById(id);
         return "redirect:/tests";
     }

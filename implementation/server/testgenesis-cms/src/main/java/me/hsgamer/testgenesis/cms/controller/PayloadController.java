@@ -48,7 +48,7 @@ public class PayloadController {
     }
 
     @GetMapping("/payloads/edit/{id}")
-    public String editPayload(@PathVariable Long id, Model model) {
+    public String editPayload(@PathVariable(name = "id") Long id, Model model) {
         Payload payload = payloadRepo.findById(id).orElseThrow();
 
         List<PayloadEditViewModel.AttachmentView> attachments = payload.getAttachments().stream()
@@ -86,7 +86,7 @@ public class PayloadController {
     }
 
     @PostMapping("/payloads/save")
-    public String savePayload(@RequestParam String type, @RequestParam String metadataJson) {
+    public String savePayload(@RequestParam(name = "type") String type, @RequestParam(name = "metadataJson") String metadataJson) {
         Payload payload = new Payload();
         payload.setPayloadType(type);
         payload.setMetadataJson(metadataJson);
@@ -95,7 +95,7 @@ public class PayloadController {
     }
 
     @PostMapping("/payloads/update/{id}")
-    public String updatePayload(@PathVariable Long id, @RequestParam String type, @RequestParam String metadataJson) {
+    public String updatePayload(@PathVariable(name = "id") Long id, @RequestParam(name = "type") String type, @RequestParam(name = "metadataJson") String metadataJson) {
         Payload payload = payloadRepo.findById(id).orElseThrow();
         payload.setPayloadType(type);
         payload.setMetadataJson(metadataJson);
@@ -104,14 +104,14 @@ public class PayloadController {
     }
 
     @PostMapping("/payloads/delete/{id}")
-    public String deletePayload(@PathVariable Long id) {
+    public String deletePayload(@PathVariable(name = "id") Long id) {
         payloadRepo.deleteById(id);
         return "redirect:/payloads";
     }
 
     @GetMapping("/attachments/download/{id}")
     @ResponseBody
-    public ResponseEntity<Resource> downloadAttachment(@PathVariable Long id) {
+    public ResponseEntity<Resource> downloadAttachment(@PathVariable(name = "id") Long id) {
         Attachment attachment = attachmentRepo.findById(id).orElseThrow();
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(attachment.getContentType()))
@@ -120,7 +120,7 @@ public class PayloadController {
     }
 
     @PostMapping("/attachments/update-text/{id}")
-    public String updateAttachmentText(@PathVariable Long id, @RequestParam String textContent) {
+    public String updateAttachmentText(@PathVariable(name = "id") Long id, @RequestParam(name = "textContent") String textContent) {
         Attachment attachment = attachmentRepo.findById(id).orElseThrow();
         attachment.setContent(textContent.getBytes(StandardCharsets.UTF_8));
         attachmentRepo.save(attachment);
@@ -128,7 +128,7 @@ public class PayloadController {
     }
 
     @PostMapping("/attachments/delete/{id}")
-    public String deleteAttachment(@PathVariable Long id) {
+    public String deleteAttachment(@PathVariable(name = "id") Long id) {
         Attachment attachment = attachmentRepo.findById(id).orElseThrow();
         Long payloadId = attachment.getPayload().getId();
         attachmentRepo.deleteById(id);
@@ -136,7 +136,7 @@ public class PayloadController {
     }
 
     @PostMapping("/attachments/upload/{payloadId}")
-    public String uploadAttachment(@PathVariable Long payloadId, @RequestParam("file") MultipartFile file) throws IOException {
+    public String uploadAttachment(@PathVariable(name = "payloadId") Long payloadId, @RequestParam(name = "file") MultipartFile file) throws IOException {
         Payload payload = payloadRepo.findById(payloadId).orElseThrow();
         if (!file.isEmpty()) {
             Attachment attachment = new Attachment();

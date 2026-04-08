@@ -9,10 +9,7 @@ import me.hsgamer.testgenesis.cms.core.impl.DefaultTranslationSession;
 import me.hsgamer.testgenesis.uap.v1.*;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -73,6 +70,7 @@ public class UAPService {
             if (acceptance.getAccepted()) {
                 DefaultJobSession session = new DefaultJobSession(ticket);
                 jobSessions.put(sessionId, session);
+                agent.activeSessionIds().add(sessionId); // Track session
                 future.complete(new JobTicketResult(true, acceptance.getReason(), session));
             } else {
                 future.complete(new JobTicketResult(false, acceptance.getReason(), null));
@@ -105,6 +103,7 @@ public class UAPService {
             if (acceptance.getAccepted()) {
                 DefaultTranslationSession session = new DefaultTranslationSession(ticket);
                 translationSessions.put(sessionId, session);
+                agent.activeSessionIds().add(sessionId); // Track session
                 future.complete(new TranslationTicketResult(true, acceptance.getReason(), session));
             } else {
                 future.complete(new TranslationTicketResult(false, acceptance.getReason(), null));
@@ -120,8 +119,42 @@ public class UAPService {
         return future;
     }
 
+    public void cleanupAgent(String agentId) {
+        AgentImpl agent = agents.remove(agentId);
+        if (agent == null) return;
+
+        log.info("Cleaning up agent {} ({}). Failing {} active sessions.", 
+            agentId, agent.displayName(), agent.activeSessionIds().size());
+
+        for (String sessionId : agent.activeSessionIds()) {
+            if (sessionId.startsWith("JOB-")) {
+                DefaultJobSession session = jobSessions.remove(sessionId);
+                if (session != null) {
+                    session.updateStatus(JobStatus.newBuilder()
+                        .setState(JobState.JOB_STATE_FAILED)
+                        .setMessage("Agent disconnected unexpectedly")
+                        .build());
+                }
+            } else if (sessionId.startsWith("TRN-")) {
+                DefaultTranslationSession session = translationSessions.remove(sessionId);
+                if (session != null) {
+                    session.updateStatus(TranslationStatus.newBuilder()
+                        .setState(TranslationState.TRANSLATION_STATE_FAILED)
+                        .setMessage("Agent disconnected unexpectedly")
+                        .build());
+                }
+            }
+        }
+    }
+
     public record AgentImpl(String displayName, List<Capability> capabilities,
-                            AtomicReference<io.grpc.stub.StreamObserver<ListenResponse>> listenerRef) implements Agent {
+                            AtomicReference<io.grpc.stub.StreamObserver<ListenResponse>> listenerRef,
+                            Set<String> activeSessionIds) implements Agent {
+        public AgentImpl(String displayName, List<Capability> capabilities,
+                         AtomicReference<io.grpc.stub.StreamObserver<ListenResponse>> listenerRef) {
+            this(displayName, capabilities, listenerRef, ConcurrentHashMap.newKeySet());
+        }
+
         @Override
         public boolean isReady() {
             return listenerRef.get() != null;

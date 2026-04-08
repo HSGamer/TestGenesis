@@ -61,7 +61,7 @@ public class TranslationController {
     }
 
     @GetMapping("/translations/{id}")
-    public String translationDetail(@PathVariable Long id, Model model) {
+    public String translationDetail(@PathVariable(name = "id") Long id, Model model) {
         Optional<Translation> entityOpt = translationRepo.findById(id);
 
         if (entityOpt.isEmpty()) {
@@ -90,7 +90,7 @@ public class TranslationController {
     }
 
     @GetMapping("/translate")
-    public Object startTranslation(@RequestParam String agentId, @RequestParam Long testId, @RequestParam String targetFormat) {
+    public Object startTranslation(@RequestParam(name = "agentId") String agentId, @RequestParam(name = "testId") Long testId, @RequestParam(name = "targetFormat") String targetFormat) {
         return translationService.startTranslation(agentId, testId, targetFormat).handle((ok, ex) -> {
             if (ex != null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + ex.getMessage());

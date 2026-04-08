@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.util.NoSuchElementException;
 
-@ControllerAdvice
+@ControllerAdvice(basePackages = "me.hsgamer.testgenesis.cms.controller")
 @Slf4j
 public class GlobalExceptionHandler {
 
