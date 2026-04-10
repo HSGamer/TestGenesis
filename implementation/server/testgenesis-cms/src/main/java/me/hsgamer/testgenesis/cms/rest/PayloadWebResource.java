@@ -17,7 +17,10 @@ import org.jboss.resteasy.reactive.multipart.FileUpload;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+
 
 @Path("/payloads")
 @Slf4j
@@ -47,8 +50,10 @@ public class PayloadWebResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance createForm() {
         return payloads_edit.data("payload", new PayloadEntity())
-                .data("availableTypes", uapService.getAvailablePayloadTypes());
+                .data("availableTypes", uapService.getAvailablePayloadTypes())
+                .data("mimeTypeMapping", uapService.getPayloadMimeTypeMapping());
     }
+
 
 
     @GET
@@ -58,8 +63,10 @@ public class PayloadWebResource {
         PayloadEntity entity = payloadService.findById(id)
                 .orElseThrow(() -> new NotFoundException("Payload not found: " + id));
         return payloads_edit.data("payload", entity)
-                .data("availableTypes", uapService.getAvailablePayloadTypes());
+                .data("availableTypes", uapService.getAvailablePayloadTypes())
+                .data("mimeTypeMapping", uapService.getPayloadMimeTypeMapping());
     }
+
 
 
     @POST
@@ -80,9 +87,20 @@ public class PayloadWebResource {
         entity.setMetadata(metadata);
 
         if (attachment != null && attachment.size() > 0) {
+            String mimeType = attachment.contentType();
+            Map<String, Set<String>> mapping = uapService.getPayloadMimeTypeMapping();
+            if (mapping.containsKey(type) && !mapping.get(type).isEmpty()) {
+                if (!mapping.get(type).contains(mimeType)) {
+                    log.warn("MIME type '{}' is not supported for payload type '{}' by any registered agents", mimeType, type);
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity("Unsupported file type: " + mimeType + " for protocol " + type + ". Expected: " + mapping.get(type))
+                            .build();
+                }
+            }
+
             try {
                 entity.setAttachmentName(attachment.fileName());
-                entity.setAttachmentMimeType(attachment.contentType());
+                entity.setAttachmentMimeType(mimeType);
                 entity.setAttachmentData(Files.readAllBytes(attachment.filePath()));
             } catch (IOException e) {
                 log.error("Failed to read uploaded file", e);
@@ -90,6 +108,7 @@ public class PayloadWebResource {
                         .entity("Failed to upload attachment").build();
             }
         }
+
 
         if (id != null) {
             payloadService.update(id, entity);

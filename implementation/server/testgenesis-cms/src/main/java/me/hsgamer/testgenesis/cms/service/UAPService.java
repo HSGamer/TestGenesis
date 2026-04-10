@@ -16,6 +16,9 @@ import me.hsgamer.testgenesis.uap.v1.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 
 @ApplicationScoped
 @Slf4j
@@ -188,6 +191,29 @@ public class UAPService {
         }
         return infos;
     }
+
+    public Map<String, Set<String>> getPayloadMimeTypeMapping() {
+        return agents.values().stream()
+                .flatMap(agent -> agent.capabilities().stream())
+                .flatMap(cap -> switch (cap.getFormatCase()) {
+                    case TEST -> cap.getTest().getPayloadsList().stream();
+                    case TRANSLATION -> Stream.concat(
+                            cap.getTranslation().getSourcePayloadsList().stream(),
+                            cap.getTranslation().getTargetPayloadsList().stream()
+                    );
+                    default -> Stream.empty();
+                })
+                .collect(Collectors.groupingBy(
+                        PayloadRequirement::getType,
+                        Collectors.flatMapping(
+                                req -> req.getAcceptedMimeTypesList().stream(),
+                                Collectors.toSet()
+                        )
+                ));
+    }
+
+
+
 
     public record AgentGuidedInfo(String id, String displayName, List<TestTypeInfo> supportedTypes) {}
 

@@ -43,9 +43,11 @@
         <div class="form-group">
             <label for="input-attachment">Attachment (File)</label>
             <input type="file" id="input-attachment" name="attachment" {#if !payload.id}required{/if}>
+            <p id="mime-type-error" class="small-note mt-1" style="color: #ff5555; display: none;"></p>
             {#if payload.id && payload.attachmentName}
                 <p id="label-current-attachment" class="small-note">Current: {payload.attachmentName} (Upload new to replace)</p>
             {/if}
+
         </div>
 
         <div class="form-group">
@@ -93,5 +95,44 @@
     
     // Ensure input is updated even if user doesn't change anything
     metadataInput.value = JSON.stringify(initialJson);
+
+    // MIME Type Validation Logic
+    const mimeTypeMapping = {
+        {#for entry in mimeTypeMapping.entrySet()}
+            "{entry.key}": [{#for mime in entry.value}"{mime}"{#if mime_hasNext},{/if}{/for}]{#if entry_hasNext},{/if}
+        {/for}
+    };
+
+
+    const typeInput = document.getElementById("input-type");
+    const attachmentInput = document.getElementById("input-attachment");
+    const mimeError = document.getElementById("mime-type-error");
+
+    function validateMimeType() {
+        const type = typeInput.value;
+        const file = attachmentInput.files[0];
+        
+        if (!type || !file) {
+            mimeError.style.display = 'none';
+            return;
+        }
+
+        const allowedMimes = mimeTypeMapping[type];
+        if (allowedMimes && allowedMimes.length > 0) {
+            if (!allowedMimes.includes(file.type)) {
+                mimeError.textContent = "Warning: MIME type '" + file.type + "' might not be supported for protocol '" + type + "'. Expected: " + allowedMimes.join(', ');
+                mimeError.style.display = 'block';
+            } else {
+
+                mimeError.style.display = 'none';
+            }
+        } else {
+            mimeError.style.display = 'none';
+        }
+    }
+
+    typeInput.addEventListener("input", validateMimeType);
+    attachmentInput.addEventListener("change", validateMimeType);
 </script>
+
 {/body}
