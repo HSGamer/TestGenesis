@@ -21,9 +21,10 @@ import {
 } from "@seleniumhq/side-runtime";
 import type { TestShape } from "@seleniumhq/side-model";
 import { createClient, Client } from "@connectrpc/connect";
-import { msToDuration } from "./utils";
-import { TestReport } from "./types";
-import { CONFIG } from "./config";
+import { msToDuration } from "./utils.js";
+import { TestReport } from "./types.js";
+import { CONFIG } from "./config.js";
+
 
 /**
  * Manages the lifecycle of a single UAP Job Execution session.
@@ -126,31 +127,28 @@ export class JobProcessor {
     // 2. Discover runtime environment from payloads if provided
     const envPayload = payloads.find((p: any) => p.type === "runtime-env");
     let browser = "chrome";
-    if (envPayload) {
-      const configAttachment = envPayload.content[0];
-      if (configAttachment) {
-        try {
-          const config = JSON.parse(new TextDecoder().decode(configAttachment.data));
-          browser = config.browser || browser;
-        } catch (e) {}
-      }
+    if (envPayload && envPayload.attachment) {
+      try {
+        const config = JSON.parse(new TextDecoder().decode(envPayload.attachment.data));
+        browser = config.browser || browser;
+      } catch (e) {}
     }
 
-    // 3. Find .side content in the primary payload attachments
-    const attachment = payload.content.find((a: any) => 
-      a.name.endsWith(".side") || a.mimeType === "application/json"
-    ) || payload.content[0];
+
+    // 3. Get .side content from the primary payload attachment
+    const attachment = payload.attachment;
 
     if (!attachment) {
       this.pushUpdate({ 
         case: "status", 
         value: new JobStatus({ 
           state: JobState.INVALID, 
-          message: "Compatible payload found but it has no file content (attachments)" 
+          message: "Compatible payload found but it has no file content (attachment)" 
         }) 
       });
       return;
     }
+
 
     let sideCommands: any[];
     try {

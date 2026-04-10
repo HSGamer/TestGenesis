@@ -14,7 +14,7 @@ build-side-agent:
 
 # Run the Side Agent in development mode
 run-side-agent:
-    cd implementation/client/side-agent && npm run dev
+    cd implementation/client/side-agent && npm run start
 
 # Run the Quarkus CMS in development mode
 run-cms:

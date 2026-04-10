@@ -9,8 +9,9 @@ import { Capability } from "./generated/Capability_pb.js";
 
 import { Empty } from "@bufbuild/protobuf";
 import { WebDriver } from "selenium-webdriver";
-import { CONFIG } from "./config";
-import { JobProcessor } from "./job-processor";
+import { CONFIG } from "./config.js";
+import { JobProcessor } from "./job-processor.js";
+
 
 // --- Global State for Graceful Shutdown ---
 const activeDrivers = new Set<WebDriver>();
@@ -46,7 +47,18 @@ async function main() {
               value: {
                 type: "selenium-side",
                 payloads: [
-                  { type: "selenium-side", isRequired: true, isRepeatable: false }
+                  { 
+                    type: "selenium-side", 
+                    isRequired: true, 
+                    isRepeatable: false,
+                    acceptedMimeTypes: ["application/json"] 
+                  },
+                  {
+                    type: "runtime-env",
+                    isRequired: false, // Optional
+                    isRepeatable: false,
+                    acceptedMimeTypes: ["application/json"]
+                  }
                 ]
               }
             }

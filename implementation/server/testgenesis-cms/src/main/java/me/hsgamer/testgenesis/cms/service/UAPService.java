@@ -135,9 +135,69 @@ public class UAPService {
         }
     }
 
+    public Set<String> getAvailablePayloadTypes() {
+        Set<String> types = new TreeSet<>();
+        for (AgentImpl agent : agents.values()) {
+            for (Capability capability : agent.capabilities()) {
+                switch (capability.getFormatCase()) {
+                    case TEST -> {
+                        TestCapability test = capability.getTest();
+                        for (PayloadRequirement req : test.getPayloadsList()) {
+                            types.add(req.getType());
+                        }
+                    }
+                    case TRANSLATION -> {
+                        TranslationCapability trans = capability.getTranslation();
+                        for (PayloadRequirement req : trans.getSourcePayloadsList()) {
+                            types.add(req.getType());
+                        }
+                        for (PayloadRequirement req : trans.getTargetPayloadsList()) {
+                            types.add(req.getType());
+                        }
+                    }
+                    case FORMAT_NOT_SET -> {
+                    }
+                }
+            }
+        }
+        return types;
+    }
+
+    public List<AgentGuidedInfo> getAgentGuidedInfos() {
+        List<AgentGuidedInfo> infos = new ArrayList<>();
+        for (Map.Entry<String, AgentImpl> entry : agents.entrySet()) {
+            String id = entry.getKey();
+            AgentImpl agent = entry.getValue();
+            List<TestTypeInfo> testTypes = new ArrayList<>();
+
+            for (Capability capability : agent.capabilities()) {
+                if (capability.getFormatCase() == Capability.FormatCase.TEST) {
+                    TestCapability test = capability.getTest();
+                    List<String> required = test.getPayloadsList().stream()
+                            .filter(PayloadRequirement::getIsRequired)
+                            .map(PayloadRequirement::getType)
+                            .toList();
+                    List<String> optional = test.getPayloadsList().stream()
+                            .filter(p -> !p.getIsRequired())
+                            .map(PayloadRequirement::getType)
+                            .toList();
+                    testTypes.add(new TestTypeInfo(test.getType(), required, optional));
+                }
+            }
+            infos.add(new AgentGuidedInfo(id, agent.displayName(), testTypes));
+        }
+        return infos;
+    }
+
+    public record AgentGuidedInfo(String id, String displayName, List<TestTypeInfo> supportedTypes) {}
+
+    public record TestTypeInfo(String testType, List<String> requiredPayloadTypes, List<String> optionalPayloadTypes) {}
+
     public record AgentImpl(String displayName, List<Capability> capabilities,
                             BroadcastProcessor<ListenResponse> processor,
                             Set<String> activeSessionIds) implements Agent {
+
+
         public AgentImpl(String displayName, List<Capability> capabilities) {
             this(displayName, capabilities, BroadcastProcessor.create(), ConcurrentHashMap.newKeySet());
         }

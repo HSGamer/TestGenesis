@@ -11,6 +11,8 @@ import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
 import me.hsgamer.testgenesis.cms.persistence.TestEntity;
 import me.hsgamer.testgenesis.cms.service.PayloadService;
 import me.hsgamer.testgenesis.cms.service.TestService;
+import me.hsgamer.testgenesis.cms.service.UAPService;
+
 import org.jboss.resteasy.reactive.RestForm;
 
 import java.net.URI;
@@ -26,6 +28,10 @@ public class TestWebResource {
 
     @Inject
     PayloadService payloadService;
+
+    @Inject
+    UAPService uapService;
+
 
     @Inject
     Template tests_list;
@@ -44,8 +50,10 @@ public class TestWebResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance createForm() {
         return tests_edit.data("test", new TestEntity())
-                .data("allPayloads", payloadService.listAll());
+                .data("allPayloads", payloadService.listAll())
+                .data("agents", uapService.getAgentGuidedInfos());
     }
+
 
     @GET
     @Path("/{id}/edit")
@@ -54,8 +62,10 @@ public class TestWebResource {
         TestEntity entity = testService.findById(id)
                 .orElseThrow(() -> new NotFoundException("Test not found: " + id));
         return tests_edit.data("test", entity)
-                .data("allPayloads", payloadService.listAll());
+                .data("allPayloads", payloadService.listAll())
+                .data("agents", uapService.getAgentGuidedInfos());
     }
+
 
     @POST
     @Path("/save")

@@ -20,7 +20,24 @@
     .payload-item:last-child { border-bottom: none; }
     .payload-item input { margin-right: 1rem; width: auto; }
     .payload-item label { margin-bottom: 0; cursor: pointer; flex: 1; }
+    
+    .highlight-suggested {
+        background-color: rgba(6, 182, 212, 0.1);
+        border: 1px solid var(--primary-color) !important;
+        position: relative;
+    }
+    .highlight-suggested::after {
+        content: "Suggested";
+        position: absolute;
+        right: 0.5rem;
+        top: 0.2rem;
+        font-size: 0.65rem;
+        color: var(--primary-color);
+        font-weight: bold;
+        text-transform: uppercase;
+    }
 </style>
+
 {/head}
 
 {#body}
@@ -46,14 +63,27 @@
 
         <div class="form-group">
             <label for="input-test-type">Protocol Test Type (testType)</label>
-            <input type="text" id="input-test-type" name="testType" value="{test.testType}" required placeholder="e.g. selenium-web">
+            <input type="text" id="input-test-type" name="testType" value="{test.testType}" required placeholder="e.g. selenium-web" list="available-test-types">
+            <datalist id="available-test-types">
+                <!-- Populated by JS -->
+            </datalist>
         </div>
+
+        <div class="form-group">
+            <label for="select-reference-agent">Reference Agent (Guidance Only)</label>
+            <select id="select-reference-agent">
+                <option value="">-- No Agent Selected --</option>
+                <!-- Populated by JS -->
+            </select>
+            <p class="small-note mt-1">Select an agent to see recommended payloads for your chosen test type.</p>
+        </div>
+
 
         <div class="form-group">
             <label>Select Payloads</label>
             <div id="payload-selection-list" class="payload-selection">
                 {#for p in allPayloads}
-                    <div class="payload-item">
+                    <div class="payload-item" data-payload-type="{p.type}" data-payload-id="{p.id}">
                         <input type="checkbox" id="p-{p.id}" name="payloadIds" value="{p.id}" 
                             {#if test.payloads.contains(p)}checked{/if}>
                         <label for="p-{p.id}">
@@ -62,6 +92,7 @@
                         </label>
                     </div>
                 {/for}
+
                 {#if allPayloads.isEmpty()}
                     <p class="small-note">No payloads available. <a href="/payloads/new">Create one first</a>.</p>
                 {/if}
@@ -74,4 +105,128 @@
         </footer>
     </form>
 </div>
+
+<script id="guidance-logic">
+    // Agent data passed from backend
+    const agents = [
+        {#for agent in agents}
+        {
+            id: "{agent.id}",
+            displayName: "{agent.displayName}",
+            supportedTypes: [
+                {#for st in agent.supportedTypes}
+                {
+                    testType: "{st.testType}",
+                    required: [{#for r in st.requiredPayloadTypes}"{r}"{#if r_hasNext},{/if}{/for}],
+                    optional: [{#for o in st.optionalPayloadTypes}"{o}"{#if o_hasNext},{/if}{/for}]
+                }{#if st_hasNext},{/if}
+
+                {/for}
+            ]
+        }{#if agent_hasNext},{/if}
+
+        {/for}
+    ];
+
+    const typeInput = document.getElementById('input-test-type');
+    const agentSelect = document.getElementById('select-reference-agent');
+    const testTypeDatalist = document.getElementById('available-test-types');
+    const payloadItems = document.querySelectorAll('.payload-item');
+
+    // Initial population of datalist
+    function updateTestTypeSuggestions() {
+        const types = new Set();
+        agents.forEach(a => a.supportedTypes.forEach(st => types.add(st.testType)));
+        
+        testTypeDatalist.innerHTML = '';
+        types.forEach(type => {
+            const opt = document.createElement('option');
+            opt.value = type;
+            testTypeDatalist.appendChild(opt);
+        });
+    }
+
+    // Update Agent list based on Test Type
+    function updateAgentOptions(selectedType) {
+        const currentVal = agentSelect.value;
+        agentSelect.innerHTML = '<option value="">-- No Agent Selected --</option>';
+        
+        agents.forEach(agent => {
+            const supportsType = !selectedType || agent.supportedTypes.some(st => st.testType === selectedType);
+            if (supportsType) {
+                const opt = document.createElement('option');
+                opt.value = agent.id;
+                opt.textContent = agent.displayName;
+                agentSelect.appendChild(opt);
+            }
+        });
+        
+        // Restore selection if possible
+        if (Array.from(agentSelect.options).some(o => o.value === currentVal)) {
+            agentSelect.value = currentVal;
+        }
+    }
+
+    // Update Test Type field based on Agent
+    function updateTestTypeFromAgent(agentId) {
+        const agent = agents.find(a => a.id === agentId);
+        if (!agent) return;
+        
+        // If current type is not supported by this agent, suggest the first one
+        const currentType = typeInput.value;
+        if (currentType && !agent.supportedTypes.some(st => st.testType === currentType)) {
+            if (agent.supportedTypes.length > 0) {
+                typeInput.value = agent.supportedTypes[0].testType;
+            }
+        }
+    }
+
+    // Highlight suitable payloads
+    function refreshHighlights() {
+        const selectedType = typeInput.value;
+        const selectedAgentId = agentSelect.value;
+        
+        // Reset all
+        payloadItems.forEach(item => item.classList.remove('highlight-suggested'));
+        
+        if (!selectedType) return;
+        
+        let targetPayloadTypes = new Set();
+        
+        if (selectedAgentId) {
+            const agent = agents.find(a => a.id === selectedAgentId);
+            const capability = agent?.supportedTypes.find(st => st.testType === selectedType);
+            if (capability) {
+                capability.required.forEach(t => targetPayloadTypes.add(t));
+                capability.optional.forEach(t => targetPayloadTypes.add(t));
+            }
+        } else {
+            // If no agent, just highlight anything that matches the test type (basic suggestion)
+            targetPayloadTypes.add(selectedType);
+        }
+        
+        payloadItems.forEach(item => {
+            const pType = item.getAttribute('data-payload-type');
+            if (targetPayloadTypes.has(pType)) {
+                item.classList.add('highlight-suggested');
+            }
+        });
+    }
+
+    typeInput.addEventListener('input', () => {
+        updateAgentOptions(typeInput.value);
+        refreshHighlights();
+    });
+
+    agentSelect.addEventListener('change', () => {
+        updateTestTypeFromAgent(agentSelect.value);
+        refreshHighlights();
+    });
+
+    // Init
+    updateTestTypeSuggestions();
+    updateAgentOptions(typeInput.value);
+    refreshHighlights();
+</script>
 {/body}
+

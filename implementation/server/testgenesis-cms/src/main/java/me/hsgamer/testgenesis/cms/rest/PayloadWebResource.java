@@ -9,6 +9,8 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
 import me.hsgamer.testgenesis.cms.service.PayloadService;
+import me.hsgamer.testgenesis.cms.service.UAPService;
+
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -23,6 +25,10 @@ public class PayloadWebResource {
 
     @Inject
     PayloadService payloadService;
+
+    @Inject
+    UAPService uapService;
+
 
     @Inject
     Template payloads_list;
@@ -40,8 +46,10 @@ public class PayloadWebResource {
     @Path("/new")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance createForm() {
-        return payloads_edit.data("payload", new PayloadEntity());
+        return payloads_edit.data("payload", new PayloadEntity())
+                .data("availableTypes", uapService.getAvailablePayloadTypes());
     }
+
 
     @GET
     @Path("/{id}/edit")
@@ -49,8 +57,10 @@ public class PayloadWebResource {
     public TemplateInstance editForm(@PathParam("id") Long id) {
         PayloadEntity entity = payloadService.findById(id)
                 .orElseThrow(() -> new NotFoundException("Payload not found: " + id));
-        return payloads_edit.data("payload", entity);
+        return payloads_edit.data("payload", entity)
+                .data("availableTypes", uapService.getAvailablePayloadTypes());
     }
+
 
     @POST
     @Path("/save")
