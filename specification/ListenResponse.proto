@@ -5,7 +5,7 @@ package uap.v1;
 
 import "JobProposal.proto";
 import "TranslationProposal.proto";
-import "google/protobuf/empty.proto";
+
 
 option java_package = "me.hsgamer.testgenesis.uap.v1";
 option java_multiple_files = true;
@@ -19,9 +19,7 @@ message ListenResponse {
 
     // Heartbeat and pull signal (Agent idle and ready).
     TranslationProposal translation_proposal = 2;
-
-    // Periodic heartbeat to keep the stream alive.
-    google.protobuf.Empty heartbeat = 3;
   }
+
 
 }

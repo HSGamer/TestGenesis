@@ -1,4 +1,4 @@
-// Attachment.proto — Shared binary attachment type for the Universal Agent Protocol (UAP).
+// Attachment.proto — Shared attachment type for the Universal Agent Protocol (UAP).
 syntax = "proto3";
 
 package uap.v1;
@@ -6,23 +6,9 @@ package uap.v1;
 option java_package = "me.hsgamer.testgenesis.uap.v1";
 option java_multiple_files = true;
 
-import "google/protobuf/struct.proto";
-import "google/protobuf/timestamp.proto";
-
 // Attachment represents a generic binary or structured file attached to a report.
 message Attachment {
-  // A name for the attachment (e.g., "screenshot.png", "execution.log").
   string name = 1;
-
-  // The MIME type of the content (e.g., "image/png", "text/plain", "video/webm").
   string mime_type = 2;
-
-  // The actual binary content of the attachment.
   bytes data = 3;
-
-  // Optional metadata associated with the attachment.
-  google.protobuf.Struct metadata = 4;
-
-  // Optional timestamp representing when this attachment was created or captured.
-  google.protobuf.Timestamp timestamp = 5;
 }

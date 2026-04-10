@@ -1,0 +1,59 @@
+{#include base.html}
+{#title}Test Management{/title}
+
+{#body}
+<div id="tests-container">
+    <header id="list-header" class="flex-between">
+        <h2 id="list-title">All Tests</h2>
+        <a href="/tests/new" id="btn-create-test" class="btn btn-primary">Create New Test</a>
+    </header>
+
+    <div id="table-wrapper" class="mt-1">
+        <table id="tests-table">
+            <thead>
+                <tr id="table-head-row">
+                    <th id="th-name">Name</th>
+                    <th id="th-type">Test Type</th>
+                    <th id="th-payloads">Payloads</th>
+                    <th id="th-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                {#for test in tests}
+                <tr id="test-row-{test.id}">
+                    <td id="test-name-{test.id}">
+                        <strong>{test.name}</strong>
+                        <p class="small-note">{test.description}</p>
+                    </td>
+                    <td id="test-type-{test.id}">{test.testType}</td>
+                    <td id="test-payloads-{test.id}">
+                        <span class="badge" id="badge-payload-count-{test.id}">{test.payloads.size()} Payloads</span>
+                    </td>
+                    <td id="test-actions-{test.id}">
+                        <a href="/tests/{test.id}/edit" id="link-edit-test-{test.id}" class="btn btn-secondary">Edit</a>
+                        
+                        <form action="/tests/{test.id}/copy" method="POST" class="inline-form">
+                            <button type="submit" id="btn-copy-test-{test.id}" class="btn btn-secondary">Copy</button>
+                        </form>
+                        
+                        <form action="/tests/{test.id}/delete" method="POST" class="inline-form" onsubmit="return confirm('Are you sure?');">
+                            <button type="submit" id="btn-delete-test-{test.id}" class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {/for}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .badge {
+        background-color: var(--surface-color);
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        border: 1px solid var(--border-color);
+    }
+</style>
+{/body}

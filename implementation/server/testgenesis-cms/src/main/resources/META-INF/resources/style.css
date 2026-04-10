@@ -1,0 +1,190 @@
+:root {
+    --bg-color: #0f172a;
+    --surface-color: #1e293b;
+    --primary-color: #38bdf8;
+    --secondary-color: #818cf8;
+    --accent-color: #fb923c;
+    --text-color: #f1f5f9;
+    --border-color: #334155;
+    --sidebar-width: 240px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    display: flex;
+    min-height: 100vh;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+aside {
+    width: var(--sidebar-width);
+    background-color: var(--surface-color);
+    border-right: 1px solid var(--border-color);
+    padding: 1.5rem;
+    flex-shrink: 0;
+}
+
+main {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+
+header {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+h1, h2, h3 {
+    margin-top: 0;
+    font-weight: 600;
+}
+
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+nav li {
+    margin-bottom: 0.5rem;
+}
+
+nav a {
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.95rem;
+    display: block;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+nav a:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.container {
+    max-width: 1200px;
+}
+
+/* Common UI Components */
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: var(--bg-color);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.btn-danger {
+    background-color: #ef4444;
+    color: white;
+}
+
+table:not(.jsoneditor *) {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+
+th:not(.jsoneditor *), td:not(.jsoneditor *) {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+
+th:not(.jsoneditor *) {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+}
+
+
+/* Forms */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label:not(.jsoneditor *) {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+
+input[type="text"]:not(.jsoneditor *), 
+input[type="file"]:not(.jsoneditor *), 
+textarea:not(.jsoneditor *), 
+select:not(.jsoneditor *) {
+    width: 100%;
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+
+input:not(.jsoneditor *):focus, 
+textarea:not(.jsoneditor *):focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -1px;
+}
+
+
+/* Utility Classes */
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.inline-form {
+    display: inline;
+}
+
+.mt-1 { margin-top: 1rem; }
+.mb-1 { margin-bottom: 1rem; }
+.mt-2 { margin-top: 2rem; }
+.small-note { font-size: 0.9rem; color: #94a3b8; }
+
+#main-footer {
+    padding: 1.5rem 0;
+    margin-top: auto;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+

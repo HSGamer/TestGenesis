@@ -1,0 +1,77 @@
+{#include base.html}
+{#title}{#if test.id}Edit {test.name}{#else}New Test{/if}{/title}
+
+{#head}
+<style>
+    .payload-selection {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+    .payload-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .payload-item:last-child { border-bottom: none; }
+    .payload-item input { margin-right: 1rem; width: auto; }
+    .payload-item label { margin-bottom: 0; cursor: pointer; flex: 1; }
+</style>
+{/head}
+
+{#body}
+<div id="test-edit-container">
+    <header id="form-header">
+        <h2 id="form-title">{#if test.id}Edit Test: {test.name}{#else}Create New Test{/if}</h2>
+    </header>
+
+    <form id="test-form" action="/tests/save" method="POST">
+        {#if test.id}
+            <input type="hidden" name="id" value="{test.id}">
+        {/if}
+
+        <div class="form-group">
+            <label for="input-name">Test Name</label>
+            <input type="text" id="input-name" name="name" value="{test.name}" required placeholder="e.g. Chrome Regression Suite">
+        </div>
+
+        <div class="form-group">
+            <label for="input-description">Description</label>
+            <textarea id="input-description" name="description" rows="3" placeholder="Explain the purpose of this test configuration">{test.description}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="input-test-type">Protocol Test Type (testType)</label>
+            <input type="text" id="input-test-type" name="testType" value="{test.testType}" required placeholder="e.g. selenium-web">
+        </div>
+
+        <div class="form-group">
+            <label>Select Payloads</label>
+            <div id="payload-selection-list" class="payload-selection">
+                {#for p in allPayloads}
+                    <div class="payload-item">
+                        <input type="checkbox" id="p-{p.id}" name="payloadIds" value="{p.id}" 
+                            {#if test.payloads.contains(p)}checked{/if}>
+                        <label for="p-{p.id}">
+                            <strong>{p.name}</strong> 
+                            <span class="small-note">({p.type})</span>
+                        </label>
+                    </div>
+                {/for}
+                {#if allPayloads.isEmpty()}
+                    <p class="small-note">No payloads available. <a href="/payloads/new">Create one first</a>.</p>
+                {/if}
+            </div>
+        </div>
+
+        <footer id="form-footer" class="mt-2">
+            <button type="submit" id="btn-save-test" class="btn btn-primary">Save Test</button>
+            <a href="/tests" id="btn-cancel" class="btn btn-secondary">Cancel</a>
+        </footer>
+    </form>
+</div>
+{/body}

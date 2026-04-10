@@ -16,4 +16,8 @@ message PayloadRequirement {
 
   // If true, the session can handle multiple distinct payloads of this type.
   bool is_repeatable = 3;
+
+  // The list of MIME types accepted for this payload type.
+  repeated string accepted_mime_types = 4;
 }
+

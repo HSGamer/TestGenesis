@@ -1,0 +1,91 @@
+{#include base.html}
+{#title}{#if payload.id}Edit {payload.name}{#else}New Payload{/if}{/title}
+
+{#head}
+<!-- JSONEditor library -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.10.2/jsoneditor.min.css" rel="stylesheet" type="text/css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.10.2/jsoneditor.min.js"></script>
+
+{/head}
+
+{#body}
+<div id="payload-edit-container">
+    <header id="form-header">
+        <h2 id="form-title">{#if payload.id}Edit Payload: {payload.name}{#else}Create New Payload{/if}</h2>
+    </header>
+
+    <form id="payload-form" action="/payloads/save" method="POST" enctype="multipart/form-data">
+        {#if payload.id}
+            <input type="hidden" name="id" value="{payload.id}">
+        {/if}
+
+        <div class="form-group">
+            <label for="input-name">Display Name</label>
+            <input type="text" id="input-name" name="name" value="{payload.name}" required placeholder="e.g. My Selenium Project">
+        </div>
+
+        <div class="form-group">
+            <label for="input-description">Description</label>
+            <textarea id="input-description" name="description" rows="3" placeholder="Brief explanation of this artifact">{payload.description}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="input-type">Protocol Type (type)</label>
+            <input type="text" id="input-type" name="type" value="{payload.type}" required placeholder="e.g. selenium-side">
+        </div>
+
+        <div class="form-group">
+            <label for="input-attachment">Attachment (File)</label>
+            <input type="file" id="input-attachment" name="attachment" {#if !payload.id}required{/if}>
+            {#if payload.id && payload.attachmentName}
+                <p id="label-current-attachment" class="small-note">Current: {payload.attachmentName} (Upload new to replace)</p>
+            {/if}
+        </div>
+
+        <div class="form-group">
+            <label for="jsoneditor-container">Metadata (JSON)</label>
+            <div id="jsoneditor-container" class="mt-1" style="height: 400px;"></div>
+            <input type="hidden" id="input-metadata" name="metadata" value="{payload.metadata ?: '{}'}">
+        </div>
+
+        <footer id="form-footer" class="mt-2">
+            <button type="submit" id="btn-save-payload" class="btn btn-primary">Save Payload</button>
+            <a href="/payloads" id="btn-cancel" class="btn btn-secondary">Cancel</a>
+        </footer>
+
+    </form>
+</div>
+
+<script id="jsoneditor-init-script">
+    const container = document.getElementById("jsoneditor-container");
+    const metadataInput = document.getElementById("input-metadata");
+    
+    const options = {
+        mode: 'tree',
+        modes: ['tree', 'code', 'text'], // allowed modes
+        onChange: function () {
+            try {
+                const json = editor.get();
+                metadataInput.value = JSON.stringify(json);
+            } catch (err) {
+                console.error("Invalid JSON", err);
+            }
+        }
+    };
+    
+    const editor = new JSONEditor(container, options);
+    
+    // Initial data
+    let initialJson = {};
+    try {
+        initialJson = JSON.parse(metadataInput.value);
+    } catch (e) {
+        console.warn("Could not parse initial metadata JSON, using empty object", e);
+    }
+    
+    editor.set(initialJson);
+    
+    // Ensure input is updated even if user doesn't change anything
+    metadataInput.value = JSON.stringify(initialJson);
+</script>
+{/body}

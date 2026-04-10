@@ -14,7 +14,7 @@ const { values } = parseArgs({
 });
 
 export const CONFIG = {
-  HUB_URL: values.url || process.env.HUB_URL || "http://localhost:9090",
+  HUB_URL: values.url || process.env.HUB_URL || "http://localhost:9000",
   CLIENT_NAME: values.name || process.env.CLIENT_NAME || "SideAgent-" + Math.random().toString(36).substring(7),
   SELENIUM_REMOTE_URL: values.selenium || process.env.SELENIUM_REMOTE_URL,
 };

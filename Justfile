@@ -20,9 +20,10 @@ build-side-agent:
 run-side-agent:
     cd implementation/client/side-agent && npm run dev
 
-# Run the Spring Boot CMS
+# Run the Quarkus CMS in development mode
 run-cms:
-    cd implementation/server/testgenesis-cms && mvn spring-boot:run
+    cd implementation/server/testgenesis-cms && mvn quarkus:dev
+
 
 # Clean all generated build artifacts
 clean:

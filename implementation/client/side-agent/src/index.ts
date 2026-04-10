@@ -73,31 +73,18 @@ async function main() {
           }
         });
 
-        // Set up heartbeat timer
-        const heartbeatInterval = setInterval(() => {
-          pushRequest(new ListenRequest({
-            event: {
-              case: "heartbeat",
-              value: {}
-            }
-          }));
-        }, 30000);
-
-        try {
-          while (!isShuttingDown) {
-            if (requestQueue.length > 0) {
-              const req = requestQueue.shift()!;
-              yield req;
-            } else {
-              await new Promise<void>((resolve) => {
-                resolveNext = resolve;
-              });
-            }
+        while (!isShuttingDown) {
+          if (requestQueue.length > 0) {
+            const req = requestQueue.shift()!;
+            yield req;
+          } else {
+            await new Promise<void>((resolve) => {
+              resolveNext = resolve;
+            });
           }
-        } finally {
-          clearInterval(heartbeatInterval);
         }
       }
+
 
 
       // We pass the clientId in the headers for session identification.
@@ -129,10 +116,9 @@ async function main() {
             (driver) => activeDrivers.delete(driver)
           );
           processor.process().catch(console.error);
-        } else if (response.event.case === "heartbeat") {
-          console.log("[Listen] Received Heartbeat from Hub");
         }
       }
+
 
 
       // If the Hub closes the stream, we assume a shutdown is requested.

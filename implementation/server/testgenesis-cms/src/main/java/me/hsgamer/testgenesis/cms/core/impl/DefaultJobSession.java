@@ -1,21 +1,21 @@
 package me.hsgamer.testgenesis.cms.core.impl;
 
-import io.grpc.stub.StreamObserver;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 import lombok.Getter;
 import me.hsgamer.testgenesis.cms.core.JobSession;
 import me.hsgamer.testgenesis.cms.core.JobTicket;
 import me.hsgamer.testgenesis.uap.v1.*;
 
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 public class DefaultJobSession implements JobSession {
     @Getter
     private final JobTicket ticket;
-    private final List<Consumer<Telemetry>> telemetryConsumers = new CopyOnWriteArrayList<>();
-    private final List<Consumer<JobStatus>> statusConsumers = new CopyOnWriteArrayList<>();
-    private volatile StreamObserver<JobInstruction> instructionStream;
+    private final BroadcastProcessor<Telemetry> telemetryProcessor = BroadcastProcessor.create();
+    private final BroadcastProcessor<JobStatus> statusProcessor = BroadcastProcessor.create();
+    private final BroadcastProcessor<JobInstruction> instructionProcessor = BroadcastProcessor.create();
+
     @Getter
     private volatile JobStatus status;
     @Getter
@@ -25,21 +25,25 @@ public class DefaultJobSession implements JobSession {
         this.ticket = ticket;
     }
 
-    public void attachInstructionStream(StreamObserver<JobInstruction> stream) {
-        this.instructionStream = stream;
+    public Multi<JobInstruction> instructionStream() {
+        return instructionProcessor;
+    }
+
+    public Multi<JobStatus> statusStream() {
+        return statusProcessor;
+    }
+
+    public Multi<Telemetry> telemetryStream() {
+        return telemetryProcessor;
     }
 
     public void updateStatus(JobStatus status) {
         this.status = status;
-        for (Consumer<JobStatus> consumer : statusConsumers) {
-            consumer.accept(status);
-        }
+        statusProcessor.onNext(status);
     }
 
     public void dispatchTelemetry(Telemetry telemetry) {
-        for (Consumer<Telemetry> consumer : telemetryConsumers) {
-            consumer.accept(telemetry);
-        }
+        telemetryProcessor.onNext(telemetry);
     }
 
     public void completeWithResult(JobResult result) {
@@ -51,19 +55,16 @@ public class DefaultJobSession implements JobSession {
 
     @Override
     public void sendCommand(JobCommand command) {
-        StreamObserver<JobInstruction> stream = instructionStream;
-        if (stream != null) {
-            stream.onNext(JobInstruction.newBuilder().setCommand(command).build());
-        }
+        instructionProcessor.onNext(JobInstruction.newBuilder().setCommand(command).build());
     }
 
     @Override
     public void addTelemetryConsumer(Consumer<Telemetry> consumer) {
-        telemetryConsumers.add(consumer);
+        telemetryStream().subscribe().with(consumer);
     }
 
     @Override
     public void addStatusConsumer(Consumer<JobStatus> consumer) {
-        statusConsumers.add(consumer);
+        statusStream().subscribe().with(consumer);
     }
 }

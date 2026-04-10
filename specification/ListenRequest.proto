@@ -22,10 +22,8 @@ message ListenRequest {
 
     // Response to a translation proposal.
     TranslationAcceptance translation_acceptance = 3;
-
-    // Periodic heartbeat to keep the stream alive.
-    google.protobuf.Empty heartbeat = 4;
   }
+
 
 
 }
