@@ -1,16 +1,15 @@
-import { 
-  JobHub, 
-  JobResponse, 
-  JobStatus, 
-  JobState, 
-  JobResult, 
-  StepReport, 
-  Telemetry, 
-  Severity, 
-  Summary, 
-  Payload,
-  Attachment,
-} from "uap-node";
+import { JobHub } from "./generated/JobHub_connect.js";
+import { JobResponse } from "./generated/JobResponse_pb.js";
+import { JobStatus } from "./generated/JobStatus_pb.js";
+import { JobState } from "./generated/JobState_pb.js";
+import { JobResult } from "./generated/JobResult_pb.js";
+import { StepReport } from "./generated/StepReport_pb.js";
+import { Telemetry } from "./generated/Telemetry_pb.js";
+import { Severity } from "./generated/Severity_pb.js";
+import { Summary } from "./generated/Summary_pb.js";
+import { Payload } from "./generated/Payload_pb.js";
+import { Attachment } from "./generated/Attachment_pb.js";
+
 import { Timestamp, Struct } from "@bufbuild/protobuf";
 import { TestLogger, TestRunner } from "@hsgamer/side-engine";
 import { Builder, WebDriver } from "selenium-webdriver";

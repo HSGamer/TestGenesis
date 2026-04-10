@@ -1,6 +1,12 @@
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createClient } from "@connectrpc/connect";
-import { AgentHub, ListenRequest, AgentRegistration, Capability, JobHub } from "uap-node";
+import { AgentHub } from "./generated/AgentHub_connect.js";
+import { JobHub } from "./generated/JobHub_connect.js";
+import { ListenRequest } from "./generated/ListenRequest_pb.js";
+import { AgentRegistration } from "./generated/AgentRegistration_pb.js";
+import { Capability } from "./generated/Capability_pb.js";
+
+
 import { Empty } from "@bufbuild/protobuf";
 import { WebDriver } from "selenium-webdriver";
 import { CONFIG } from "./config";
