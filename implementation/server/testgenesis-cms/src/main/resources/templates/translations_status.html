@@ -73,11 +73,11 @@
     </div>
 
     <div id="generated-payloads-container">
-        {#if session.resultPayloads && !session.resultPayloads.isEmpty()}
+        {#if !generatedEntities.isEmpty()}
             <div class='mt-2 mb-2'>
                 <h3 class="h5 mb-1">Generated Output</h3>
                 <div class="list-group" id="payloads-list">
-                    {#for p in session.resultPayloads}
+                    {#for p in generatedEntities}
                         <div class='list-item flex-between'>
                           <span>{p.name}</span>
                           <a href='/payloads/{p.id}/edit' class='btn btn-sm btn-outline-primary'>Edit</a>
@@ -86,6 +86,7 @@
                 </div>
             </div>
         {#else}
+
             <div id="dynamic-payloads-container" style="display: none;">
                 <div class='mt-2 mb-2'>
                     <h3 class="h5 mb-1">Generated Output</h3>
@@ -141,11 +142,15 @@
         if (!payloadsList) return;
         if (dynamicContainer) dynamicContainer.style.display = 'block';
         
-        payloadsList.innerHTML = '';
+        // We don't want to clear the list if it already has hydrated results
+        // Just append the new ones if they aren't there
         payloads.forEach(p => {
+            const existing = document.querySelector('a[href="/payloads/' + p.id + '/edit"]');
+            if (existing) return;
+
             const item = document.createElement('div');
             item.className = 'list-item flex-between';
-            item.innerHTML = '<span>' + p.name + '</span> <a href="/payloads/' + p.id + '/edit" class="btn btn-sm btn-outline-primary">Edit</a>';
+            item.innerHTML = '<span>Payload #' + p.id + '</span> <a href="/payloads/' + p.id + '/edit" class="btn btn-sm btn-outline-primary">Edit</a>';
             payloadsList.appendChild(item);
         });
     }

@@ -3,14 +3,22 @@ package me.hsgamer.testgenesis.cms.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import me.hsgamer.testgenesis.cms.core.TranslationSession;
 import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
+import me.hsgamer.testgenesis.uap.v1.Payload;
+import me.hsgamer.testgenesis.uap.v1.TranslationResult;
 
+import java.util.ArrayList;
 import java.util.List;
+
 import java.util.Optional;
 
 @ApplicationScoped
 @RequiredArgsConstructor
+@Slf4j
 public class PayloadService {
+
 
     public List<PayloadEntity> listAll() {
         return PayloadEntity.listAll();
@@ -49,5 +57,30 @@ public class PayloadService {
     @Transactional
     public void delete(Long id) {
         PayloadEntity.deleteById(id);
+    }
+
+    @Transactional
+    public void saveTranslatedPayloads(String sessionId, TranslationResult result, TranslationSession session) {
+        log.info("Translation session {} completed with {} payloads. Auto-saving...",
+                sessionId, result.getPayloadsCount());
+
+        List<TranslationSession.GeneratedPayload> generated = new ArrayList<>();
+        for (Payload p : result.getPayloadsList()) {
+            try {
+                PayloadEntity entity = new PayloadEntity();
+                entity.fillFromProto(p, sessionId);
+                entity.persist();
+
+                session.getResultPayloadIds().add(entity.id);
+                generated.add(new TranslationSession.GeneratedPayload(entity.id));
+                log.info("Saved translated payload: {}", entity.getName());
+            } catch (Exception e) {
+                log.error("Failed to save translated payload for session {}", sessionId, e);
+            }
+        }
+
+        if (!generated.isEmpty()) {
+            session.dispatchResultPayloads(generated);
+        }
     }
 }

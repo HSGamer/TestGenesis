@@ -106,7 +106,7 @@ public class TranslationSession implements Session {
         }
     }
 
-    public record GeneratedPayload(Long id, String name) {
+    public record GeneratedPayload(Long id) {
     }
 }
 

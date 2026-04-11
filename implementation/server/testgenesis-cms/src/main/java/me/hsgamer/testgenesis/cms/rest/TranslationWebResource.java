@@ -104,8 +104,14 @@ public class TranslationWebResource {
             throw new NotFoundException("Translation session not found: " + sessionId);
         }
 
+        List<PayloadEntity> generatedEntities = session.getResultPayloads().stream()
+                .map(p -> payloadService.findById(p.id()).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+
         return translations_status
-                .data("session", session);
+                .data("session", session)
+                .data("generatedEntities", generatedEntities);
     }
 
 
