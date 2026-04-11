@@ -52,33 +52,51 @@
 
 {#body}
 <div id="translation-status-container">
-    <header class="mb-2 d-flex justify-content-between align-items-center">
+    <header class="flex-between mb-1">
         <div>
-            <h2>Translation Session</h2>
-            <p class="small-note">ID: <span id="session-id-display">{session.ticket.sessionId}</span> | Target: {session.ticket.targetFormat}</p>
+            <h2>Translation: {session.ticket.targetFormat}</h2>
+            <code class="small-text text-muted">{session.ticket.sessionId}</code>
         </div>
-        <a href="/payloads" class="btn btn-secondary">Back to Payloads</a>
+        <a href="/translations" class="btn btn-secondary">Back to List</a>
     </header>
 
-    <div class="status-card mb-2">
-        <div class="d-flex flex-column">
-            <span class="small-note mb-1">Current State</span>
-            <div id="status-badge" class="status-badge status-state-pending">Pending</div>
-        </div>
-        
-        <div class="text-end">
-            <span class="small-note mb-1">Status View</span>
-            <div class="h3 mb-0" id="status-display-text">Ready</div>
+    <div class="status-panel mb-1">
+        <div class="d-flex align-items-center gap-2">
+            {#if session.status}
+                <div id="status-badge" class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">{session.status.state.name().replace('TRANSLATION_STATE_', '')}</div>
+                <span id="status-message" class="text-muted">{session.status.message}</span>
+            {#else}
+                <div id="status-badge" class="status-badge status-state-pending">PENDING</div>
+                <span id="status-message" class="text-muted">Waiting for agent connection...</span>
+            {/if}
         </div>
     </div>
 
-    <div id="status-message" class="mb-1 p-1" style="background: rgba(255,255,255,0.05); border-radius: 4px;">
-        Waiting for agent...
+    <div id="generated-payloads-container">
+        {#if session.resultPayloads && !session.resultPayloads.isEmpty()}
+            <div class='mt-2 mb-2'>
+                <h3 class="h5 mb-1">Generated Output</h3>
+                <div class="list-group" id="payloads-list">
+                    {#for p in session.resultPayloads}
+                        <div class='list-item flex-between'>
+                          <span>{p.name}</span>
+                          <a href='/payloads/{p.id}/edit' class='btn btn-sm btn-outline-primary'>Edit</a>
+                        </div>
+                    {/for}
+                </div>
+            </div>
+        {#else}
+            <div id="dynamic-payloads-container" style="display: none;">
+                <div class='mt-2 mb-2'>
+                    <h3 class="h5 mb-1">Generated Output</h3>
+                    <div class="list-group" id="payloads-list"></div>
+                </div>
+            </div>
+        {/if}
     </div>
 
     <div id="telemetry-console">
-        <!-- Logs will be appended here -->
-        <div class="log-line">Initializing telemetry stream...</div>
+        <!-- Logs populated dynamically -->
     </div>
 </div>
 
@@ -87,16 +105,17 @@
     const consoleDiv = document.getElementById('telemetry-console');
     const statusBadge = document.getElementById('status-badge');
     const statusMessage = document.getElementById('status-message');
-    const statusDisplayText = document.getElementById('status-display-text');
+    const dynamicContainer = document.getElementById('dynamic-payloads-container');
+    const payloadsList = document.getElementById('payloads-list');
 
     function appendLog(log) {
         const line = document.createElement('div');
         line.className = 'log-line';
         
-        const timestamp = new Date(log.timestamp).toLocaleTimeString();
+        const timestamp = new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const severityClass = "log-severity-" + (log.level || "INFO").toLowerCase();
         
-        line.innerHTML = '<span class="log-timestamp">[' + timestamp + ']</span><span class="' + severityClass + '">[' + log.level + ']</span> ' + log.message;
+        line.innerHTML = '<span class="log-timestamp">' + timestamp + '</span> <span class="' + severityClass + '">[' + log.level + ']</span> ' + log.message;
         
         consoleDiv.appendChild(line);
         consoleDiv.scrollTop = consoleDiv.scrollHeight;
@@ -104,20 +123,31 @@
 
 
     function updateStatusUI(status) {
-        statusBadge.textContent = status.state.replace('TRANSLATION_STATE_', '');
+        const stateName = status.state.replace('TRANSLATION_STATE_', '');
+        statusBadge.textContent = stateName;
         statusBadge.className = 'status-badge status-state-' + status.state.toLowerCase().replace('translation_state_', '');
-        
-        statusDisplayText.textContent = status.state.replace('TRANSLATION_STATE_', '');
         statusMessage.textContent = status.message || 'Processing...';
 
         if (status.state === 'TRANSLATION_STATE_COMPLETED') {
-             statusDisplayText.textContent = 'DONE';
              appendLog({
                  timestamp: Date.now(),
                  level: 'SUCCESS',
-                 message: 'Translation completed successfully! New payloads have been saved to management.'
+                 message: 'Final artifacts saved to database.'
              });
         }
+    }
+
+    function renderResults(payloads) {
+        if (!payloadsList) return;
+        if (dynamicContainer) dynamicContainer.style.display = 'block';
+        
+        payloadsList.innerHTML = '';
+        payloads.forEach(p => {
+            const item = document.createElement('div');
+            item.className = 'list-item flex-between';
+            item.innerHTML = '<span>' + p.name + '</span> <a href="/payloads/' + p.id + '/edit" class="btn btn-sm btn-outline-primary">Edit</a>';
+            payloadsList.appendChild(item);
+        });
     }
 
 
@@ -137,6 +167,8 @@
             appendLog(data);
         } else if (data.type === 'STATUS') {
             updateStatusUI(data);
+        } else if (data.type === 'RESULT') {
+            renderResults(data.payloads);
         } else if (data.type === 'ERROR') {
             appendLog({ timestamp: Date.now(), level: 'ERROR', message: data.message });
         }

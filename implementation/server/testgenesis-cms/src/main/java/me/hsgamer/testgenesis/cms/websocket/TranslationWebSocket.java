@@ -9,6 +9,7 @@ import me.hsgamer.testgenesis.cms.service.UAPService;
 import me.hsgamer.testgenesis.uap.v1.Telemetry;
 import me.hsgamer.testgenesis.uap.v1.TranslationStatus;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -16,9 +17,9 @@ import java.util.function.Consumer;
 @WebSocket(path = "/telemetry/translation/{sessionId}")
 @Slf4j
 public class TranslationWebSocket {
-
     private final Map<String, Consumer<Telemetry>> teleSubscriptions = new ConcurrentHashMap<>();
     private final Map<String, Consumer<TranslationStatus>> statusSubscriptions = new ConcurrentHashMap<>();
+    private final Map<String, Consumer<List<TranslationSession.GeneratedPayload>>> resultSubscriptions = new ConcurrentHashMap<>();
 
     @Inject
     UAPService uapService;
@@ -45,7 +46,8 @@ public class TranslationWebSocket {
                         telemetry.getSeverity().name(),
                         telemetry.getMessage(),
                         telemetry.getTimestamp().getSeconds() * 1000 + telemetry.getTimestamp().getNanos() / 1000000);
-                connection.sendText(objectMapper.writeValueAsString(msg));
+                connection.sendText(objectMapper.writeValueAsString(msg)).subscribe().with(v -> {
+                }, err -> log.error("WS error", err));
             } catch (Exception e) {
                 log.error("Failed to serialize telemetry", e);
             }
@@ -57,17 +59,30 @@ public class TranslationWebSocket {
                         "STATUS",
                         status.getState().name(),
                         status.getMessage());
-                connection.sendText(objectMapper.writeValueAsString(msg));
+                connection.sendText(objectMapper.writeValueAsString(msg)).subscribe().with(v -> {
+                }, err -> log.error("WS error", err));
             } catch (Exception e) {
                 log.error("Failed to serialize status", e);
             }
         };
 
+        Consumer<List<TranslationSession.GeneratedPayload>> resultConsumer = payloads -> {
+            try {
+                ResultMessage msg = new ResultMessage("RESULT", payloads);
+                connection.sendText(objectMapper.writeValueAsString(msg)).subscribe().with(v -> {
+                }, err -> log.error("WS error", err));
+            } catch (Exception e) {
+                log.error("Failed to serialize results", e);
+            }
+        };
+
         session.addTelemetryConsumer(teleConsumer);
         session.addStatusConsumer(statusConsumer);
+        session.addResultPayloadConsumer(resultConsumer);
 
         teleSubscriptions.put(connection.id(), teleConsumer);
         statusSubscriptions.put(connection.id(), statusConsumer);
+        resultSubscriptions.put(connection.id(), resultConsumer);
     }
 
     @OnClose
@@ -75,22 +90,29 @@ public class TranslationWebSocket {
         TranslationSession session = uapService.getTranslationSessions().get(sessionId);
         if (session != null) {
             Consumer<Telemetry> teleSub = teleSubscriptions.remove(connection.id());
-            if (teleSub != null) {
-                session.removeTelemetryConsumer(teleSub);
-            }
+            if (teleSub != null) session.removeTelemetryConsumer(teleSub);
+
             Consumer<TranslationStatus> statusSub = statusSubscriptions.remove(connection.id());
-            if (statusSub != null) {
-                session.removeStatusConsumer(statusSub);
-            }
+            if (statusSub != null) session.removeStatusConsumer(statusSub);
+
+            Consumer<List<TranslationSession.GeneratedPayload>> resultSub = resultSubscriptions.remove(connection.id());
+            if (resultSub != null) session.removeResultPayloadConsumer(resultSub);
         } else {
             teleSubscriptions.remove(connection.id());
             statusSubscriptions.remove(connection.id());
+            resultSubscriptions.remove(connection.id());
         }
-        log.info("Connection {} closed. Telemetry subscription cancelled.", connection.id());
+        log.info("Connection {} closed.", connection.id());
     }
 
-    public record TelemetryMessage(String type, String level, String message, long timestamp) {}
-    public record StatusMessage(String type, String state, String message) {}
+    public record TelemetryMessage(String type, String level, String message, long timestamp) {
+    }
+
+    public record StatusMessage(String type, String state, String message) {
+    }
+
+    public record ResultMessage(String type, List<TranslationSession.GeneratedPayload> payloads) {
+    }
 }
 
 

@@ -16,6 +16,7 @@ import me.hsgamer.testgenesis.uap.v1.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -48,45 +49,40 @@ public class UAPService {
     }
 
     public Uni<TestTicketResult> registerTest(String agentId, TestTicket ticket) {
-        AgentImpl agent = agents.get(agentId);
-        if (agent == null) {
-            return Uni.createFrom().failure(new IllegalStateException("Agent not found: " + agentId));
-        }
-        if (!agent.isReady()) {
-            return Uni.createFrom().failure(new IllegalStateException("Agent not ready: " + agentId));
-        }
-
-        String sessionId = "JOB-" + UUID.randomUUID();
-
-        return Uni.createFrom().emitter(emitter -> {
-            pendingSessionAcceptances.put(sessionId, acceptance -> {
-                pendingSessionAcceptances.remove(sessionId);
-                if (acceptance.getAccepted()) {
-                    TestSession session = new TestSession(ticket);
-                    testSessions.put(sessionId, session);
-
-                    agent.activeSessionIds().add(sessionId);
-                    emitter.complete(new TestTicketResult(true, acceptance.getReason(), session));
-
-                    agent.emitResponse(ListenResponse.newBuilder()
-                            .setSessionReady(SessionReady.newBuilder().setSessionId(sessionId).build())
-                            .build());
-                } else {
-                    emitter.complete(new TestTicketResult(false, acceptance.getReason(), null));
-                }
-
-            });
-
-            agent.emitResponse(ListenResponse.newBuilder()
-                    .setSessionProposal(SessionProposal.newBuilder()
-                            .setSessionId(sessionId)
-                            .setTest(TestProposalDetails.newBuilder().setType(ticket.testType()).build())
-                            .build())
-                    .build());
-        });
+        return registerSession(agentId, "JOB-",
+                proposal -> proposal.setTest(TestProposalDetails.newBuilder().setType(ticket.testType()).build()),
+                (sessionId, acceptance) -> {
+                    if (acceptance.getAccepted()) {
+                        TestSession session = new TestSession(ticket);
+                        testSessions.put(sessionId, session);
+                        return new TestTicketResult(true, acceptance.getReason(), session);
+                    } else {
+                        return new TestTicketResult(false, acceptance.getReason(), null);
+                    }
+                });
     }
 
     public Uni<TranslationTicketResult> registerTranslation(String agentId, TranslationTicket ticket) {
+        return registerSession(agentId, "TRN-",
+                proposal -> proposal.setTranslation(TranslationProposalDetails.newBuilder().setType(ticket.targetFormat()).build()),
+                (sessionId, acceptance) -> {
+                    if (acceptance.getAccepted()) {
+                        TranslationTicket sessionTicket = new TranslationTicket(sessionId, ticket.targetFormat(), ticket.payloads());
+                        TranslationSession session = new TranslationSession(sessionTicket);
+                        translationSessions.put(sessionId, session);
+                        return new TranslationTicketResult(true, acceptance.getReason(), session);
+                    } else {
+                        return new TranslationTicketResult(false, acceptance.getReason(), null);
+                    }
+                });
+    }
+
+    private <R extends TicketResult> Uni<R> registerSession(
+            String agentId,
+            String sessionIdPrefix,
+            Consumer<SessionProposal.Builder> proposalDecorator,
+            BiFunction<String, SessionAcceptance, R> resultProducer
+    ) {
         AgentImpl agent = agents.get(agentId);
         if (agent == null) {
             return Uni.createFrom().failure(new IllegalStateException("Agent not found: " + agentId));
@@ -95,34 +91,36 @@ public class UAPService {
             return Uni.createFrom().failure(new IllegalStateException("Agent not ready: " + agentId));
         }
 
-        String sessionId = "TRN-" + UUID.randomUUID();
+        String sessionId = sessionIdPrefix + UUID.randomUUID();
 
         return Uni.createFrom().emitter(emitter -> {
             pendingSessionAcceptances.put(sessionId, acceptance -> {
                 pendingSessionAcceptances.remove(sessionId);
+
+                R result = resultProducer.apply(sessionId, acceptance);
+
                 if (acceptance.getAccepted()) {
-                    TranslationTicket sessionTicket = new TranslationTicket(sessionId, ticket.targetFormat(), ticket.payloads());
-                    TranslationSession session = new TranslationSession(sessionTicket);
-                    translationSessions.put(sessionId, session);
-
-
                     agent.activeSessionIds().add(sessionId);
-                    emitter.complete(new TranslationTicketResult(true, acceptance.getReason(), session));
 
+                    if (result.session() != null) {
+                        result.session().onCompletion(() -> agent.activeSessionIds().remove(sessionId));
+                    }
+                }
+
+                emitter.complete(result);
+
+                if (acceptance.getAccepted()) {
                     agent.emitResponse(ListenResponse.newBuilder()
                             .setSessionReady(SessionReady.newBuilder().setSessionId(sessionId).build())
                             .build());
-                } else {
-                    emitter.complete(new TranslationTicketResult(false, acceptance.getReason(), null));
                 }
-
             });
 
+            SessionProposal.Builder proposalBuilder = SessionProposal.newBuilder().setSessionId(sessionId);
+            proposalDecorator.accept(proposalBuilder);
+
             agent.emitResponse(ListenResponse.newBuilder()
-                    .setSessionProposal(SessionProposal.newBuilder()
-                            .setSessionId(sessionId)
-                            .setTranslation(TranslationProposalDetails.newBuilder().setType(ticket.targetFormat()).build())
-                            .build())
+                    .setSessionProposal(proposalBuilder.build())
                     .build());
         });
     }

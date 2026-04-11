@@ -1,21 +1,29 @@
 package me.hsgamer.testgenesis.cms.core;
 
 import lombok.Getter;
-import me.hsgamer.testgenesis.uap.v1.*;
+import me.hsgamer.testgenesis.cms.util.StatusUtil;
+import me.hsgamer.testgenesis.uap.v1.Telemetry;
+import me.hsgamer.testgenesis.uap.v1.TestCommand;
+import me.hsgamer.testgenesis.uap.v1.TestResult;
+import me.hsgamer.testgenesis.uap.v1.TestStatus;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class TestSession {
+public class TestSession implements Session {
+
     @Getter
     private final TestTicket ticket;
-    
     private final List<Consumer<Telemetry>> telemetryConsumers = new CopyOnWriteArrayList<>();
+    private final List<Telemetry> telemetryHistory = new CopyOnWriteArrayList<>();
     private final List<Consumer<TestStatus>> statusConsumers = new CopyOnWriteArrayList<>();
+
     private final List<Consumer<TestResult>> resultConsumers = new CopyOnWriteArrayList<>();
+    private final List<Runnable> completionListeners = new CopyOnWriteArrayList<>();
     @Getter
     private Consumer<TestCommand> commandDispatcher;
+
 
     @Getter
     private volatile TestStatus status;
@@ -33,11 +41,18 @@ public class TestSession {
     public void updateStatus(TestStatus status) {
         this.status = status;
         statusConsumers.forEach(consumer -> consumer.accept(status));
+
+        if (StatusUtil.isTerminal(status.getState())) {
+            completionListeners.forEach(Runnable::run);
+            completionListeners.clear();
+        }
     }
 
     public void dispatchTelemetry(Telemetry telemetry) {
+        telemetryHistory.add(telemetry);
         telemetryConsumers.forEach(consumer -> consumer.accept(telemetry));
     }
+
 
     public void completeWithResult(TestResult result) {
         this.result = result;
@@ -55,8 +70,10 @@ public class TestSession {
 
     public void addTelemetryConsumer(Consumer<Telemetry> consumer) {
         telemetryConsumers.add(consumer);
+        telemetryHistory.forEach(consumer);
     }
-    
+
+
     public void removeTelemetryConsumer(Consumer<Telemetry> consumer) {
         telemetryConsumers.remove(consumer);
     }
@@ -67,15 +84,24 @@ public class TestSession {
             consumer.accept(status);
         }
     }
-    
+
     public void removeStatusConsumer(Consumer<TestStatus> consumer) {
         statusConsumers.remove(consumer);
     }
-    
+
     public void addResultConsumer(Consumer<TestResult> consumer) {
         resultConsumers.add(consumer);
         if (result != null) {
             consumer.accept(result);
         }
     }
+
+    public void onCompletion(Runnable callback) {
+        if (status != null && StatusUtil.isTerminal(status.getState())) {
+            callback.run();
+        } else {
+            completionListeners.add(callback);
+        }
+    }
 }
+

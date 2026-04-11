@@ -170,6 +170,75 @@ textarea:not(.jsoneditor *):focus {
     align-items: center;
 }
 
+.gap-2 { gap: 1rem; }
+.d-flex { display: flex; }
+.align-items-center { align-items: center; }
+
+/* Status Components */
+.status-panel {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background-color: #334155;
+    color: #94a3b8;
+}
+
+.status-state-running { background-color: rgba(56, 189, 248, 0.1); color: var(--primary-color); border: 1px solid rgba(56, 189, 248, 0.2); }
+.status-state-completed { background-color: rgba(34, 197, 94, 0.1); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.2); }
+.status-state-failed { background-color: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+.status-state-pending { background-color: rgba(148, 163, 184, 0.1); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2); }
+
+/* List Groups */
+.list-group {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.list-item {
+    padding: 0.75rem 1rem;
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.list-item:last-child {
+    border-bottom: none;
+}
+
+/* Console */
+#telemetry-console {
+    background-color: #0d1117;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    height: 400px;
+    overflow-y: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.85rem;
+}
+
+.log-line {
+    margin-bottom: 0.25rem;
+}
+
+.log-timestamp { color: #4b5563; margin-right: 0.5rem; }
+.log-severity-info { color: #3b82f6; }
+.log-severity-warn { color: #f59e0b; }
+.log-severity-error { color: #ef4444; }
+.log-severity-success { color: #10b981; }
+
+.small-text { font-size: 0.85rem; }
+.text-muted { color: #94a3b8; }
+
 .inline-form {
     display: inline;
 }
@@ -177,7 +246,10 @@ textarea:not(.jsoneditor *):focus {
 .mt-1 { margin-top: 1rem; }
 .mb-1 { margin-bottom: 1rem; }
 .mt-2 { margin-top: 2rem; }
+.mb-2 { margin-bottom: 2rem; }
 .small-note { font-size: 0.9rem; color: #94a3b8; }
+
+.text-underline-dotted { border-bottom: 1px dotted var(--border-color); cursor: help; }
 
 #main-footer {
     padding: 1.5rem 0;
@@ -187,4 +259,5 @@ textarea:not(.jsoneditor *):focus {
     color: #94a3b8;
     font-size: 0.85rem;
 }
+
 

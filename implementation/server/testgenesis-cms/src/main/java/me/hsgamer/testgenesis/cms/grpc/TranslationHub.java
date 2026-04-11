@@ -3,7 +3,6 @@ package me.hsgamer.testgenesis.cms.grpc;
 import io.grpc.Status;
 import io.quarkus.grpc.GrpcService;
 import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.Uni;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.core.TranslationSession;
@@ -63,7 +62,7 @@ public class TranslationHub extends MutinyTranslationHubGrpc.TranslationHubImplB
                     .addAllPayloads(session.getTicket().payloads())
                     .build();
             emitter.emit(initMsg);
-            
+
             // Completes the stream on the server side because we only ever send 1 message. 
             // In a continuous outbound stream we'd keep it open, but complete() is fine here.
             // Wait, we probably need to keep the gRPC stream open if we expect the client to keep sending data.

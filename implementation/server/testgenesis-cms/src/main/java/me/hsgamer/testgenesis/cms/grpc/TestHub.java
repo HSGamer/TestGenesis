@@ -3,7 +3,6 @@ package me.hsgamer.testgenesis.cms.grpc;
 import io.grpc.Status;
 import io.quarkus.grpc.GrpcService;
 import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.Uni;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.core.TestSession;
@@ -62,7 +61,7 @@ public class TestHub extends MutinyTestHubGrpc.TestHubImplBase {
                             .addAllPayloads(session.getTicket().payloads()))
                     .build();
             emitter.emit(initMsg);
-            
+
             session.setCommandDispatcher(cmd -> {
                 emitter.emit(TestInstruction.newBuilder().setCommand(cmd).build());
             });

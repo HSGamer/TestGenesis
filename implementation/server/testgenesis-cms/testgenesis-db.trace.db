@@ -1,6 +1,0 @@
-2026-04-11 10:43:54.913836+07:00 jdbc[4]: exception
-org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "HTE_PAYLOADENTITY" already exists; SQL statement:
-create global temporary table HTE_PayloadEntity(rn_ integer not null, id bigint, attachmentMimeType varchar(255), attachmentName varchar(255), description varchar(255), name varchar(255), type varchar(255), attachmentData blob, metadata TEXT, primary key (rn_)) transactional [42101-240]
-2026-04-11 10:43:54.915377+07:00 jdbc[4]: exception
-org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "HTE_TESTENTITY" already exists; SQL statement:
-create global temporary table HTE_TestEntity(rn_ integer not null, id bigint, description varchar(255), name varchar(255), testType varchar(255), primary key (rn_)) transactional [42101-240]

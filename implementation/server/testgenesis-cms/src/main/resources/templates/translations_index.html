@@ -1,0 +1,76 @@
+{#include base.html}
+{#title}Translation Dashboard{/title}
+
+{#head}
+<style>
+    .session-table {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .col-id {
+        width: 35%;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    .col-type { width: 15%; }
+    .col-status { width: 35%; }
+    .col-actions { width: 15%; text-align: right; }
+</style>
+{/head}
+
+{#body}
+<div id="translations-dashboard">
+    <header class="flex-between mb-2">
+        <h2>Sessions</h2>
+        <a href="/translations/new" class="btn btn-primary">New Translation</a>
+    </header>
+
+    <div class="table-container">
+        <table class="session-table">
+            <thead>
+                <tr>
+                    <th class="col-id">ID</th>
+                    <th class="col-type">Format</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-actions"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {#for session in sessions}
+                <tr>
+                    <td class="col-id" title="{session.ticket.sessionId}">
+                        <code>{session.ticket.sessionId}</code>
+                    </td>
+                    <td class="col-type">{session.ticket.targetFormat}</td>
+                    <td class="col-status">
+                        <div class="d-flex align-items-center gap-2">
+                            {#if session.status}
+                                <span class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
+                                    {session.status.state.name().replace('TRANSLATION_STATE_', '')}
+                                </span>
+                                <span class="small-text text-muted text-underline-dotted" title="{session.status.message}">
+                                    {session.status.message}
+                                </span>
+                            {#else}
+                                <span class="status-badge status-state-pending">PENDING</span>
+                            {/if}
+                        </div>
+                    </td>
+                    <td class="col-actions">
+                        <a href="/translations/{session.ticket.sessionId}/status" class="btn btn-sm btn-secondary">Open</a>
+                    </td>
+                </tr>
+                {#else}
+                <tr>
+                    <td colspan="4" class="text-center py-4">
+                        <div class="text-muted">No active translation sessions found.</div>
+                    </td>
+                </tr>
+                {/for}
+            </tbody>
+        </table>
+    </div>
+</div>
+{/body}

@@ -5,9 +5,7 @@ import io.quarkus.qute.TemplateInstance;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
-
 import jakarta.inject.Inject;
-
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -15,10 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.core.TranslationSession;
 import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
 import me.hsgamer.testgenesis.cms.service.PayloadService;
-
 import me.hsgamer.testgenesis.cms.service.TranslationManager;
 import me.hsgamer.testgenesis.cms.service.UAPService;
-import me.hsgamer.testgenesis.cms.dto.*;
 import me.hsgamer.testgenesis.uap.v1.Payload;
 import org.jboss.resteasy.reactive.RestForm;
 
@@ -35,7 +31,7 @@ public class TranslationWebResource {
 
     @Inject
     PayloadService payloadService;
-    
+
     @Inject
     TranslationManager translationManager;
 
@@ -44,6 +40,16 @@ public class TranslationWebResource {
 
     @Inject
     Template translations_status;
+
+    @Inject
+    Template translations_index;
+
+    @GET
+    @Produces(MediaType.TEXT_HTML)
+    @Blocking
+    public TemplateInstance list() {
+        return translations_index.data("sessions", uapService.getTranslationSessions().values());
+    }
 
     @GET
     @Path("/new")
@@ -91,11 +97,16 @@ public class TranslationWebResource {
     @GET
     @Path("/{sessionId}/status")
     @Produces(MediaType.TEXT_HTML)
+    @Blocking
     public TemplateInstance status(@PathParam("sessionId") String sessionId) {
         TranslationSession session = uapService.getTranslationSessions().get(sessionId);
         if (session == null) {
             throw new NotFoundException("Translation session not found: " + sessionId);
         }
-        return translations_status.data("session", session);
+
+        return translations_status
+                .data("session", session);
     }
+
+
 }

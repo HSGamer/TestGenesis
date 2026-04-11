@@ -19,6 +19,7 @@ public class PayloadEntity extends PanacheEntity {
     public String description;
     public String type;
 
+
     public String attachmentName;
     public String attachmentMimeType;
 
@@ -44,6 +45,7 @@ public class PayloadEntity extends PanacheEntity {
 
     public void fillFromProto(Payload p, String sessionId) {
         this.type = p.getType();
+
         this.metadata = ProtoUtil.structToJson(p.getMetadata());
         if (p.hasAttachment()) {
             this.attachmentName = p.getAttachment().getName();
