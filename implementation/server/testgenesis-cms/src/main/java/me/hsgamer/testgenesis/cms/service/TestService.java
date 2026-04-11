@@ -40,13 +40,13 @@ public class TestService {
         entity.setName(updated.getName());
         entity.setDescription(updated.getDescription());
         entity.setTestType(updated.getTestType());
-        
+
         if (payloadIds != null) {
             entity.setPayloads(fetchPayloads(payloadIds));
         } else {
             entity.getPayloads().clear();
         }
-        
+
         return entity;
     }
 
@@ -56,13 +56,13 @@ public class TestService {
         if (original == null) {
             throw new IllegalArgumentException("Test not found: " + id);
         }
-        
+
         TestEntity copy = new TestEntity();
         copy.setName(original.getName() + " (Copy)");
         copy.setDescription(original.getDescription());
         copy.setTestType(original.getTestType());
         copy.setPayloads(new ArrayList<>(original.getPayloads()));
-        
+
         copy.persist();
         return copy;
     }

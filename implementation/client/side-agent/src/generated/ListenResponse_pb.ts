@@ -9,6 +9,7 @@ import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialM
 import { Message, proto3 } from "@bufbuild/protobuf";
 import { JobProposal } from "./JobProposal_pb.js";
 import { TranslationProposal } from "./TranslationProposal_pb.js";
+import { SessionReady } from "./SessionReady_pb.js";
 
 /**
  * ListenResponse is the Hub-to-Agent envelope for the unified control stream.
@@ -37,6 +38,14 @@ export class ListenResponse extends Message<ListenResponse> {
      */
     value: TranslationProposal;
     case: "translationProposal";
+  } | {
+    /**
+     * Sync signal stating the backend successfully registered the session
+     *
+     * @generated from field: uap.v1.SessionReady session_ready = 3;
+     */
+    value: SessionReady;
+    case: "sessionReady";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<ListenResponse>) {
@@ -49,6 +58,7 @@ export class ListenResponse extends Message<ListenResponse> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "job_proposal", kind: "message", T: JobProposal, oneof: "event" },
     { no: 2, name: "translation_proposal", kind: "message", T: TranslationProposal, oneof: "event" },
+    { no: 3, name: "session_ready", kind: "message", T: SessionReady, oneof: "event" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListenResponse {

@@ -7,17 +7,14 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
 import me.hsgamer.testgenesis.cms.persistence.TestEntity;
 import me.hsgamer.testgenesis.cms.service.PayloadService;
 import me.hsgamer.testgenesis.cms.service.TestService;
 import me.hsgamer.testgenesis.cms.service.UAPService;
-
 import org.jboss.resteasy.reactive.RestForm;
 
 import java.net.URI;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Path("/tests")
 @Slf4j

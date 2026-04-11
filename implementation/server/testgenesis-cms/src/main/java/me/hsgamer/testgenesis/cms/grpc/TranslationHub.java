@@ -6,7 +6,7 @@ import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import me.hsgamer.testgenesis.cms.core.impl.DefaultTranslationSession;
+import me.hsgamer.testgenesis.cms.core.TranslationSession;
 import me.hsgamer.testgenesis.cms.service.UAPService;
 import me.hsgamer.testgenesis.uap.v1.*;
 
@@ -25,7 +25,8 @@ public class TranslationHub extends MutinyTranslationHubGrpc.TranslationHubImplB
                     .asRuntimeException());
         }
 
-        DefaultTranslationSession session = uapService.getTranslationSessions().get(sessionId);
+        TranslationSession session = uapService.getTranslationSessions().get(sessionId);
+
         if (session == null) {
             return Multi.createFrom().failure(Status.NOT_FOUND
                     .withDescription("Session not found: " + sessionId)
@@ -34,35 +35,42 @@ public class TranslationHub extends MutinyTranslationHubGrpc.TranslationHubImplB
 
         log.info("Translation execution stream opened for session: {}", sessionId);
 
-        Multi<TranslationInit> requestHandler = requests
-                .onItem().transformToUniAndConcatenate(value -> {
-                    switch (value.getEventCase()) {
-                        case STATUS -> session.updateStatus(value.getStatus());
-                        case TELEMETRY -> session.dispatchTelemetry(value.getTelemetry());
-                        case RESULT -> session.completeWithResult(value.getResult());
-                        case EVENT_NOT_SET -> {
-                        }
+        // 1. Handle incoming responses from the agent
+        requests.subscribe().with(
+                response -> {
+                    switch (response.getEventCase()) {
+                        case STATUS -> session.updateStatus(response.getStatus());
+                        case TELEMETRY -> session.dispatchTelemetry(response.getTelemetry());
+                        case RESULT -> session.completeWithResult(response.getResult());
                     }
-                    return Uni.createFrom().<TranslationInit>nullItem();
-                })
-                .onTermination().invoke((failure, cancelled) -> {
-                    if (cancelled || failure != null) {
-                        session.updateStatus(TranslationStatus.newBuilder()
-                                .setState(TranslationState.TRANSLATION_STATE_FAILED)
-                                .setMessage("Stream terminated: failure=" + (failure != null ? failure.getMessage() : "none") + ", cancelled=" + cancelled)
-                                .build());
-                    }
-                });
+                },
+                failure -> {
+                    log.error("Translation stream failure for session {}", sessionId, failure);
+                    session.updateStatus(TranslationStatus.newBuilder()
+                            .setState(TranslationState.TRANSLATION_STATE_FAILED)
+                            .setMessage("Stream failed: " + failure.getMessage())
+                            .build());
+                },
+                () -> {
+                    log.info("Translation stream completed by client for session {}", sessionId);
+                }
+        );
 
-        Multi<TranslationInit> inboundInit = Multi.createFrom().item(TranslationInit.newBuilder()
-                .setTargetFormat(session.getTicket().targetFormat())
-                .addAllPayloads(session.getTicket().payloads())
-                .build());
-
-        return Multi.createBy().merging().streams(requestHandler, inboundInit)
-                .onTermination().invoke((failure, cancelled) -> {
-                    log.info("Translation stream termination for session {}: failure={}, cancelled={}",
-                            sessionId, failure != null ? failure.getMessage() : "none", cancelled);
-                });
+        // 2. Return the outgoing initialization payload
+        return Multi.createFrom().emitter(emitter -> {
+            TranslationInit initMsg = TranslationInit.newBuilder()
+                    .setTargetFormat(session.getTicket().targetFormat())
+                    .addAllPayloads(session.getTicket().payloads())
+                    .build();
+            emitter.emit(initMsg);
+            
+            // Completes the stream on the server side because we only ever send 1 message. 
+            // In a continuous outbound stream we'd keep it open, but complete() is fine here.
+            // Wait, we probably need to keep the gRPC stream open if we expect the client to keep sending data.
+            // Under mutiny gRPC bidirectional streams, if the server completes its returned stream,
+            // the server closes its write direction, but the read direction can technically stay open.
+            // However, usually it's best to not complete if the client expects a long-lived bidirectional channel.
+            // We'll leave it open but not emit anything else, and just clean up on termination if needed.
+        });
     }
 }

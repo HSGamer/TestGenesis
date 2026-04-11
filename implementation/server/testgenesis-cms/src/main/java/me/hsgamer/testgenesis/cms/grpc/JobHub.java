@@ -6,7 +6,7 @@ import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import me.hsgamer.testgenesis.cms.core.impl.DefaultJobSession;
+import me.hsgamer.testgenesis.cms.core.JobSession;
 import me.hsgamer.testgenesis.cms.service.UAPService;
 import me.hsgamer.testgenesis.uap.v1.*;
 
@@ -25,7 +25,8 @@ public class JobHub extends MutinyJobHubGrpc.JobHubImplBase {
                     .asRuntimeException());
         }
 
-        DefaultJobSession session = uapService.getJobSessions().get(sessionId);
+        JobSession session = uapService.getJobSessions().get(sessionId);
+
         if (session == null) {
             return Multi.createFrom().failure(Status.NOT_FOUND
                     .withDescription("Session not found: " + sessionId)
@@ -34,36 +35,38 @@ public class JobHub extends MutinyJobHubGrpc.JobHubImplBase {
 
         log.info("Job execution stream opened for session: {}", sessionId);
 
-        Multi<JobInstruction> requestHandler = requests
-                .onItem().transformToUniAndConcatenate(value -> {
-                    switch (value.getEventCase()) {
-                        case STATUS -> session.updateStatus(value.getStatus());
-                        case TELEMETRY -> session.dispatchTelemetry(value.getTelemetry());
-                        case RESULT -> session.completeWithResult(value.getResult());
-                        case EVENT_NOT_SET -> {
-                        }
+        requests.subscribe().with(
+                response -> {
+                    switch (response.getEventCase()) {
+                        case STATUS -> session.updateStatus(response.getStatus());
+                        case TELEMETRY -> session.dispatchTelemetry(response.getTelemetry());
+                        case RESULT -> session.completeWithResult(response.getResult());
                     }
-                    return Uni.createFrom().<JobInstruction>nullItem();
-                })
-                .onTermination().invoke((failure, cancelled) -> {
-                    if (cancelled || failure != null) {
-                        session.updateStatus(JobStatus.newBuilder()
-                                .setState(JobState.JOB_STATE_FAILED)
-                                .setMessage("Stream terminated: failure=" + (failure != null ? failure.getMessage() : "none") + ", cancelled=" + cancelled)
-                                .build());
-                    }
-                });
+                },
+                failure -> {
+                    log.error("Job stream failure for session {}", sessionId, failure);
+                    session.updateStatus(JobStatus.newBuilder()
+                            .setState(JobState.JOB_STATE_FAILED)
+                            .setMessage("Stream failed: " + failure.getMessage())
+                            .build());
+                },
+                () -> {
+                    log.info("Job stream completed by client for session {}", sessionId);
+                }
+        );
 
-        Multi<JobInstruction> initStream = Multi.createFrom().item(JobInstruction.newBuilder()
-                .setJobInit(JobRequest.newBuilder()
-                        .setTestType(session.getTicket().testType())
-                        .addAllPayloads(session.getTicket().payloads()))
-                .build());
-
-        return Multi.createBy().merging().streams(requestHandler, initStream, session.instructionStream())
-                .onTermination().invoke((failure, cancelled) -> {
-                    log.info("Job stream termination for session {}: failure={}, cancelled={}",
-                            sessionId, failure != null ? failure.getMessage() : "none", cancelled);
-                });
+        return Multi.createFrom().emitter(emitter -> {
+            JobInstruction initMsg = JobInstruction.newBuilder()
+                    .setJobInit(JobRequest.newBuilder()
+                            .setTestType(session.getTicket().testType())
+                            .addAllPayloads(session.getTicket().payloads()))
+                    .build();
+            emitter.emit(initMsg);
+            
+            session.setCommandDispatcher(cmd -> {
+                emitter.emit(JobInstruction.newBuilder().setCommand(cmd).build());
+            });
+        });
     }
 }
+

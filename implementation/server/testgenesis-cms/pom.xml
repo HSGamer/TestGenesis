@@ -76,6 +76,16 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-websockets-next</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+            <version>4.33.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5</artifactId>
             <scope>test</scope>
         </dependency>

@@ -5,7 +5,7 @@ package uap.v1;
 
 import "JobProposal.proto";
 import "TranslationProposal.proto";
-
+import "SessionReady.proto";
 
 option java_package = "me.hsgamer.testgenesis.uap.v1";
 option java_multiple_files = true;
@@ -19,7 +19,8 @@ message ListenResponse {
 
     // Heartbeat and pull signal (Agent idle and ready).
     TranslationProposal translation_proposal = 2;
+
+    // Sync signal stating the backend successfully registered the session
+    SessionReady session_ready = 3;
   }
-
-
 }

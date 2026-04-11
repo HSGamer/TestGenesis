@@ -2,15 +2,16 @@ package me.hsgamer.testgenesis.cms.service;
 
 import io.grpc.Context;
 import io.grpc.Metadata;
-import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.core.*;
-import me.hsgamer.testgenesis.cms.core.impl.DefaultJobSession;
-import me.hsgamer.testgenesis.cms.core.impl.DefaultTranslationSession;
+import me.hsgamer.testgenesis.cms.dto.AgentGuidedInfo;
+import me.hsgamer.testgenesis.cms.dto.AgentTranslationInfo;
+import me.hsgamer.testgenesis.cms.dto.TestTypeInfo;
+import me.hsgamer.testgenesis.cms.dto.TranslationTypeInfo;
 import me.hsgamer.testgenesis.uap.v1.*;
 
 import java.util.*;
@@ -34,9 +35,10 @@ public class UAPService {
     @Getter
     private final Map<String, Consumer<TranslationAcceptance>> pendingTranslationAcceptances = new ConcurrentHashMap<>();
     @Getter
-    private final Map<String, DefaultJobSession> jobSessions = new ConcurrentHashMap<>();
+    private final Map<String, JobSession> jobSessions = new ConcurrentHashMap<>();
     @Getter
-    private final Map<String, DefaultTranslationSession> translationSessions = new ConcurrentHashMap<>();
+    private final Map<String, TranslationSession> translationSessions = new ConcurrentHashMap<>();
+
 
     public Map<String, Agent> getAgents() {
         return Collections.unmodifiableMap(agents);
@@ -61,13 +63,19 @@ public class UAPService {
             pendingJobAcceptances.put(sessionId, acceptance -> {
                 pendingJobAcceptances.remove(sessionId);
                 if (acceptance.getAccepted()) {
-                    DefaultJobSession session = new DefaultJobSession(ticket);
+                    JobSession session = new JobSession(ticket);
                     jobSessions.put(sessionId, session);
+
                     agent.activeSessionIds().add(sessionId);
                     emitter.complete(new JobTicketResult(true, acceptance.getReason(), session));
+
+                    agent.emitResponse(ListenResponse.newBuilder()
+                            .setSessionReady(SessionReady.newBuilder().setSessionId(sessionId).build())
+                            .build());
                 } else {
                     emitter.complete(new JobTicketResult(false, acceptance.getReason(), null));
                 }
+
             });
 
             agent.emitResponse(ListenResponse.newBuilder()
@@ -93,13 +101,21 @@ public class UAPService {
             pendingTranslationAcceptances.put(sessionId, acceptance -> {
                 pendingTranslationAcceptances.remove(sessionId);
                 if (acceptance.getAccepted()) {
-                    DefaultTranslationSession session = new DefaultTranslationSession(ticket);
+                    TranslationTicket sessionTicket = new TranslationTicket(sessionId, ticket.targetFormat(), ticket.payloads());
+                    TranslationSession session = new TranslationSession(sessionTicket);
                     translationSessions.put(sessionId, session);
+
+
                     agent.activeSessionIds().add(sessionId);
                     emitter.complete(new TranslationTicketResult(true, acceptance.getReason(), session));
+
+                    agent.emitResponse(ListenResponse.newBuilder()
+                            .setSessionReady(SessionReady.newBuilder().setSessionId(sessionId).build())
+                            .build());
                 } else {
                     emitter.complete(new TranslationTicketResult(false, acceptance.getReason(), null));
                 }
+
             });
 
             agent.emitResponse(ListenResponse.newBuilder()
@@ -119,7 +135,7 @@ public class UAPService {
 
         for (String sessionId : agent.activeSessionIds()) {
             if (sessionId.startsWith("JOB-")) {
-                DefaultJobSession session = jobSessions.remove(sessionId);
+                JobSession session = jobSessions.remove(sessionId);
                 if (session != null) {
                     session.updateStatus(JobStatus.newBuilder()
                             .setState(JobState.JOB_STATE_FAILED)
@@ -127,7 +143,7 @@ public class UAPService {
                             .build());
                 }
             } else if (sessionId.startsWith("TRN-")) {
-                DefaultTranslationSession session = translationSessions.remove(sessionId);
+                TranslationSession session = translationSessions.remove(sessionId);
                 if (session != null) {
                     session.updateStatus(TranslationStatus.newBuilder()
                             .setState(TranslationState.TRANSLATION_STATE_FAILED)
@@ -136,6 +152,7 @@ public class UAPService {
                 }
             }
         }
+
     }
 
     public Set<String> getAvailablePayloadTypes() {
@@ -212,34 +229,73 @@ public class UAPService {
                 ));
     }
 
+    public List<AgentTranslationInfo> getAgentTranslationInfos() {
+        List<AgentTranslationInfo> infos = new ArrayList<>();
+        for (Map.Entry<String, AgentImpl> entry : agents.entrySet()) {
+            String id = entry.getKey();
+            AgentImpl agent = entry.getValue();
+            List<TranslationTypeInfo> translations = new ArrayList<>();
+
+            for (Capability capability : agent.capabilities()) {
+                if (capability.getFormatCase() == Capability.FormatCase.TRANSLATION) {
+                    TranslationCapability trans = capability.getTranslation();
+                    List<String> sourceTypes = trans.getSourcePayloadsList().stream()
+                            .map(PayloadRequirement::getType)
+                            .toList();
+                    List<String> targetTypes = trans.getTargetPayloadsList().stream()
+                            .map(PayloadRequirement::getType)
+                            .toList();
+                    translations.add(new TranslationTypeInfo(trans.getType(), sourceTypes, targetTypes));
+                }
+            }
+            if (!translations.isEmpty()) {
+                infos.add(new AgentTranslationInfo(id, agent.displayName(), translations));
+            }
+        }
+        return infos;
+    }
 
 
-
-    public record AgentGuidedInfo(String id, String displayName, List<TestTypeInfo> supportedTypes) {}
-
-    public record TestTypeInfo(String testType, List<String> requiredPayloadTypes, List<String> optionalPayloadTypes) {}
-
-    public record AgentImpl(String displayName, List<Capability> capabilities,
-                            BroadcastProcessor<ListenResponse> processor,
-                            Set<String> activeSessionIds) implements Agent {
-
+    public static class AgentImpl implements Agent {
+        private final String displayName;
+        private final List<Capability> capabilities;
+        private final Set<String> activeSessionIds = ConcurrentHashMap.newKeySet();
+        private Consumer<ListenResponse> streamDispatcher;
 
         public AgentImpl(String displayName, List<Capability> capabilities) {
-            this(displayName, capabilities, BroadcastProcessor.create(), ConcurrentHashMap.newKeySet());
+            this.displayName = displayName;
+            this.capabilities = capabilities;
+        }
+
+        @Override
+        public String displayName() {
+            return displayName;
+        }
+
+        @Override
+        public List<Capability> capabilities() {
+            return capabilities;
+        }
+
+        public Set<String> activeSessionIds() {
+            return activeSessionIds;
         }
 
         @Override
         public boolean isReady() {
-            return true; // We can always accept items, they just drop if no one listens
+            return streamDispatcher != null;
         }
 
-        public Multi<ListenResponse> listenStream() {
-            return processor;
+        public void setStreamDispatcher(Consumer<ListenResponse> dispatcher) {
+            this.streamDispatcher = dispatcher;
         }
 
         public void emitResponse(ListenResponse response) {
-            processor.onNext(response);
+            if (this.streamDispatcher != null) {
+                this.streamDispatcher.accept(response);
+            }
         }
     }
 }
+
 

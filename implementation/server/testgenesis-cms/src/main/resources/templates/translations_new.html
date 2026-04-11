@@ -1,0 +1,181 @@
+{#include base.html}
+{#title}New Translation{/title}
+
+{#head}
+<style>
+    .payload-selection {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+    .payload-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .payload-item:last-child { border-bottom: none; }
+    .payload-item input { margin-right: 1rem; width: auto; }
+    .payload-item label { margin-bottom: 0; cursor: pointer; flex: 1; }
+    
+    .highlight-suggested {
+        background-color: rgba(139, 92, 246, 0.1);
+        border: 1px solid var(--secondary-color) !important;
+        position: relative;
+    }
+    .highlight-suggested::after {
+        content: "Required";
+        position: absolute;
+        right: 0.5rem;
+        top: 0.2rem;
+        font-size: 0.65rem;
+        color: var(--secondary-color);
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .hidden { display: none !important; }
+</style>
+{/head}
+
+{#body}
+<div id="translation-new-container">
+    <header id="form-header" class="mb-2">
+        <h2 id="form-title">Start New Translation</h2>
+        <p class="small-note">Convert your test scripts and artifacts between protocol formats.</p>
+    </header>
+
+    <form id="translation-form" action="/translations/start" method="POST">
+        <div class="form-group">
+            <label for="select-agent">Translation Agent</label>
+            <select id="select-agent" name="agentId" required>
+                <option value="">-- Select Agent --</option>
+                {#for agent in agents}
+                    <option value="{agent.id}">{agent.displayName}</option>
+                {#else}
+                    <option disabled>No agents with translation capability active</option>
+                {/for}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="select-type">Translation Type</label>
+            <select id="select-type" name="type" required disabled>
+                <option value="">-- Select Agent First --</option>
+            </select>
+            <p class="small-note mt-1" id="type-description"></p>
+        </div>
+
+        <div class="form-group">
+            <label>Select Source Payloads</label>
+            <div id="payload-selection-list" class="payload-selection">
+                {#for p in allPayloads}
+                    <div class="payload-item" data-payload-type="{p.type}" id="item-p-{p.id}">
+                        <input type="checkbox" id="p-{p.id}" name="payloadIds" value="{p.id}">
+                        <label for="p-{p.id}">
+                            <strong>{p.name}</strong> 
+                            <span class="small-note">({p.type})</span>
+                        </label>
+                    </div>
+                {#else}
+                    <p class="small-note">No payloads available. <a href="/payloads/new">Create one first</a>.</p>
+                {/for}
+            </div>
+            <p class="small-note mt-1">Only payloads matching the required source formats are shown.</p>
+        </div>
+
+        <footer id="form-footer" class="mt-2">
+            <button type="submit" id="btn-start-translation" class="btn btn-primary" disabled>Start Translation</button>
+            <a href="/payloads" class="btn btn-secondary">Cancel</a>
+        </footer>
+    </form>
+</div>
+
+<script>
+    const agents = [
+        {#for agent in agents}
+        {
+            id: "{agent.id}",
+            displayName: "{agent.displayName}",
+            supportedTranslations: [
+                {#for st in agent.supportedTranslations}
+                {
+                    type: "{st.type}",
+                    sourceTypes: [{#for stp in st.sourcePayloadTypes}"{stp}"{#if stp_hasNext},{/if}{/for}],
+                    targetTypes: [{#for ttp in st.targetPayloadTypes}"{ttp}"{#if ttp_hasNext},{/if}{/for}]
+                }{#if st_hasNext},{/if}
+                {/for}
+            ]
+        }{#if agent_hasNext},{/if}
+        {/for}
+    ];
+
+    const agentSelect = document.getElementById('select-agent');
+    const typeSelect = document.getElementById('select-type');
+    const startBtn = document.getElementById('btn-start-translation');
+    const payloadItems = document.querySelectorAll('.payload-item');
+    const typeDesc = document.getElementById('type-description');
+
+    agentSelect.addEventListener('change', () => {
+        const agentId = agentSelect.value;
+        const agent = agents.find(a => a.id === agentId);
+        
+        typeSelect.innerHTML = '<option value="">-- Select Type --</option>';
+        typeSelect.disabled = !agent;
+        startBtn.disabled = true;
+        
+        if (agent) {
+            agent.supportedTranslations.forEach(st => {
+                const opt = document.createElement('option');
+                opt.value = st.type;
+                opt.textContent = st.type;
+                typeSelect.appendChild(opt);
+            });
+        }
+        updatePayloadVisibility();
+    });
+
+    typeSelect.addEventListener('change', () => {
+        const agent = agents.find(a => a.id === agentSelect.value);
+        const transType = typeSelect.value;
+        const config = agent?.supportedTranslations.find(st => st.type === transType);
+        
+        startBtn.disabled = !transType;
+        if (config) {
+            typeDesc.textContent = "Sources: [" + config.sourceTypes.join(', ') + "] \u279C Targets: [" + config.targetTypes.join(', ') + "]";
+        } else {
+            typeDesc.textContent = '';
+        }
+
+        updatePayloadVisibility();
+    });
+
+    function updatePayloadVisibility() {
+        const agentId = agentSelect.value;
+        const transType = typeSelect.value;
+        const agent = agents.find(a => a.id === agentId);
+        const config = agent?.supportedTranslations.find(st => st.type === transType);
+        
+        const requiredTypes = config ? config.sourceTypes : [];
+        
+        payloadItems.forEach(item => {
+            const pType = item.getAttribute('data-payload-type');
+            const isSupported = !transType || requiredTypes.includes(pType);
+            
+            if (isSupported) {
+                item.classList.remove('hidden');
+                if (requiredTypes.includes(pType)) {
+                    item.classList.add('highlight-suggested');
+                } else {
+                    item.classList.remove('highlight-suggested');
+                }
+            } else {
+                item.classList.add('hidden');
+                item.querySelector('input').checked = false;
+            }
+        });
+    }
+</script>
+{/body}

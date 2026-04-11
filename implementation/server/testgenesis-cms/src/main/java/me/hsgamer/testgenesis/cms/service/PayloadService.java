@@ -36,13 +36,13 @@ public class PayloadService {
         entity.setDescription(updated.getDescription());
         entity.setType(updated.getType());
         entity.setMetadata(updated.getMetadata());
-        
+
         if (updated.getAttachmentData() != null) {
             entity.setAttachmentName(updated.getAttachmentName());
             entity.setAttachmentMimeType(updated.getAttachmentMimeType());
             entity.setAttachmentData(updated.getAttachmentData());
         }
-        
+
         return entity;
     }
 

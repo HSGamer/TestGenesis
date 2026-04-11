@@ -21,9 +21,9 @@ public class TestEntity extends PanacheEntity {
 
     @ManyToMany
     @JoinTable(
-        name = "test_payloads",
-        joinColumns = @JoinColumn(name = "test_id"),
-        inverseJoinColumns = @JoinColumn(name = "payload_id")
+            name = "test_payloads",
+            joinColumns = @JoinColumn(name = "test_id"),
+            inverseJoinColumns = @JoinColumn(name = "payload_id")
     )
     public List<PayloadEntity> payloads = new ArrayList<>();
 }

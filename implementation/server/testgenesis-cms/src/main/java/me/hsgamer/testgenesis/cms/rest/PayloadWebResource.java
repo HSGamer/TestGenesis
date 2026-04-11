@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
 import me.hsgamer.testgenesis.cms.service.PayloadService;
 import me.hsgamer.testgenesis.cms.service.UAPService;
-
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -18,7 +17,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 
@@ -55,7 +53,6 @@ public class PayloadWebResource {
     }
 
 
-
     @GET
     @Path("/{id}/edit")
     @Produces(MediaType.TEXT_HTML)
@@ -66,7 +63,6 @@ public class PayloadWebResource {
                 .data("availableTypes", uapService.getAvailablePayloadTypes())
                 .data("mimeTypeMapping", uapService.getPayloadMimeTypeMapping());
     }
-
 
 
     @POST
@@ -131,7 +127,7 @@ public class PayloadWebResource {
     public Response downloadAttachment(@PathParam("id") Long id) {
         PayloadEntity entity = payloadService.findById(id)
                 .orElseThrow(() -> new NotFoundException("Payload not found: " + id));
-        
+
         if (entity.getAttachmentData() == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }

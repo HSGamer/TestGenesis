@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// SessionReady is sent by the Hub over the Control stream to signal the Agent
+// that a session it accepted has finished provisioning and is ready to establish stream.
+message SessionReady {
+  string session_id = 1;
+}

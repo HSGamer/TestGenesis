@@ -44,8 +44,8 @@ public class AgentHub extends MutinyAgentHubGrpc.AgentHubImplBase {
 
         log.info("Agent {} ({}) connected to Listen stream.", agentId, agent.displayName());
 
-        Multi<ListenResponse> requestHandler = requests
-                .onItem().transformToUniAndConcatenate(value -> {
+        requests.subscribe().with(
+                value -> {
                     switch (value.getEventCase()) {
                         case READY -> log.info("Agent {} ({}) signaled ready.", agentId, agent.displayName());
                         case JOB_ACCEPTANCE -> {
@@ -61,14 +61,22 @@ public class AgentHub extends MutinyAgentHubGrpc.AgentHubImplBase {
                         case EVENT_NOT_SET -> {
                         }
                     }
-                    return Uni.createFrom().nullItem();
-                });
-
-        return Multi.createBy().merging().streams(requestHandler, agent.listenStream())
-                .onTermination().invoke((failure, cancelled) -> {
-                    log.info("Listen stream termination for agent {} ({}): failure={}, cancelled={}",
-                            agentId, agent.displayName(), failure != null ? failure.getMessage() : "none", cancelled);
+                },
+                failure -> {
+                    log.error("Listen stream failed for agent {} ({}): {}", agentId, agent.displayName(), failure.getMessage());
                     uapService.cleanupAgent(agentId);
-                });
+                },
+                () -> {
+                    log.info("Listen stream disconnected by agent {} ({}).", agentId, agent.displayName());
+                    uapService.cleanupAgent(agentId);
+                }
+        );
+
+        return Multi.createFrom().emitter(emitter -> {
+            agent.setStreamDispatcher(response -> {
+                emitter.emit(response);
+            });
+        });
     }
 }
+
