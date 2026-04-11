@@ -4,8 +4,7 @@ syntax = "proto3";
 package uap.v1;
 
 import "google/protobuf/empty.proto";
-import "JobAcceptance.proto";
-import "TranslationAcceptance.proto";
+import "SessionAcceptance.proto";
 
 option java_package = "me.hsgamer.testgenesis.uap.v1";
 option java_multiple_files = true;
@@ -17,12 +16,10 @@ message ListenRequest {
     // Initial signal to Hub that Agent is ready to receive data.
     google.protobuf.Empty ready = 1;
 
-    // Response to a job proposal.
-    JobAcceptance job_acceptance = 2;
-
-    // Response to a translation proposal.
-    TranslationAcceptance translation_acceptance = 3;
+    // Response to a session proposal.
+    SessionAcceptance session_acceptance = 2;
   }
+
 
 
 

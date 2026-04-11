@@ -1,0 +1,18 @@
+// TestStatus.proto — Status reporting for the Universal Agent Protocol (UAP) test tests.
+syntax = "proto3";
+
+package uap.v1;
+
+import "TestState.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TestStatus represents the current execution state of a test test.
+message TestStatus {
+  // The normalized state of the test.
+  TestState state = 1;
+
+  // Optional human-readable message providing additional context.
+  string message = 2;
+}

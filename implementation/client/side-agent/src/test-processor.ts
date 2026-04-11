@@ -1,8 +1,8 @@
-import { JobHub } from "./generated/JobHub_connect.js";
-import { JobResponse } from "./generated/JobResponse_pb.js";
-import { JobStatus } from "./generated/JobStatus_pb.js";
-import { JobState } from "./generated/JobState_pb.js";
-import { JobResult } from "./generated/JobResult_pb.js";
+import { TestHub } from "./generated/TestHub_connect.js";
+import { TestResponse } from "./generated/TestResponse_pb.js";
+import { TestStatus } from "./generated/TestStatus_pb.js";
+import { TestState } from "./generated/TestState_pb.js";
+import { TestResult } from "./generated/TestResult_pb.js";
 import { StepReport } from "./generated/StepReport_pb.js";
 import { Telemetry } from "./generated/Telemetry_pb.js";
 import { Severity } from "./generated/Severity_pb.js";
@@ -26,13 +26,13 @@ import { msToDuration, TestReport } from "./common.js";
 
 import { CONFIG } from "./config.js";
 
-export class JobProcessor {
+export class TestProcessor {
   private driver: WebDriver | null = null;
-  private requestIterable = createWritableIterable<JobResponse>();
+  private requestIterable = createWritableIterable<TestResponse>();
 
   constructor(
     private readonly sessionId: string,
-    private readonly client: Client<typeof JobHub>,
+    private readonly client: Client<typeof TestHub>,
     private readonly onDriverCreated: (driver: WebDriver) => void,
     private readonly onDriverDestroyed: (driver: WebDriver) => void
   ) {}
@@ -45,19 +45,19 @@ export class JobProcessor {
 
 
       for await (const instruction of stream) {
-        if (instruction.event.case === "jobInit") {
+        if (instruction.event.case === "testInit") {
           await this.executeTest(instruction.event.value);
         }
       }
     } catch (err) {
-      console.error(`[Job ${this.sessionId}] Error:`, err);
+      console.error(`[Test ${this.sessionId}] Error:`, err);
     } finally {
       await this.cleanup();
     }
   }
 
-  private pushResponse(event: JobResponse["event"]) {
-    this.requestIterable.write(new JobResponse({ timestamp: Timestamp.now(), event }));
+  private pushResponse(event: TestResponse["event"]) {
+    this.requestIterable.write(new TestResponse({ timestamp: Timestamp.now(), event }));
   }
 
   private sendLog(message: string, severity = Severity.INFO) {
@@ -74,7 +74,7 @@ export class JobProcessor {
     if (!payload?.attachment) {
       this.pushResponse({ 
         case: "status", 
-        value: new JobStatus({ state: JobState.INVALID, message: "Missing required test payload or attachment" }) 
+        value: new TestStatus({ state: TestState.INVALID, message: "Missing required test payload or attachment" }) 
       });
       return;
     }
@@ -89,11 +89,30 @@ export class JobProcessor {
       } catch (e) {}
     }
 
-    this.pushResponse({ case: "status", value: new JobStatus({ state: JobState.ACKNOWLEDGED, message: "Initializing Selenium..." }) });
+    this.pushResponse({ case: "status", value: new TestStatus({ state: TestState.ACKNOWLEDGED, message: "Initializing Selenium..." }) });
 
     try {
-      const sideCommands = JSON.parse(new TextDecoder().decode(payload.attachment.data));
-      const test: TestShape = { id: this.sessionId, name: "UAP Execution", commands: sideCommands };
+      let parsedTest: Partial<TestShape>;
+      try {
+        parsedTest = JSON.parse(new TextDecoder().decode(payload.attachment.data));
+      } catch (err: any) {
+        throw new Error(`Failed to parse test payload as JSON: ${err.message}`);
+      }
+
+      if (!parsedTest || typeof parsedTest !== "object") {
+        throw new Error("Parsed test payload is not a valid JSON object.");
+      }
+      
+      if (!Array.isArray(parsedTest.commands)) {
+        throw new Error("Invalid test payload: 'commands' property is missing or not an array.");
+      }
+
+      const test: TestShape = { 
+        id: parsedTest.id || this.sessionId, 
+        name: parsedTest.name || "UAP Execution", 
+        commands: parsedTest.commands 
+      };
+
       
       const builder = new Builder().forBrowser(browser);
       if (CONFIG.SELENIUM_REMOTE_URL) builder.usingServer(CONFIG.SELENIUM_REMOTE_URL);
@@ -109,19 +128,19 @@ export class JobProcessor {
       });
 
       this.sendLog(`Session started for browser: ${browser}`);
-      this.pushResponse({ case: "status", value: new JobStatus({ state: JobState.RUNNING, message: "Running steps..." }) });
+      this.pushResponse({ case: "status", value: new TestStatus({ state: TestState.RUNNING, message: "Running steps..." }) });
       
       const startTime = new Date();
       await testRunner.run();
       const endTime = new Date();
       
       const report = (await testRunner.createReport(logger)) as TestReport;
-      const finalState = report.state === PlaybackStates.FINISHED ? JobState.COMPLETED : JobState.FAILED;
+      const finalState = report.state === PlaybackStates.FINISHED ? TestState.COMPLETED : TestState.FAILED;
 
       this.pushResponse({
         case: "result",
-        value: new JobResult({
-          status: new JobStatus({ state: finalState }),
+        value: new TestResult({
+          status: new TestStatus({ state: finalState }),
           reports: report.commands.map(cmd => new StepReport({
             name: `${cmd.command.command} ${cmd.command.target || ""}`,
             status: cmd.state === CommandStates.PASSED ? "COMPLETED" : "FAILED",
@@ -139,9 +158,9 @@ export class JobProcessor {
         })
       });
 
-      this.pushResponse({ case: "status", value: new JobStatus({ state: finalState }) });
+      this.pushResponse({ case: "status", value: new TestStatus({ state: finalState }) });
     } catch (err: any) {
-      this.pushResponse({ case: "status", value: new JobStatus({ state: JobState.FAILED, message: `Error: ${err.message}` }) });
+      this.pushResponse({ case: "status", value: new TestStatus({ state: TestState.FAILED, message: `Error: ${err.message}` }) });
     }
   }
 

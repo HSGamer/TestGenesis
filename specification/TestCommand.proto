@@ -1,4 +1,4 @@
-// JobCommand.proto — Control plane commands for the Universal Agent Protocol (UAP) test jobs.
+// TestCommand.proto — Control plane commands for the Universal Agent Protocol (UAP) test tests.
 syntax = "proto3";
 
 package uap.v1;
@@ -9,9 +9,9 @@ import "StopCommand.proto";
 option java_package = "me.hsgamer.testgenesis.uap.v1";
 option java_multiple_files = true;
 
-// JobCommand is a message sent by the Hub to the Agent during an active
-// test job session to control or query the session's state.
-message JobCommand {
+// TestCommand is a message sent by the Hub to the Agent during an active
+// test test session to control or query the session's state.
+message TestCommand {
   // The specific command content.
   oneof command {
     // Built-in help signal.

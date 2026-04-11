@@ -7,8 +7,7 @@
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3 } from "@bufbuild/protobuf";
-import { JobProposal } from "./JobProposal_pb.js";
-import { TranslationProposal } from "./TranslationProposal_pb.js";
+import { SessionProposal } from "./SessionProposal_pb.js";
 import { SessionReady } from "./SessionReady_pb.js";
 
 /**
@@ -24,25 +23,17 @@ export class ListenResponse extends Message<ListenResponse> {
    */
   event: {
     /**
-     * Initial registration packet sent once by the Agent upon connection.
+     * Initial request sent by Hub to ask the agent if they can accept the session workload.
      *
-     * @generated from field: uap.v1.JobProposal job_proposal = 1;
+     * @generated from field: uap.v1.SessionProposal session_proposal = 1;
      */
-    value: JobProposal;
-    case: "jobProposal";
-  } | {
-    /**
-     * Heartbeat and pull signal (Agent idle and ready).
-     *
-     * @generated from field: uap.v1.TranslationProposal translation_proposal = 2;
-     */
-    value: TranslationProposal;
-    case: "translationProposal";
+    value: SessionProposal;
+    case: "sessionProposal";
   } | {
     /**
      * Sync signal stating the backend successfully registered the session
      *
-     * @generated from field: uap.v1.SessionReady session_ready = 3;
+     * @generated from field: uap.v1.SessionReady session_ready = 2;
      */
     value: SessionReady;
     case: "sessionReady";
@@ -56,9 +47,8 @@ export class ListenResponse extends Message<ListenResponse> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "uap.v1.ListenResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "job_proposal", kind: "message", T: JobProposal, oneof: "event" },
-    { no: 2, name: "translation_proposal", kind: "message", T: TranslationProposal, oneof: "event" },
-    { no: 3, name: "session_ready", kind: "message", T: SessionReady, oneof: "event" },
+    { no: 1, name: "session_proposal", kind: "message", T: SessionProposal, oneof: "event" },
+    { no: 2, name: "session_ready", kind: "message", T: SessionReady, oneof: "event" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListenResponse {

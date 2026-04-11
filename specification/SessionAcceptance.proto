@@ -1,0 +1,19 @@
+// SessionAcceptance.proto — Agent response to a session proposal for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// SessionAcceptance is sent by the Agent to the Hub to confirm or reject a proposal.
+message SessionAcceptance {
+  // The unique session ID for the proposed instance.
+  string session_id = 1;
+
+  // Whether the proposal is accepted or not.
+  bool accepted = 2;
+
+  // Optional reason for rejection.
+  string reason = 3;
+}

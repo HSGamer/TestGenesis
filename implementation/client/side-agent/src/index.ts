@@ -1,7 +1,7 @@
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { createClient } from "@connectrpc/connect";
 import { AgentHub } from "./generated/AgentHub_connect.js";
-import { JobHub } from "./generated/JobHub_connect.js";
+import { TestHub } from "./generated/TestHub_connect.js";
 import { TranslationHub } from "./generated/TranslationHub_connect.js";
 import { ListenRequest } from "./generated/ListenRequest_pb.js";
 import { AgentRegistration } from "./generated/AgentRegistration_pb.js";
@@ -9,7 +9,7 @@ import { Capability } from "./generated/Capability_pb.js";
 import { TranslationCapability } from "./generated/TranslationCapability_pb.js";
 import { WebDriver } from "selenium-webdriver";
 import { CONFIG } from "./config.js";
-import { JobProcessor } from "./job-processor.js";
+import { TestProcessor } from "./test-processor.js";
 import { TranslationProcessor } from "./translation-processor.js";
 import { createWritableIterable } from "@connectrpc/connect/protocol";
 
@@ -20,7 +20,7 @@ let isShuttingDown = false;
 // Setup gRPC Clients
 const transport = createGrpcTransport({ baseUrl: CONFIG.HUB_URL, httpVersion: "2" });
 const agentClient = createClient(AgentHub, transport);
-const jobClient = createClient(JobHub, transport);
+const testClient = createClient(TestHub, transport);
 const translationClient = createClient(TranslationHub, transport);
 
 async function main() {
@@ -65,7 +65,7 @@ async function main() {
       // 2. Control Stream Dispatcher
       const requestIterable = createWritableIterable<ListenRequest>();
       requestIterable.write(new ListenRequest({ event: { case: "ready", value: {} } }));
-      const pendingSessions = new Map<string, "job" | "translation">();
+      const pendingSessions = new Map<string, "test" | "translation">();
 
 
       const listenStream = agentClient.listen(requestIterable, { headers: { "x-client-id": clientId } });
@@ -73,24 +73,26 @@ async function main() {
       for await (const response of listenStream) {
         const event = response.event;
         
-        if (event.case === "jobProposal") {
-          console.log(`[Job] Received Proposal: ${event.value.sessionId}`);
-          pendingSessions.set(event.value.sessionId, "job");
-          requestIterable.write(new ListenRequest({ event: { case: "jobAcceptance", value: { sessionId: event.value.sessionId, accepted: true } } }));
-
-        } else if (event.case === "translationProposal") {
-          console.log(`[Translate] Received Proposal: ${event.value.sessionId}`);
-          pendingSessions.set(event.value.sessionId, "translation");
-          requestIterable.write(new ListenRequest({ event: { case: "translationAcceptance", value: { sessionId: event.value.sessionId, accepted: true } } }));
-
+        if (event.case === "sessionProposal") {
+          const proposalDetailsCase = event.value.details.case;
+          if (proposalDetailsCase === "test") {
+            console.log(`[Test] Received Proposal: ${event.value.sessionId}`);
+            pendingSessions.set(event.value.sessionId, "test");
+            requestIterable.write(new ListenRequest({ event: { case: "sessionAcceptance", value: { sessionId: event.value.sessionId, accepted: true } } }));
+          } else if (proposalDetailsCase === "translation") {
+            console.log(`[Translate] Received Proposal: ${event.value.sessionId}`);
+            pendingSessions.set(event.value.sessionId, "translation");
+            requestIterable.write(new ListenRequest({ event: { case: "sessionAcceptance", value: { sessionId: event.value.sessionId, accepted: true } } }));
+          }
         } else if (event.case === "sessionReady") {
+
           const type = pendingSessions.get(event.value.sessionId);
-          if (type === "job") {
+          if (type === "test") {
             pendingSessions.delete(event.value.sessionId);
-            console.log(`[Job] Session Sync Verified: ${event.value.sessionId}`);
-            new JobProcessor(
+            console.log(`[Test] Session Sync Verified: ${event.value.sessionId}`);
+            new TestProcessor(
               event.value.sessionId, 
-              jobClient, 
+              testClient, 
               d => activeDrivers.add(d), 
               d => activeDrivers.delete(d)
             ).process().catch(console.error);

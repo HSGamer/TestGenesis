@@ -1,0 +1,18 @@
+// TestState.proto — Standard execution states for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TestState represents the state of a test test session.
+enum TestState {
+  TEST_STATE_UNSPECIFIED = 0;
+  TEST_STATE_ACKNOWLEDGED = 1;
+  TEST_STATE_INVALID = 2;
+  TEST_STATE_RUNNING = 3;
+  TEST_STATE_COMPLETED = 4;
+  TEST_STATE_FAILED = 5;
+
+}

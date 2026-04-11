@@ -48,16 +48,12 @@ public class AgentHub extends MutinyAgentHubGrpc.AgentHubImplBase {
                 value -> {
                     switch (value.getEventCase()) {
                         case READY -> log.info("Agent {} ({}) signaled ready.", agentId, agent.displayName());
-                        case JOB_ACCEPTANCE -> {
-                            JobAcceptance acceptance = value.getJobAcceptance();
-                            var consumer = uapService.getPendingJobAcceptances().get(acceptance.getSessionId());
+                        case SESSION_ACCEPTANCE -> {
+                            SessionAcceptance acceptance = value.getSessionAcceptance();
+                            var consumer = uapService.getPendingSessionAcceptances().get(acceptance.getSessionId());
                             if (consumer != null) consumer.accept(acceptance);
                         }
-                        case TRANSLATION_ACCEPTANCE -> {
-                            TranslationAcceptance acceptance = value.getTranslationAcceptance();
-                            var consumer = uapService.getPendingTranslationAcceptances().get(acceptance.getSessionId());
-                            if (consumer != null) consumer.accept(acceptance);
-                        }
+
                         case EVENT_NOT_SET -> {
                         }
                     }

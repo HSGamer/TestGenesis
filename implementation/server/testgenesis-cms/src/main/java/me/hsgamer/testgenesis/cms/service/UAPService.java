@@ -31,11 +31,10 @@ public class UAPService {
 
     private final Map<String, AgentImpl> agents = new ConcurrentHashMap<>();
     @Getter
-    private final Map<String, Consumer<JobAcceptance>> pendingJobAcceptances = new ConcurrentHashMap<>();
+    private final Map<String, Consumer<SessionAcceptance>> pendingSessionAcceptances = new ConcurrentHashMap<>();
+
     @Getter
-    private final Map<String, Consumer<TranslationAcceptance>> pendingTranslationAcceptances = new ConcurrentHashMap<>();
-    @Getter
-    private final Map<String, JobSession> jobSessions = new ConcurrentHashMap<>();
+    private final Map<String, TestSession> testSessions = new ConcurrentHashMap<>();
     @Getter
     private final Map<String, TranslationSession> translationSessions = new ConcurrentHashMap<>();
 
@@ -48,7 +47,7 @@ public class UAPService {
         return agents;
     }
 
-    public Uni<JobTicketResult> registerJob(String agentId, JobTicket ticket) {
+    public Uni<TestTicketResult> registerTest(String agentId, TestTicket ticket) {
         AgentImpl agent = agents.get(agentId);
         if (agent == null) {
             return Uni.createFrom().failure(new IllegalStateException("Agent not found: " + agentId));
@@ -60,28 +59,29 @@ public class UAPService {
         String sessionId = "JOB-" + UUID.randomUUID();
 
         return Uni.createFrom().emitter(emitter -> {
-            pendingJobAcceptances.put(sessionId, acceptance -> {
-                pendingJobAcceptances.remove(sessionId);
+            pendingSessionAcceptances.put(sessionId, acceptance -> {
+                pendingSessionAcceptances.remove(sessionId);
                 if (acceptance.getAccepted()) {
-                    JobSession session = new JobSession(ticket);
-                    jobSessions.put(sessionId, session);
+                    TestSession session = new TestSession(ticket);
+                    testSessions.put(sessionId, session);
 
                     agent.activeSessionIds().add(sessionId);
-                    emitter.complete(new JobTicketResult(true, acceptance.getReason(), session));
+                    emitter.complete(new TestTicketResult(true, acceptance.getReason(), session));
 
                     agent.emitResponse(ListenResponse.newBuilder()
                             .setSessionReady(SessionReady.newBuilder().setSessionId(sessionId).build())
                             .build());
                 } else {
-                    emitter.complete(new JobTicketResult(false, acceptance.getReason(), null));
+                    emitter.complete(new TestTicketResult(false, acceptance.getReason(), null));
                 }
 
             });
 
             agent.emitResponse(ListenResponse.newBuilder()
-                    .setJobProposal(JobProposal.newBuilder()
+                    .setSessionProposal(SessionProposal.newBuilder()
                             .setSessionId(sessionId)
-                            .setTestType(ticket.testType()))
+                            .setTest(TestProposalDetails.newBuilder().setType(ticket.testType()).build())
+                            .build())
                     .build());
         });
     }
@@ -98,8 +98,8 @@ public class UAPService {
         String sessionId = "TRN-" + UUID.randomUUID();
 
         return Uni.createFrom().emitter(emitter -> {
-            pendingTranslationAcceptances.put(sessionId, acceptance -> {
-                pendingTranslationAcceptances.remove(sessionId);
+            pendingSessionAcceptances.put(sessionId, acceptance -> {
+                pendingSessionAcceptances.remove(sessionId);
                 if (acceptance.getAccepted()) {
                     TranslationTicket sessionTicket = new TranslationTicket(sessionId, ticket.targetFormat(), ticket.payloads());
                     TranslationSession session = new TranslationSession(sessionTicket);
@@ -119,9 +119,10 @@ public class UAPService {
             });
 
             agent.emitResponse(ListenResponse.newBuilder()
-                    .setTranslationProposal(TranslationProposal.newBuilder()
+                    .setSessionProposal(SessionProposal.newBuilder()
                             .setSessionId(sessionId)
-                            .setTargetType(ticket.targetFormat()))
+                            .setTranslation(TranslationProposalDetails.newBuilder().setType(ticket.targetFormat()).build())
+                            .build())
                     .build());
         });
     }
@@ -135,10 +136,10 @@ public class UAPService {
 
         for (String sessionId : agent.activeSessionIds()) {
             if (sessionId.startsWith("JOB-")) {
-                JobSession session = jobSessions.remove(sessionId);
+                TestSession session = testSessions.remove(sessionId);
                 if (session != null) {
-                    session.updateStatus(JobStatus.newBuilder()
-                            .setState(JobState.JOB_STATE_FAILED)
+                    session.updateStatus(TestStatus.newBuilder()
+                            .setState(TestState.TEST_STATE_FAILED)
                             .setMessage("Agent disconnected unexpectedly")
                             .build());
                 }

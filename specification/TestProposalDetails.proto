@@ -1,0 +1,13 @@
+// TestProposalDetails.proto — Details for test proposal in the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TestProposalDetails contains specific fields for test proposals.
+message TestProposalDetails {
+  // Required string type. For example: "selenium-side" based on TestCapability.
+  string type = 1;
+}

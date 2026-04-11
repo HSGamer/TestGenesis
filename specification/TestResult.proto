@@ -1,0 +1,23 @@
+// TestResult.proto — Final test outcome for the Universal Agent Protocol (UAP) test tests.
+syntax = "proto3";
+
+package uap.v1;
+
+import "TestStatus.proto";
+import "StepReport.proto";
+import "Summary.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TestResult is the final outcome of an execution session.
+message TestResult {
+  // Final status of the test execution.
+  TestStatus status = 1;
+
+  // Detailed step-by-step reporting for the test.
+  repeated StepReport reports = 2;
+
+  // Summary information for the entire session.
+  Summary summary = 3;
+}

@@ -1,4 +1,4 @@
-// TestCapability.proto — Modular job capability for the Universal Agent Protocol (UAP).
+// TestCapability.proto — Modular test capability for the Universal Agent Protocol (UAP).
 syntax = "proto3";
 
 package uap.v1;

@@ -7,8 +7,7 @@
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Empty, Message, proto3 } from "@bufbuild/protobuf";
-import { JobAcceptance } from "./JobAcceptance_pb.js";
-import { TranslationAcceptance } from "./TranslationAcceptance_pb.js";
+import { SessionAcceptance } from "./SessionAcceptance_pb.js";
 
 /**
  * ListenRequest is the Agent-to-Hub envelope for the unified control stream.
@@ -31,20 +30,12 @@ export class ListenRequest extends Message<ListenRequest> {
     case: "ready";
   } | {
     /**
-     * Response to a job proposal.
+     * Response to a session proposal.
      *
-     * @generated from field: uap.v1.JobAcceptance job_acceptance = 2;
+     * @generated from field: uap.v1.SessionAcceptance session_acceptance = 2;
      */
-    value: JobAcceptance;
-    case: "jobAcceptance";
-  } | {
-    /**
-     * Response to a translation proposal.
-     *
-     * @generated from field: uap.v1.TranslationAcceptance translation_acceptance = 3;
-     */
-    value: TranslationAcceptance;
-    case: "translationAcceptance";
+    value: SessionAcceptance;
+    case: "sessionAcceptance";
   } | { case: undefined; value?: undefined } = { case: undefined };
 
   constructor(data?: PartialMessage<ListenRequest>) {
@@ -56,8 +47,7 @@ export class ListenRequest extends Message<ListenRequest> {
   static readonly typeName = "uap.v1.ListenRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "ready", kind: "message", T: Empty, oneof: "event" },
-    { no: 2, name: "job_acceptance", kind: "message", T: JobAcceptance, oneof: "event" },
-    { no: 3, name: "translation_acceptance", kind: "message", T: TranslationAcceptance, oneof: "event" },
+    { no: 2, name: "session_acceptance", kind: "message", T: SessionAcceptance, oneof: "event" },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListenRequest {

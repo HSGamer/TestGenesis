@@ -1,0 +1,22 @@
+// SessionProposal.proto — Server-initiated session query for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+import "TestProposalDetails.proto";
+import "TranslationProposalDetails.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// SessionProposal is sent by the Hub to the Agent to query its readiness for a session.
+message SessionProposal {
+  // A unique session ID for the proposed session.
+  string session_id = 1;
+
+  // The type of the session.
+  oneof details {
+    TestProposalDetails test = 2;
+    TranslationProposalDetails translation = 3;
+  }
+}

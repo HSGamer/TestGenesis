@@ -1,30 +1,30 @@
-// JobResponse.proto — Modular job response envelope for the Universal Agent Protocol (UAP).
+// TestResponse.proto — Modular test response envelope for the Universal Agent Protocol (UAP).
 syntax = "proto3";
 
 package uap.v1;
 
 import "google/protobuf/timestamp.proto";
-import "JobStatus.proto";
+import "TestStatus.proto";
 import "Telemetry.proto";
-import "JobResult.proto";
+import "TestResult.proto";
 
 option java_package = "me.hsgamer.testgenesis.uap.v1";
 option java_multiple_files = true;
 
-// JobResponse is a polymorphic message streamed from the Agent during job execution.
-message JobResponse {
+// TestResponse is a polymorphic message streamed from the Agent during test execution.
+message TestResponse {
   // When this response event was sent.
   google.protobuf.Timestamp timestamp = 1;
 
   // The specific execution events.
   oneof event {
     // Current status update from the Agent.
-    JobStatus status = 2;
+    TestStatus status = 2;
 
     // Real-time telemetry log entry.
     Telemetry telemetry = 3;
 
-    // The final result of the job execution.
-    JobResult result = 4;
+    // The final result of the test execution.
+    TestResult result = 4;
   }
 }

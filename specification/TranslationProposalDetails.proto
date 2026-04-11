@@ -1,0 +1,13 @@
+// TranslationProposalDetails.proto — Details for translation proposal in the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// TranslationProposalDetails contains specific fields for translation proposals.
+message TranslationProposalDetails {
+  // Required string type. For example: "selenium-ide-project-to-test" based on TranslationCapability.
+  string type = 1;
+}

@@ -1,0 +1,18 @@
+// TestHub.proto — Service definition for the Universal Agent Protocol (UAP) test tests.
+syntax = "proto3";
+
+package uap.v1;
+
+import "TestInstruction.proto";
+import "TestResponse.proto";
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// Service for dispatching and executing test tests.
+service TestHub {
+  // Execute opens a dedicated bi-directional stream for a test test execution session.
+  // The Agent MUST provide the session_id in the 'x-session-id' header.
+  // Highly isolated and multi-plexed via instructions and response events.
+  rpc Execute(stream TestResponse) returns (stream TestInstruction);
+}

@@ -3,8 +3,7 @@ syntax = "proto3";
 
 package uap.v1;
 
-import "JobProposal.proto";
-import "TranslationProposal.proto";
+import "SessionProposal.proto";
 import "SessionReady.proto";
 
 option java_package = "me.hsgamer.testgenesis.uap.v1";
@@ -14,13 +13,10 @@ option java_multiple_files = true;
 message ListenResponse {
   // Multiplexed control plane events.
   oneof event {
-    // Initial registration packet sent once by the Agent upon connection.
-    JobProposal job_proposal = 1;
-
-    // Heartbeat and pull signal (Agent idle and ready).
-    TranslationProposal translation_proposal = 2;
+    // Initial request sent by Hub to ask the agent if they can accept the session workload.
+    SessionProposal session_proposal = 1;
 
     // Sync signal stating the backend successfully registered the session
-    SessionReady session_ready = 3;
+    SessionReady session_ready = 2;
   }
 }

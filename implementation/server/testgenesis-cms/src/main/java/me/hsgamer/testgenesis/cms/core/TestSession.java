@@ -7,30 +7,30 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class JobSession {
+public class TestSession {
     @Getter
-    private final JobTicket ticket;
+    private final TestTicket ticket;
     
     private final List<Consumer<Telemetry>> telemetryConsumers = new CopyOnWriteArrayList<>();
-    private final List<Consumer<JobStatus>> statusConsumers = new CopyOnWriteArrayList<>();
-    private final List<Consumer<JobResult>> resultConsumers = new CopyOnWriteArrayList<>();
+    private final List<Consumer<TestStatus>> statusConsumers = new CopyOnWriteArrayList<>();
+    private final List<Consumer<TestResult>> resultConsumers = new CopyOnWriteArrayList<>();
     @Getter
-    private Consumer<JobCommand> commandDispatcher;
+    private Consumer<TestCommand> commandDispatcher;
 
     @Getter
-    private volatile JobStatus status;
+    private volatile TestStatus status;
     @Getter
-    private volatile JobResult result;
+    private volatile TestResult result;
 
-    public JobSession(JobTicket ticket) {
+    public TestSession(TestTicket ticket) {
         this.ticket = ticket;
     }
 
-    public void setCommandDispatcher(Consumer<JobCommand> dispatcher) {
+    public void setCommandDispatcher(Consumer<TestCommand> dispatcher) {
         this.commandDispatcher = dispatcher;
     }
 
-    public void updateStatus(JobStatus status) {
+    public void updateStatus(TestStatus status) {
         this.status = status;
         statusConsumers.forEach(consumer -> consumer.accept(status));
     }
@@ -39,7 +39,7 @@ public class JobSession {
         telemetryConsumers.forEach(consumer -> consumer.accept(telemetry));
     }
 
-    public void completeWithResult(JobResult result) {
+    public void completeWithResult(TestResult result) {
         this.result = result;
         if (result.hasStatus()) {
             updateStatus(result.getStatus());
@@ -47,7 +47,7 @@ public class JobSession {
         resultConsumers.forEach(consumer -> consumer.accept(result));
     }
 
-    public void sendCommand(JobCommand command) {
+    public void sendCommand(TestCommand command) {
         if (commandDispatcher != null) {
             commandDispatcher.accept(command);
         }
@@ -61,18 +61,18 @@ public class JobSession {
         telemetryConsumers.remove(consumer);
     }
 
-    public void addStatusConsumer(Consumer<JobStatus> consumer) {
+    public void addStatusConsumer(Consumer<TestStatus> consumer) {
         statusConsumers.add(consumer);
         if (status != null) {
             consumer.accept(status);
         }
     }
     
-    public void removeStatusConsumer(Consumer<JobStatus> consumer) {
+    public void removeStatusConsumer(Consumer<TestStatus> consumer) {
         statusConsumers.remove(consumer);
     }
     
-    public void addResultConsumer(Consumer<JobResult> consumer) {
+    public void addResultConsumer(Consumer<TestResult> consumer) {
         resultConsumers.add(consumer);
         if (result != null) {
             consumer.accept(result);

@@ -1,4 +1,4 @@
-// JobRequest.proto — Job configuration for the Universal Agent Protocol (UAP).
+// TestRequest.proto — Test configuration for the Universal Agent Protocol (UAP).
 syntax = "proto3";
 
 package uap.v1;
@@ -8,8 +8,8 @@ import "Payload.proto";
 option java_package = "me.hsgamer.testgenesis.uap.v1";
 option java_multiple_files = true;
 
-// JobRequest is the initial configuration sent by the Hub to start a test job.
-message JobRequest {
+// TestRequest is the initial configuration sent by the Hub to start a test test.
+message TestRequest {
   // The primary format to execute from the payloads list.
   string test_type = 1;
 
