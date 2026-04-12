@@ -43,7 +43,7 @@ public class PayloadEntity extends PanacheEntity {
                 .build();
     }
 
-    public void fillFromProto(Payload p, String sessionId) {
+    public void fillFromProto(Payload p) {
         this.type = p.getType();
 
         this.metadata = ProtoUtil.structToJson(p.getMetadata());
@@ -56,7 +56,7 @@ public class PayloadEntity extends PanacheEntity {
         }
 
         this.name = "Translated: " + this.type;
-        this.description = "Translated from session " + sessionId;
+        this.description = "Translated";
     }
 }
 

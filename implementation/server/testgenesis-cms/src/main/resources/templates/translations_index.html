@@ -40,8 +40,8 @@
             <tbody>
                 {#for session in sessions}
                 <tr>
-                    <td class="col-id" title="{session.ticket.sessionId}">
-                        <code>{session.ticket.sessionId}</code>
+                    <td class="col-id" title="{session.sessionId}">
+                        <code>{session.sessionId}</code>
                     </td>
                     <td class="col-type">{session.ticket.targetFormat}</td>
                     <td class="col-status">
@@ -59,7 +59,7 @@
                         </div>
                     </td>
                     <td class="col-actions">
-                        <a href="/translations/{session.ticket.sessionId}/status" class="btn btn-sm btn-secondary">Open</a>
+                        <a href="/translations/{session.sessionId}/status" class="btn btn-sm btn-secondary">Open</a>
                     </td>
                 </tr>
                 {#else}

@@ -1,5 +1,5 @@
 {#include base.html}
-{#title}Translation Status - {session.ticket.sessionId}{/title}
+{#title}Translation Status - {session.sessionId}{/title}
 
 {#head}
 <style>
@@ -55,7 +55,7 @@
     <header class="flex-between mb-1">
         <div>
             <h2>Translation: {session.ticket.targetFormat}</h2>
-            <code class="small-text text-muted">{session.ticket.sessionId}</code>
+            <code class="small-text text-muted">{session.sessionId}</code>
         </div>
         <a href="/translations" class="btn btn-secondary">Back to List</a>
     </header>
@@ -102,7 +102,7 @@
 </div>
 
 <script>
-    const sessionId = "{session.ticket.sessionId}";
+    const sessionId = "{session.sessionId}";
     const consoleDiv = document.getElementById('telemetry-console');
     const statusBadge = document.getElementById('status-badge');
     const statusMessage = document.getElementById('status-message');

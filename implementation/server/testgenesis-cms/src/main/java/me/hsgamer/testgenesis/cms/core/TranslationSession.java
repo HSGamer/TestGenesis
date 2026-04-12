@@ -12,13 +12,13 @@ import java.util.function.Consumer;
 
 public class TranslationSession implements Session {
     @Getter
+    private final String sessionId;
+    @Getter
     private final TranslationTicket ticket;
     private final List<Consumer<Telemetry>> telemetryConsumers = new CopyOnWriteArrayList<>();
     private final List<Telemetry> telemetryHistory = new CopyOnWriteArrayList<>();
     private final List<Consumer<TranslationStatus>> statusConsumers = new CopyOnWriteArrayList<>();
     private final List<Consumer<TranslationResult>> resultConsumers = new CopyOnWriteArrayList<>();
-    @Getter
-    private final List<Long> resultPayloadIds = new CopyOnWriteArrayList<>();
     @Getter
     private final List<GeneratedPayload> resultPayloads = new CopyOnWriteArrayList<>();
     private final List<Runnable> completionListeners = new CopyOnWriteArrayList<>();
@@ -28,7 +28,8 @@ public class TranslationSession implements Session {
     @Getter
     private volatile TranslationResult result;
 
-    public TranslationSession(TranslationTicket ticket) {
+    public TranslationSession(String sessionId, TranslationTicket ticket) {
+        this.sessionId = sessionId;
         this.ticket = ticket;
     }
 

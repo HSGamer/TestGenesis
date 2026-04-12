@@ -53,7 +53,7 @@ public class UAPService {
                 proposal -> proposal.setTest(TestProposalDetails.newBuilder().setType(ticket.testType()).build()),
                 (sessionId, acceptance) -> {
                     if (acceptance.getAccepted()) {
-                        TestSession session = new TestSession(ticket);
+                        TestSession session = new TestSession(sessionId, ticket);
                         testSessions.put(sessionId, session);
                         return new TestTicketResult(true, acceptance.getReason(), session);
                     } else {
@@ -67,8 +67,7 @@ public class UAPService {
                 proposal -> proposal.setTranslation(TranslationProposalDetails.newBuilder().setType(ticket.targetFormat()).build()),
                 (sessionId, acceptance) -> {
                     if (acceptance.getAccepted()) {
-                        TranslationTicket sessionTicket = new TranslationTicket(sessionId, ticket.targetFormat(), ticket.payloads());
-                        TranslationSession session = new TranslationSession(sessionTicket);
+                        TranslationSession session = new TranslationSession(sessionId, ticket);
                         translationSessions.put(sessionId, session);
                         return new TranslationTicketResult(true, acceptance.getReason(), session);
                     } else {

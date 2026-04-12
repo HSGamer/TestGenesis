@@ -6,7 +6,6 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 import lombok.extern.slf4j.Slf4j;
-import me.hsgamer.testgenesis.cms.core.TranslationSession;
 import me.hsgamer.testgenesis.cms.core.TranslationTicket;
 import me.hsgamer.testgenesis.cms.core.TranslationTicketResult;
 import me.hsgamer.testgenesis.uap.v1.Payload;
@@ -26,24 +25,19 @@ public class TranslationManager {
     @Inject
     ManagedExecutor managedExecutor;
 
-
     public Uni<TranslationTicketResult> startTranslation(String agentId, String type, List<Payload> sourcePayloads) {
-
-        TranslationTicket ticket = new TranslationTicket("", type, sourcePayloads);
-
+        TranslationTicket ticket = new TranslationTicket(type, sourcePayloads);
         return uapService.registerTranslation(agentId, ticket).onItem().invoke(result -> {
             if (result.accepted()) {
-                setupAutoSaveBackground(result.session().getTicket().sessionId());
+                var session = result.session();
+                session.addResultConsumer(translationResult -> {
+                    log.info("Translation session {} completed with {} payloads. Auto-saving...", session.getSessionId(), translationResult.getPayloadsCount());
+                    managedExecutor.execute(() -> {
+                        var savedPayloads = payloadService.saveTranslatedPayloads(translationResult);
+                        session.dispatchResultPayloads(savedPayloads);
+                    });
+                });
             }
-        });
-    }
-
-    private void setupAutoSaveBackground(String sessionId) {
-        var session = uapService.getTranslationSessions().get(sessionId);
-        if (session == null) return;
-
-        session.addResultConsumer(result -> {
-            managedExecutor.execute(() -> payloadService.saveTranslatedPayloads(sessionId, result, session));
         });
     }
 }

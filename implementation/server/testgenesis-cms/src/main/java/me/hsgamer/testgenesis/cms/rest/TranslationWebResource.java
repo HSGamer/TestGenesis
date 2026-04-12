@@ -84,7 +84,7 @@ public class TranslationWebResource {
         return translationManager.startTranslation(agentId, type, sourcePayloads)
                 .map(result -> {
                     if (result.accepted()) {
-                        return Response.seeOther(URI.create("/translations/" + result.session().getTicket().sessionId() + "/status")).build();
+                        return Response.seeOther(URI.create("/translations/" + result.session().getSessionId() + "/status")).build();
                     } else {
                         return Response.status(Response.Status.BAD_REQUEST)
                                 .entity("Agent rejected translation: " + result.reason())

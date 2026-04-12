@@ -13,6 +13,8 @@ import java.util.function.Consumer;
 public class TestSession implements Session {
 
     @Getter
+    private final String sessionId;
+    @Getter
     private final TestTicket ticket;
     private final List<Consumer<Telemetry>> telemetryConsumers = new CopyOnWriteArrayList<>();
     private final List<Telemetry> telemetryHistory = new CopyOnWriteArrayList<>();
@@ -27,7 +29,8 @@ public class TestSession implements Session {
     @Getter
     private volatile TestResult result;
 
-    public TestSession(TestTicket ticket) {
+    public TestSession(String sessionId, TestTicket ticket) {
+        this.sessionId = sessionId;
         this.ticket = ticket;
     }
 

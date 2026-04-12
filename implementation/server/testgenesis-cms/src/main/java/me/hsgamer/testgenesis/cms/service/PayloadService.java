@@ -60,27 +60,19 @@ public class PayloadService {
     }
 
     @Transactional
-    public void saveTranslatedPayloads(String sessionId, TranslationResult result, TranslationSession session) {
-        log.info("Translation session {} completed with {} payloads. Auto-saving...",
-                sessionId, result.getPayloadsCount());
-
+    public List<TranslationSession.GeneratedPayload> saveTranslatedPayloads(TranslationResult result) {
         List<TranslationSession.GeneratedPayload> generated = new ArrayList<>();
         for (Payload p : result.getPayloadsList()) {
             try {
                 PayloadEntity entity = new PayloadEntity();
-                entity.fillFromProto(p, sessionId);
+                entity.fillFromProto(p);
                 entity.persist();
-
-                session.getResultPayloadIds().add(entity.id);
                 generated.add(new TranslationSession.GeneratedPayload(entity.id));
                 log.info("Saved translated payload: {}", entity.getName());
             } catch (Exception e) {
-                log.error("Failed to save translated payload for session {}", sessionId, e);
+                log.error("Failed to save translated payload", e);
             }
         }
-
-        if (!generated.isEmpty()) {
-            session.dispatchResultPayloads(generated);
-        }
+        return generated;
     }
 }
