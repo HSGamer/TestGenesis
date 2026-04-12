@@ -16,7 +16,7 @@ public class TestHub extends MutinyTestHubGrpc.TestHubImplBase {
     private final UAPService uapService;
 
     @Override
-    public Multi<TestInstruction> execute(Multi<TestResponse> requests) {
+    public Multi<TestInit> execute(Multi<TestResponse> requests) {
         String sessionId = UAPService.SESSION_ID_CTX.get();
         if (sessionId == null) {
             return Multi.createFrom().failure(Status.INVALID_ARGUMENT
@@ -55,16 +55,11 @@ public class TestHub extends MutinyTestHubGrpc.TestHubImplBase {
         );
 
         return Multi.createFrom().emitter(emitter -> {
-            TestInstruction initMsg = TestInstruction.newBuilder()
-                    .setTestInit(TestRequest.newBuilder()
-                            .setTestType(session.getTicket().testType())
-                            .addAllPayloads(session.getTicket().payloads()))
+            TestInit initMsg = TestInit.newBuilder()
+                    .setTestType(session.getTicket().testType())
+                    .addAllPayloads(session.getTicket().payloads())
                     .build();
             emitter.emit(initMsg);
-
-            session.setCommandDispatcher(cmd -> {
-                emitter.emit(TestInstruction.newBuilder().setCommand(cmd).build());
-            });
         });
     }
 }

@@ -3,7 +3,6 @@ package me.hsgamer.testgenesis.cms.core;
 import lombok.Getter;
 import me.hsgamer.testgenesis.cms.util.StatusUtil;
 import me.hsgamer.testgenesis.uap.v1.Telemetry;
-import me.hsgamer.testgenesis.uap.v1.TestCommand;
 import me.hsgamer.testgenesis.uap.v1.TestResult;
 import me.hsgamer.testgenesis.uap.v1.TestStatus;
 
@@ -21,8 +20,6 @@ public class TestSession implements Session {
 
     private final List<Consumer<TestResult>> resultConsumers = new CopyOnWriteArrayList<>();
     private final List<Runnable> completionListeners = new CopyOnWriteArrayList<>();
-    @Getter
-    private Consumer<TestCommand> commandDispatcher;
 
 
     @Getter
@@ -32,10 +29,6 @@ public class TestSession implements Session {
 
     public TestSession(TestTicket ticket) {
         this.ticket = ticket;
-    }
-
-    public void setCommandDispatcher(Consumer<TestCommand> dispatcher) {
-        this.commandDispatcher = dispatcher;
     }
 
     public void updateStatus(TestStatus status) {
@@ -60,12 +53,6 @@ public class TestSession implements Session {
             updateStatus(result.getStatus());
         }
         resultConsumers.forEach(consumer -> consumer.accept(result));
-    }
-
-    public void sendCommand(TestCommand command) {
-        if (commandDispatcher != null) {
-            commandDispatcher.accept(command);
-        }
     }
 
     public void addTelemetryConsumer(Consumer<Telemetry> consumer) {

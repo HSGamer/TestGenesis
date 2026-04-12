@@ -3,7 +3,7 @@ syntax = "proto3";
 
 package uap.v1;
 
-import "TestInstruction.proto";
+import "TestInit.proto";
 import "TestResponse.proto";
 
 option java_package = "me.hsgamer.testgenesis.uap.v1";
@@ -11,8 +11,8 @@ option java_multiple_files = true;
 
 // Service for dispatching and executing test tests.
 service TestHub {
-  // Execute opens a dedicated bi-directional stream for a test test execution session.
+  // Execute opens a dedicated bi-directional stream for a test execution session.
   // The Agent MUST provide the session_id in the 'x-session-id' header.
-  // Highly isolated and multi-plexed via instructions and response events.
-  rpc Execute(stream TestResponse) returns (stream TestInstruction);
+  // Highly isolated and multi-plexed via initialization and response events.
+  rpc Execute(stream TestResponse) returns (stream TestInit);
 }

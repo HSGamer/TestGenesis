@@ -2,15 +2,20 @@
 set shell := ["bash", "-c"]
 
 # Build everything in order
-all: build-cms build-side-agent
+# Build everything in order
+all: build-cms build-client-node build-side-agent
+
+# Build the common NodeJS client module
+build-client-node:
+    cd implementation/client/testgenesis-client-node && npm install && npm run build
 
 # Build the Quarkus CMS (includes internal gRPC generation)
 build-cms:
     cd implementation/server/testgenesis-cms && mvn clean compile
 
-# Build the Side Agent (includes internal gRPC generation)
-build-side-agent:
-    cd implementation/client/side-agent && npm install && npm run build
+# Build the Side Agent (depends on build-client-node)
+build-side-agent: build-client-node
+    cd implementation/client/side-agent && npm install && npx tsc
 
 # Run the Side Agent in development mode
 run-side-agent:

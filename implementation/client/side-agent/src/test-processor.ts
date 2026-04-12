@@ -1,16 +1,25 @@
-import { TestHub } from "./generated/TestHub_connect.js";
-import { TestResponse } from "./generated/TestResponse_pb.js";
-import { TestStatus } from "./generated/TestStatus_pb.js";
-import { TestState } from "./generated/TestState_pb.js";
-import { TestResult } from "./generated/TestResult_pb.js";
-import { StepReport } from "./generated/StepReport_pb.js";
-import { Telemetry } from "./generated/Telemetry_pb.js";
-import { Severity } from "./generated/Severity_pb.js";
-import { Summary } from "./generated/Summary_pb.js";
-import { Payload } from "./generated/Payload_pb.js";
-import { Attachment } from "./generated/Attachment_pb.js";
+import { 
+  TestSessionProcessor,
+  TestSessionContext,
+  TestStatus,
+  TestStatusSchema,
+  TestState,
+  TestResultSchema,
+  StepReportSchema,
+  SummarySchema,
+  Payload,
+  Attachment,
+  msToDuration,
+  CapabilitySchema,
+  TestCapabilitySchema,
+  Severity,
+  create,
+  timestampFromDate,
+  fromJson
+} from "testgenesis-client-node";
 
-import { Timestamp, Struct } from "@bufbuild/protobuf";
+import { TestReport } from "./common.js";
+import { StructSchema } from "@bufbuild/protobuf/wkt";
 import { TestLogger, TestRunner } from "@hsgamer/side-engine";
 import { Builder, WebDriver } from "selenium-webdriver";
 import { 
@@ -20,78 +29,85 @@ import {
   CommandStates, 
 } from "@seleniumhq/side-runtime";
 import type { TestShape } from "@seleniumhq/side-model";
-import { Client } from "@connectrpc/connect";
-import { createWritableIterable } from "@connectrpc/connect/protocol";
-import { msToDuration, TestReport } from "./common.js";
 
 import { CONFIG } from "./config.js";
 
-export class TestProcessor {
-  private driver: WebDriver | null = null;
-  private requestIterable = createWritableIterable<TestResponse>();
-
+/**
+ * Singleton handler for Selenium-based test jobs.
+ */
+export class TestProcessor implements TestSessionProcessor {
   constructor(
-    private readonly sessionId: string,
-    private readonly client: Client<typeof TestHub>,
     private readonly onDriverCreated: (driver: WebDriver) => void,
     private readonly onDriverDestroyed: (driver: WebDriver) => void
   ) {}
 
-  public async process() {
-    try {
-      const stream = this.client.execute(this.requestIterable, {
-        headers: { "x-session-id": this.sessionId },
-      });
-
-
-      for await (const instruction of stream) {
-        if (instruction.event.case === "testInit") {
-          await this.executeTest(instruction.event.value);
-        }
+  public getCapability() {
+    return create(CapabilitySchema, {
+      format: {
+        case: "test",
+        value: create(TestCapabilitySchema, {
+          type: "selenium-side",
+          payloads: [
+            { type: "selenium-side", isRequired: true, acceptedMimeTypes: ["application/json"] },
+            { type: "runtime-env", acceptedMimeTypes: ["application/json"] }
+          ]
+        })
       }
-    } catch (err) {
-      console.error(`[Test ${this.sessionId}] Error:`, err);
-    } finally {
-      await this.cleanup();
-    }
-  }
-
-  private pushResponse(event: TestResponse["event"]) {
-    this.requestIterable.write(new TestResponse({ timestamp: Timestamp.now(), event }));
-  }
-
-  private sendLog(message: string, severity = Severity.INFO) {
-    this.pushResponse({
-      case: "telemetry",
-      value: new Telemetry({ message, timestamp: Timestamp.now(), severity, source: "side-agent" }),
     });
   }
 
-  private async executeTest(request: any) {
-    const { testType, payloads } = request;
-    const payload = payloads.find((p: any) => p.type === testType);
-    
-    if (!payload?.attachment) {
-      this.pushResponse({ 
-        case: "status", 
-        value: new TestStatus({ state: TestState.INVALID, message: "Missing required test payload or attachment" }) 
-      });
-      return;
-    }
+  public async process(sessionId: string, context: TestSessionContext) {
+    await new TestSession(
+      sessionId,
+      context,
+      this.onDriverCreated,
+      this.onDriverDestroyed
+    ).execute();
+  }
+}
 
-    // Determine browser from environment config if available
-    const envPayload = payloads.find((p: any) => p.type === "runtime-env");
-    let browser = "chrome";
-    if (envPayload?.attachment) {
-      try {
-        const config = JSON.parse(new TextDecoder().decode(envPayload.attachment.data));
-        browser = config.browser || browser;
-      } catch (e) {}
-    }
+/**
+ * Per-session logic for Selenium test execution.
+ */
+class TestSession {
+  private driver: WebDriver | null = null;
 
-    this.pushResponse({ case: "status", value: new TestStatus({ state: TestState.ACKNOWLEDGED, message: "Initializing Selenium..." }) });
+  constructor(
+    private readonly sessionId: string,
+    private readonly context: TestSessionContext,
+    private readonly onDriverCreated: (driver: WebDriver) => void,
+    private readonly onDriverDestroyed: (driver: WebDriver) => void
+  ) {}
 
+  public async execute() {
     try {
+      const init = this.context.init;
+      const { testType, payloads } = init;
+      const payload = payloads.find((p: any) => p.type === testType);
+      
+      if (!payload?.attachment) {
+        this.context.sendStatus(create(TestStatusSchema, { 
+          state: TestState.INVALID, 
+          message: "Missing required test payload or attachment" 
+        }));
+        return;
+      }
+
+      // Determine browser from environment config if available
+      const envPayload = payloads.find((p: any) => p.type === "runtime-env");
+      let browser = "chrome";
+      if (envPayload?.attachment) {
+        try {
+          const config = JSON.parse(new TextDecoder().decode(envPayload.attachment.data));
+          browser = config.browser || browser;
+        } catch (e) {}
+      }
+
+      this.context.sendStatus(create(TestStatusSchema, { 
+        state: TestState.ACKNOWLEDGED, 
+        message: "Initializing Selenium..." 
+      }));
+
       let parsedTest: Partial<TestShape>;
       try {
         parsedTest = JSON.parse(new TextDecoder().decode(payload.attachment.data));
@@ -99,20 +115,15 @@ export class TestProcessor {
         throw new Error(`Failed to parse test payload as JSON: ${err.message}`);
       }
 
-      if (!parsedTest || typeof parsedTest !== "object") {
-        throw new Error("Parsed test payload is not a valid JSON object.");
-      }
-      
-      if (!Array.isArray(parsedTest.commands)) {
-        throw new Error("Invalid test payload: 'commands' property is missing or not an array.");
-      }
-
       const test: TestShape = { 
         id: parsedTest.id || this.sessionId, 
         name: parsedTest.name || "UAP Execution", 
-        commands: parsedTest.commands 
+        commands: parsedTest.commands || [] 
       };
 
+      if (!test.commands.length) {
+        throw new Error("Invalid test payload: 'commands' property is missing or empty.");
+      }
       
       const builder = new Builder().forBrowser(browser);
       if (CONFIG.SELENIUM_REMOTE_URL) builder.usingServer(CONFIG.SELENIUM_REMOTE_URL);
@@ -127,8 +138,11 @@ export class TestProcessor {
         executor: new WebDriverExecutor({ driver: this.driver }),
       });
 
-      this.sendLog(`Session started for browser: ${browser}`);
-      this.pushResponse({ case: "status", value: new TestStatus({ state: TestState.RUNNING, message: "Running steps..." }) });
+      this.context.sendTelemetry(`Session started for browser: ${browser}`);
+      this.context.sendStatus(create(TestStatusSchema, { 
+        state: TestState.RUNNING, 
+        message: "Running steps..." 
+      }));
       
       const startTime = new Date();
       await testRunner.run();
@@ -137,30 +151,33 @@ export class TestProcessor {
       const report = (await testRunner.createReport(logger)) as TestReport;
       const finalState = report.state === PlaybackStates.FINISHED ? TestState.COMPLETED : TestState.FAILED;
 
-      this.pushResponse({
-        case: "result",
-        value: new TestResult({
-          status: new TestStatus({ state: finalState }),
-          reports: report.commands.map(cmd => new StepReport({
-            name: `${cmd.command.command} ${cmd.command.target || ""}`,
-            status: cmd.state === CommandStates.PASSED ? "COMPLETED" : "FAILED",
-            metadata: { id: cmd.id, command: cmd.command.command },
-            summary: new Summary({
-              startTime: Timestamp.fromDate(cmd.timestamp[0]?.timestamp || new Date()),
-              totalDuration: msToDuration((cmd.timestamp[cmd.timestamp.length-1]?.timestamp.getTime() || 0) - (cmd.timestamp[0]?.timestamp.getTime() || 0))
-            })
-          })),
-          summary: new Summary({
-            startTime: Timestamp.fromDate(startTime),
-            totalDuration: msToDuration(endTime.getTime() - startTime.getTime()),
-            metadata: Struct.fromJson({ total_steps: report.commands.length, browser })
+      this.context.sendResult(create(TestResultSchema, {
+        status: create(TestStatusSchema, { state: finalState }),
+        reports: report.commands.map(cmd => create(StepReportSchema, {
+          name: `${cmd.command.command} ${cmd.command.target || ""}`,
+          status: cmd.state === CommandStates.PASSED ? "COMPLETED" : "FAILED",
+          metadata: { id: cmd.id, command: cmd.command.command },
+          summary: create(SummarySchema, {
+            startTime: timestampFromDate(cmd.timestamp[0]?.timestamp || new Date()),
+            totalDuration: msToDuration((cmd.timestamp[cmd.timestamp.length-1]?.timestamp.getTime() || 0) - (cmd.timestamp[0]?.timestamp.getTime() || 0))
           })
+        })),
+        summary: create(SummarySchema, {
+          startTime: timestampFromDate(startTime),
+          totalDuration: msToDuration(endTime.getTime() - startTime.getTime()),
+          metadata: { total_steps: report.commands.length, browser }
         })
-      });
+      }));
 
-      this.pushResponse({ case: "status", value: new TestStatus({ state: finalState }) });
+      this.context.sendStatus(create(TestStatusSchema, { state: finalState }));
     } catch (err: any) {
-      this.pushResponse({ case: "status", value: new TestStatus({ state: TestState.FAILED, message: `Error: ${err.message}` }) });
+      console.error(`[Test ${this.sessionId}] Error:`, err);
+      this.context.sendStatus(create(TestStatusSchema, { 
+        state: TestState.FAILED, 
+        message: `Error: ${err.message}` 
+      }));
+    } finally {
+      await this.cleanup();
     }
   }
 
