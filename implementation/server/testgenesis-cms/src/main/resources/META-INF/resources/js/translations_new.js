@@ -23,8 +23,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (agent) agent.addEventListener('change', () => {
         const a = window.agents?.find(x => x.id === agent.value);
-        type.innerHTML = '<option value="">-- Select Type --</option>' + 
-            (a ? a.supportedTranslations.map(x => `<option value="${x.type}">${x.type}</option>`).join('') : '');
+        type.innerHTML = '';
+        
+        const defaultOpt = el('option-template').content.cloneNode(true);
+        const optEl = defaultOpt.querySelector('option');
+        optEl.value = '';
+        optEl.textContent = '-- Select Type --';
+        type.appendChild(defaultOpt);
+
+        if (a) {
+            a.supportedTranslations.forEach(x => {
+                const opt = el('option-template').content.cloneNode(true);
+                const o = opt.querySelector('option');
+                o.value = x.type;
+                o.textContent = x.type;
+                type.appendChild(opt);
+            });
+        }
+        
         type.disabled = !a;
         update();
     });

@@ -21,6 +21,7 @@ import {
 
 import { TestLogger, TestRunner } from "@hsgamer/side-engine";
 import { Builder, WebDriver } from "selenium-webdriver";
+import * as os from "os";
 
 type TestReport = ReturnType<TestLogger["createReport"]>;
 import { 
@@ -160,7 +161,11 @@ class TestSession {
           status: cmd.state === CommandStates.PASSED ? StepStatus.PASSED : StepStatus.FAILED,
           summary: create(SummarySchema, {
             startTime: timestampFromDate(cmd.timestamp[0]?.timestamp || new Date()),
-            totalDuration: msToDuration((cmd.timestamp[cmd.timestamp.length-1]?.timestamp.getTime() || 0) - (cmd.timestamp[0]?.timestamp.getTime() || 0)),
+            totalDuration: msToDuration(
+              cmd.timestamp.length >= 2 
+                ? (cmd.timestamp[cmd.timestamp.length-1]?.timestamp.getTime() || 0) - (cmd.timestamp[0]?.timestamp.getTime() || 0)
+                : 0
+            ),
             metadata: {
               message: cmd.timestamp.find(t => t.message || t.error)?.message || 
                        cmd.timestamp.find(t => t.error)?.error?.message || ""
@@ -168,9 +173,24 @@ class TestSession {
           })
         })),
         summary: create(SummarySchema, {
-          startTime: timestampFromDate(startTime),
-          totalDuration: msToDuration(endTime.getTime() - startTime.getTime()),
-          metadata: { total_steps: report.commands.length, browser }
+          startTime: timestampFromDate(report.timestamp[0]?.timestamp || startTime),
+          totalDuration: msToDuration(
+            report.timestamp.length >= 2
+              ? (report.timestamp[report.timestamp.length - 1]?.timestamp.getTime() || endTime.getTime()) - 
+                (report.timestamp[0]?.timestamp.getTime() || startTime.getTime())
+              : endTime.getTime() - startTime.getTime()
+          ),
+          metadata: { 
+            total_steps: report.commands.length, 
+            browser,
+            execute_duration: endTime.getTime() - startTime.getTime(),
+            os_platform: os.platform(),
+            os_release: os.release(),
+            os_arch: os.arch(),
+            cpu_model: os.cpus()[0]?.model || "unknown",
+            cpu_count: os.cpus().length,
+            memory_total_gb: Math.round(os.totalmem() / (1024 ** 3))
+          }
         })
       }));
 

@@ -8,7 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const log = (m) => {
         if (!logDiv) return;
         const div = document.createElement('div');
-        div.innerHTML = `<span class="text-muted small">${new Date(m.timestamp).toLocaleTimeString([], {hour12:false})} [${m.level||'INFO'}]</span> ${m.message}`;
+        const time = document.createElement('span');
+        time.className = 'text-muted small';
+        time.textContent = `${new Date(m.timestamp).toLocaleTimeString([], {hour12:false})} [${m.level||'INFO'}] `;
+        div.appendChild(time);
+        div.append(m.message);
         logDiv.appendChild(div);
         logDiv.scrollTop = logDiv.scrollHeight;
     };
@@ -30,14 +34,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const list = el('payloads-list');
             if (list) {
                 d.payloads.forEach(p => {
-                    if (document.querySelector(`[data-payload-id="${p.id}"]` )) return;
-                    const div = document.createElement('div');
-                    div.className = 'list-item flex-between';
-                    div.setAttribute('data-payload-id', p.id);
-                    div.innerHTML = p.removed 
-                        ? `<span class="text-muted small">Payload #${p.id} (removed)</span>`
-                        : `<span class="small">Payload #${p.id}</span> <a href="/payloads/${p.id}/edit" class="btn">Edit</a>`;
-                    list.appendChild(div);
+                    if (document.querySelector(`[data-payload-id="${p.id}"]`)) return;
+                    const t = el('payload-template').content.cloneNode(true);
+                    const item = t.querySelector('.list-item');
+                    item.setAttribute('data-payload-id', p.id);
+                    
+                    if (p.removed) {
+                        t.querySelector('.payload-name').remove();
+                        t.querySelector('.edit-link').remove();
+                        const removed = t.querySelector('.removed-info');
+                        removed.textContent = `Payload #${p.id} (removed)`;
+                        removed.classList.remove('d-none');
+                    } else {
+                        t.querySelector('.payload-name').textContent = `Payload #${p.id}`;
+                        t.querySelector('.edit-link').href = `/payloads/${p.id}/edit`;
+                        t.querySelector('.removed-info').remove();
+                    }
+                    list.appendChild(t);
                 });
             }
         }

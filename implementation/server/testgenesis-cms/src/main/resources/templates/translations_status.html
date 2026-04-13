@@ -24,8 +24,16 @@
     </div>
 </div>
 
+<template id="payload-template">
+    <div class="list-item flex-between">
+        <span class="payload-name small"></span>
+        <a class="edit-link btn">Edit</a>
+        <span class="removed-info text-muted small d-none"></span>
+    </div>
+</template>
+
 <section id="results-section" class="{#if generatedEntities.isEmpty()}d-none{/if}">
-    <h3>Output</h3>
+    <h3 id="results-title">Output</h3>
     <div class="list" id="payloads-list">
         {#for p in generatedEntities}
             <div class="list-item flex-between" data-payload-id="{p.id}">

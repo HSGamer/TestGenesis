@@ -20,15 +20,23 @@ public class TestManager {
     @Inject
     TestService testService;
 
-    public Uni<TestTicketResult> startTest(Long testId, String agentId) {
+    @Inject
+    PayloadService payloadService;
+
+    public Uni<TestTicketResult> startTest(Long testId, String agentId, List<Long> extraPayloadIds) {
         TestEntity test = testService.findById(testId)
                 .orElseThrow(() -> new IllegalArgumentException("Test not found: " + testId));
 
-        List<Payload> payloads = test.getPayloads().stream()
+        java.util.Set<PayloadEntity> allPayloads = new java.util.HashSet<>(test.getPayloads());
+        if (extraPayloadIds != null) {
+            extraPayloadIds.forEach(id -> payloadService.findById(id).ifPresent(allPayloads::add));
+        }
+
+        List<Payload> protoPayloads = allPayloads.stream()
                 .map(PayloadEntity::toProto)
                 .toList();
 
-        TestTicket ticket = new TestTicket(test.getTestType(), payloads);
+        TestTicket ticket = new TestTicket(test.getTestType(), protoPayloads);
 
         return uapService.registerTest(agentId, ticket);
     }

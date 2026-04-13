@@ -4,7 +4,6 @@ syntax = "proto3";
 package uap.v1;
 
 import "Summary.proto";
-import "Attachment.proto";
 import "StepStatus.proto";
 
 option java_package = "me.hsgamer.testgenesis.uap.v1";
@@ -18,9 +17,6 @@ message StepReport {
   // The final status of this specific step.
   StepStatus status = 2;
 
-  // Rich data captured during the step (e.g., screenshots).
-  repeated Attachment attachments = 3;
-
   // Detailed summary of the step execution.
-  Summary summary = 4;
+  Summary summary = 3;
 }

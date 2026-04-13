@@ -22,6 +22,43 @@
     </div>
 </section>
 
+<section id="summary-section" class="d-none">
+    <h3>Summary</h3>
+    <div id="summary-content" class="card">
+        <div class="flex-between">
+            <span class="small">Total Duration</span>
+            <strong id="summary-duration" class="small"></strong>
+        </div>
+        <div id="summary-metadata" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <pre class="metadata" id="summary-json"></pre>
+        </div>
+    </div>
+</section>
+
+<template id="step-template">
+    <div class="card">
+        <div class="flex-between header" style="cursor:pointer">
+            <div class="flex">
+                <span class="status-badge"></span>
+                <strong class="step-name"></strong>
+            </div>
+            <span class="text-muted small duration"></span>
+        </div>
+        <div class="details d-none" style="margin-top:0.5rem; border-top:1px solid var(--border-color); padding-top:0.5rem">
+            <pre class="metadata"></pre>
+        </div>
+    </div>
+</template>
+
+<template id="attachment-template">
+    <img src="" style="max-width:300px; cursor:zoom-in" onclick="window.open(this.src)">
+</template>
+
+<section id="attachments-section" class="d-none" style="margin-top: 2rem;">
+    <h3>Attachments</h3>
+    <div id="attachments-container" class="card flex" style="gap:0.5rem; flex-wrap:wrap"></div>
+</section>
+
 <section>
     <h3>Console</h3>
     <div id="telemetry-console"></div>

@@ -33,6 +33,42 @@
         </div>
     </section>
 
+    <section style="margin-top: 2rem;">
+        <h3>Primary Payloads</h3>
+        <p class="text-muted small">These payloads are linked to the test definition and will always be included.</p>
+        <div class="list">
+            {#for payload in test.payloads}
+                <div class="list-item flex-between">
+                    <span class="small"><strong>{payload.name}</strong></span>
+                    <span class="status-badge">{payload.type}</span>
+                </div>
+            {#else}
+                <div class="list-item text-muted small">No linked payloads.</div>
+            {/for}
+        </div>
+    </section>
+
+    <section style="margin-top: 2rem;">
+        <h3>Additional Payloads</h3>
+        <p class="text-muted small">Select any extra payloads to include in this execution.</p>
+        <div class="list">
+            {#for payload in extraPayloads}
+                <label class="list-item flex" style="cursor: pointer;">
+                    <input type="checkbox" name="extraPayloadIds" value="{payload.id}" style="width: auto;">
+                    <div style="flex: 1;">
+                        <div class="flex-between">
+                            <span class="small"><strong>{payload.name}</strong></span>
+                            <span class="status-badge">{payload.type}</span>
+                        </div>
+                        <div class="text-muted small">{payload.description}</div>
+                    </div>
+                </label>
+            {#else}
+                <div class="list-item text-muted small">No additional payloads available.</div>
+            {/for}
+        </div>
+    </section>
+
     <div style="margin-top: 2rem;">
         <button type="submit" class="btn btn-primary">Launch Execution</button>
     </div>

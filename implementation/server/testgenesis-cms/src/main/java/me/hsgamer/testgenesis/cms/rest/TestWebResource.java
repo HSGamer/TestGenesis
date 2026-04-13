@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.core.TestSession;
+import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
 import me.hsgamer.testgenesis.cms.persistence.TestEntity;
 import me.hsgamer.testgenesis.cms.service.PayloadService;
 import me.hsgamer.testgenesis.cms.service.TestManager;
@@ -124,9 +125,19 @@ public class TestWebResource {
     public TemplateInstance runForm(@PathParam("id") Long id) {
         TestEntity test = testService.findById(id)
                 .orElseThrow(() -> new NotFoundException("Test not found: " + id));
+
+        java.util.Set<Long> linkedIds = test.getPayloads().stream()
+                .map(p -> p.id)
+                .collect(java.util.stream.Collectors.toSet());
+
+        java.util.List<PayloadEntity> extraPayloads = payloadService.listAll().stream()
+                .filter(p -> !linkedIds.contains(p.id))
+                .toList();
+
         return tests_run
                 .data("test", test)
-                .data("agents", uapService.getAgentGuidedInfos());
+                .data("agents", uapService.getAgentGuidedInfos())
+                .data("extraPayloads", extraPayloads);
     }
 
     @POST
@@ -135,9 +146,10 @@ public class TestWebResource {
     @Blocking
     public Uni<Response> start(
             @PathParam("id") Long id,
-            @RestForm("agentId") String agentId) {
+            @RestForm("agentId") String agentId,
+            @RestForm("extraPayloadIds") java.util.List<Long> extraPayloadIds) {
 
-        return testManager.startTest(id, agentId)
+        return testManager.startTest(id, agentId, extraPayloadIds)
                 .map(result -> {
                     if (result.accepted()) {
                         return Response.seeOther(URI.create("/tests/" + result.session().getSessionId() + "/status")).build();
