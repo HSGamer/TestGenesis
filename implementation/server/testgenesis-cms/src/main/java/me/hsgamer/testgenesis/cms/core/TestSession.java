@@ -2,15 +2,13 @@ package me.hsgamer.testgenesis.cms.core;
 
 import lombok.Getter;
 import me.hsgamer.testgenesis.cms.util.StatusUtil;
-import me.hsgamer.testgenesis.uap.v1.Telemetry;
-import me.hsgamer.testgenesis.uap.v1.TestResult;
-import me.hsgamer.testgenesis.uap.v1.TestStatus;
+import me.hsgamer.testgenesis.uap.v1.*;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class TestSession implements Session {
+public class TestSession implements Session<TestResponse> {
 
     @Getter
     private final String sessionId;
@@ -58,11 +56,27 @@ public class TestSession implements Session {
         resultConsumers.forEach(consumer -> consumer.accept(result));
     }
 
+    @Override
+    public void handleResponse(TestResponse response) {
+        switch (response.getEventCase()) {
+            case STATUS -> updateStatus(response.getStatus());
+            case TELEMETRY -> dispatchTelemetry(response.getTelemetry());
+            case RESULT -> completeWithResult(response.getResult());
+        }
+    }
+
+    @Override
+    public void fail(String reason) {
+        updateStatus(TestStatus.newBuilder()
+                .setState(TestState.TEST_STATE_FAILED)
+                .setMessage(reason)
+                .build());
+    }
+
     public void addTelemetryConsumer(Consumer<Telemetry> consumer) {
         telemetryConsumers.add(consumer);
         telemetryHistory.forEach(consumer);
     }
-
 
     public void removeTelemetryConsumer(Consumer<Telemetry> consumer) {
         telemetryConsumers.remove(consumer);

@@ -4,7 +4,7 @@ import me.hsgamer.testgenesis.uap.v1.Telemetry;
 
 import java.util.function.Consumer;
 
-public interface Session {
+public interface Session<R> {
     String getSessionId();
 
     void onCompletion(Runnable callback);
@@ -14,4 +14,8 @@ public interface Session {
     void removeTelemetryConsumer(Consumer<Telemetry> consumer);
 
     void dispatchTelemetry(Telemetry telemetry);
+
+    void handleResponse(R response);
+
+    void fail(String reason);
 }

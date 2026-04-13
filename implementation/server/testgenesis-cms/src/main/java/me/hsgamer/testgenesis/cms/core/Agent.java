@@ -5,6 +5,8 @@ import me.hsgamer.testgenesis.uap.v1.Capability;
 import java.util.List;
 
 public interface Agent {
+    String id();
+
     String displayName();
 
     List<Capability> capabilities();

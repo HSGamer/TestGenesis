@@ -7,11 +7,15 @@ import "ListenRequest.proto";
 import "ListenResponse.proto";
 import "AgentRegistration.proto";
 import "AgentRegistrationResponse.proto";
+import "TestInit.proto";
+import "TestResponse.proto";
+import "TranslationInit.proto";
+import "TranslationResponse.proto";
 
 option java_package = "me.hsgamer.testgenesis.uap.v1";
 option java_multiple_files = true;
 
-// Service for unified agent registration and session negotiation.
+// Service for unified agent registration, session negotiation, and execution.
 service AgentHub {
   // Register performs a unary call to identify the Agent and its capabilities.
   // Responds with a unique client_id for the session.
@@ -20,4 +24,12 @@ service AgentHub {
   // Listen establishes a single long-lived bi-directional control stream.
   // The Agent MUST provide its client_id in the 'x-client-id' header.
   rpc Listen(stream ListenRequest) returns (stream ListenResponse);
+
+  // Execute opens a dedicated bi-directional stream for a test execution session.
+  // The Agent MUST provide the session_id in the 'x-session-id' header.
+  rpc Execute(stream TestResponse) returns (stream TestInit);
+
+  // Bi-directional stream for a single translation session.
+  // The Agent MUST provide the session_id in the 'x-session-id' header.
+  rpc Translate(stream TranslationResponse) returns (stream TranslationInit);
 }

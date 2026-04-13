@@ -3,12 +3,11 @@ package me.hsgamer.testgenesis.cms.service;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.context.ManagedExecutor;
-
 import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.core.TranslationTicket;
 import me.hsgamer.testgenesis.cms.core.TranslationTicketResult;
 import me.hsgamer.testgenesis.uap.v1.Payload;
+import org.eclipse.microprofile.context.ManagedExecutor;
 
 import java.util.List;
 

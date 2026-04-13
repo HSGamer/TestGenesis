@@ -2,15 +2,13 @@ package me.hsgamer.testgenesis.cms.core;
 
 import lombok.Getter;
 import me.hsgamer.testgenesis.cms.util.StatusUtil;
-import me.hsgamer.testgenesis.uap.v1.Telemetry;
-import me.hsgamer.testgenesis.uap.v1.TranslationResult;
-import me.hsgamer.testgenesis.uap.v1.TranslationStatus;
+import me.hsgamer.testgenesis.uap.v1.*;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class TranslationSession implements Session {
+public class TranslationSession implements Session<TranslationResponse> {
     @Getter
     private final String sessionId;
     @Getter
@@ -54,6 +52,23 @@ public class TranslationSession implements Session {
             updateStatus(result.getStatus());
         }
         resultConsumers.forEach(consumer -> consumer.accept(result));
+    }
+
+    @Override
+    public void handleResponse(TranslationResponse response) {
+        switch (response.getEventCase()) {
+            case STATUS -> updateStatus(response.getStatus());
+            case TELEMETRY -> dispatchTelemetry(response.getTelemetry());
+            case RESULT -> completeWithResult(response.getResult());
+        }
+    }
+
+    @Override
+    public void fail(String reason) {
+        updateStatus(TranslationStatus.newBuilder()
+                .setState(TranslationState.TRANSLATION_STATE_FAILED)
+                .setMessage(reason)
+                .build());
     }
 
     public void addTelemetryConsumer(Consumer<Telemetry> consumer) {

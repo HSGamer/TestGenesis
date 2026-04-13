@@ -3,8 +3,6 @@ import { createClient, Client, Transport } from "@connectrpc/connect";
 import { create } from "@bufbuild/protobuf";
 import { createWritableIterable } from "@connectrpc/connect/protocol";
 import { AgentHub } from "./generated/AgentHub_pb.js";
-import { TestHub } from "./generated/TestHub_pb.js";
-import { TranslationHub } from "./generated/TranslationHub_pb.js";
 import { AgentRegistrationSchema } from "./generated/AgentRegistration_pb.js";
 import { ListenRequest, ListenRequestSchema } from "./generated/ListenRequest_pb.js";
 import { 
@@ -25,8 +23,6 @@ export interface AgentConfig {
 export class Agent {
   private readonly transport: Transport;
   private readonly agentClient: Client<typeof AgentHub>;
-  private testClient?: Client<typeof TestHub>;
-  private translationClient?: Client<typeof TranslationHub>;
   private readonly processors = new Map<ProcessorType, AnyProcessor>();
   private isShuttingDown = false;
 
@@ -38,16 +34,10 @@ export class Agent {
   }
 
   public registerTestProcessor(processor: TestSessionProcessor) {
-    if (!this.testClient) {
-      this.testClient = createClient(TestHub, this.transport);
-    }
     this.processors.set("test", processor);
   }
 
   public registerTranslationProcessor(processor: TranslationSessionProcessor) {
-    if (!this.translationClient) {
-      this.translationClient = createClient(TranslationHub, this.transport);
-    }
     this.processors.set("translation", processor);
   }
 
@@ -126,10 +116,10 @@ export class Agent {
   }
 
   private async handleSessionReady(sessionId: string, type: ProcessorType) {
-    if (type === "test" && this.testClient) {
+    if (type === "test") {
       const processor = this.processors.get("test") as TestSessionProcessor;
       const responseIterable = createWritableIterable<TestResponse>();
-      const stream = this.testClient.execute(responseIterable, {
+      const stream = this.agentClient.execute(responseIterable, {
         headers: { "x-session-id": sessionId },
       });
 
@@ -148,10 +138,10 @@ export class Agent {
       } finally {
         responseIterable.close();
       }
-    } else if (type === "translation" && this.translationClient) {
+    } else if (type === "translation") {
       const processor = this.processors.get("translation") as TranslationSessionProcessor;
       const responseIterable = createWritableIterable<TranslationResponse>();
-      const stream = this.translationClient.translate(responseIterable, {
+      const stream = this.agentClient.translate(responseIterable, {
         headers: { "x-session-id": sessionId },
       });
 

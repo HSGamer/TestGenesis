@@ -48,7 +48,7 @@ public class TranslationWebResource {
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance list() {
-        return translations_index.data("sessions", uapService.getTranslationSessions().values());
+        return translations_index.data("sessions", uapService.getTranslationSessions());
     }
 
     @GET
@@ -93,18 +93,13 @@ public class TranslationWebResource {
                 });
     }
 
-
-    public record GeneratedPayloadInfo(Long id, String name, boolean removed) {}
-
     @GET
     @Path("/{sessionId}/status")
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance status(@PathParam("sessionId") String sessionId) {
-        TranslationSession session = uapService.getTranslationSessions().get(sessionId);
-        if (session == null) {
-            throw new NotFoundException("Translation session not found: " + sessionId);
-        }
+        TranslationSession session = uapService.getTranslationSession(sessionId)
+                .orElseThrow(() -> new NotFoundException("Translation session not found: " + sessionId));
 
         List<GeneratedPayloadInfo> generatedEntities = session.getResultPayloads().stream()
                 .map(p -> payloadService.findById(p.id())
@@ -117,5 +112,6 @@ public class TranslationWebResource {
                 .data("generatedEntities", generatedEntities);
     }
 
-
+    public record GeneratedPayloadInfo(Long id, String name, boolean removed) {
+    }
 }

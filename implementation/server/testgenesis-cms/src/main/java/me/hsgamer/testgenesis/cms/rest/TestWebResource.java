@@ -2,19 +2,19 @@ package me.hsgamer.testgenesis.cms.rest;
 
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
+import io.smallrye.common.annotation.Blocking;
+import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import me.hsgamer.testgenesis.cms.core.TestSession;
 import me.hsgamer.testgenesis.cms.persistence.TestEntity;
 import me.hsgamer.testgenesis.cms.service.PayloadService;
+import me.hsgamer.testgenesis.cms.service.TestManager;
 import me.hsgamer.testgenesis.cms.service.TestService;
 import me.hsgamer.testgenesis.cms.service.UAPService;
-import io.smallrye.common.annotation.Blocking;
-import io.smallrye.mutiny.Uni;
-import me.hsgamer.testgenesis.cms.core.TestSession;
-import me.hsgamer.testgenesis.cms.service.TestManager;
 import org.jboss.resteasy.reactive.RestForm;
 
 import java.net.URI;
@@ -54,7 +54,7 @@ public class TestWebResource {
     public TemplateInstance list() {
         return tests_list
                 .data("tests", testService.listAll())
-                .data("sessions", uapService.getTestSessions().values());
+                .data("sessions", uapService.getTestSessions());
     }
 
     @GET
@@ -154,10 +154,8 @@ public class TestWebResource {
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance status(@PathParam("sessionId") String sessionId) {
-        TestSession session = uapService.getTestSessions().get(sessionId);
-        if (session == null) {
-            throw new NotFoundException("Test session not found: " + sessionId);
-        }
+        TestSession session = uapService.getTestSession(sessionId)
+                .orElseThrow(() -> new NotFoundException("Test session not found: " + sessionId));
 
         return tests_status.data("session", session);
     }
