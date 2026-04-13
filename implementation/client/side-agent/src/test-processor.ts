@@ -15,13 +15,14 @@ import {
   Severity,
   create,
   timestampFromDate,
-  fromJson
+  fromJson,
+  StepStatus
 } from "testgenesis-client-node";
 
-import { TestReport } from "./common.js";
-import { StructSchema } from "@bufbuild/protobuf/wkt";
 import { TestLogger, TestRunner } from "@hsgamer/side-engine";
 import { Builder, WebDriver } from "selenium-webdriver";
+
+type TestReport = ReturnType<TestLogger["createReport"]>;
 import { 
   WebDriverExecutor, 
   Variables, 
@@ -137,6 +138,7 @@ class TestSession {
         variables: new Variables(),
         executor: new WebDriverExecutor({ driver: this.driver }),
       });
+      logger.bind(testRunner);
 
       this.context.sendTelemetry(`Session started for browser: ${browser}`);
       this.context.sendStatus(create(TestStatusSchema, { 
@@ -155,11 +157,14 @@ class TestSession {
         status: create(TestStatusSchema, { state: finalState }),
         reports: report.commands.map(cmd => create(StepReportSchema, {
           name: `${cmd.command.command} ${cmd.command.target || ""}`,
-          status: cmd.state === CommandStates.PASSED ? "COMPLETED" : "FAILED",
-          metadata: { id: cmd.id, command: cmd.command.command },
+          status: cmd.state === CommandStates.PASSED ? StepStatus.PASSED : StepStatus.FAILED,
           summary: create(SummarySchema, {
             startTime: timestampFromDate(cmd.timestamp[0]?.timestamp || new Date()),
-            totalDuration: msToDuration((cmd.timestamp[cmd.timestamp.length-1]?.timestamp.getTime() || 0) - (cmd.timestamp[0]?.timestamp.getTime() || 0))
+            totalDuration: msToDuration((cmd.timestamp[cmd.timestamp.length-1]?.timestamp.getTime() || 0) - (cmd.timestamp[0]?.timestamp.getTime() || 0)),
+            metadata: {
+              message: cmd.timestamp.find(t => t.message || t.error)?.message || 
+                       cmd.timestamp.find(t => t.error)?.error?.message || ""
+            }
           })
         })),
         summary: create(SummarySchema, {

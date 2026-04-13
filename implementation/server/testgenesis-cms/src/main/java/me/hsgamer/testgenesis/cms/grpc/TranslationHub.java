@@ -62,14 +62,6 @@ public class TranslationHub extends MutinyTranslationHubGrpc.TranslationHubImplB
                     .addAllPayloads(session.getTicket().payloads())
                     .build();
             emitter.emit(initMsg);
-
-            // Completes the stream on the server side because we only ever send 1 message. 
-            // In a continuous outbound stream we'd keep it open, but complete() is fine here.
-            // Wait, we probably need to keep the gRPC stream open if we expect the client to keep sending data.
-            // Under mutiny gRPC bidirectional streams, if the server completes its returned stream,
-            // the server closes its write direction, but the read direction can technically stay open.
-            // However, usually it's best to not complete if the client expects a long-lived bidirectional channel.
-            // We'll leave it open but not emit anything else, and just clean up on termination if needed.
         });
     }
 }

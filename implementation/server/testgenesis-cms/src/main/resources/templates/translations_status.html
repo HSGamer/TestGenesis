@@ -1,190 +1,52 @@
 {#include base.html}
 {#title}Translation Status - {session.sessionId}{/title}
 
-{#head}
-<style>
-    #telemetry-console {
-        background-color: #0d1117;
-        color: #e6edf3;
-        font-family: 'JetBrains Mono', 'Fira Code', monospace;
-        padding: 1rem;
-        border-radius: 8px;
-        height: 500px;
-        overflow-y: auto;
-        border: 1px solid var(--border-color);
-        box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
-        margin-top: 1rem;
-    }
-    .log-line {
-        margin-bottom: 0.2rem;
-        line-height: 1.4;
-        font-size: 0.9rem;
-        white-space: pre-wrap;
-    }
-    .log-timestamp { color: #8b949e; margin-right: 0.5rem; }
-    .log-severity-info { color: #58a6ff; }
-    .log-severity-warn { color: #d29922; }
-    .log-severity-error { color: #f85149; }
-    .log-severity-debug { color: #8b949e; }
-    
-    .status-card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1.5rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .status-badge {
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: bold;
-        text-transform: uppercase;
-        font-size: 0.8rem;
-    }
-    .status-state-running { background-color: rgba(6, 182, 212, 0.2); color: var(--primary-color); border: 1px solid var(--primary-color); }
-    .status-state-completed { background-color: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
-    .status-state-failed { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
-    .status-state-pending { background-color: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid #9ca3af; }
-</style>
-{/head}
-
 {#body}
-<div id="translation-status-container">
-    <header class="flex-between mb-1">
-        <div>
-            <h2>Translation: {session.ticket.targetFormat}</h2>
-            <code class="small-text text-muted">{session.sessionId}</code>
-        </div>
-        <a href="/translations" class="btn btn-secondary">Back to List</a>
-    </header>
-
-    <div class="status-panel mb-1">
-        <div class="d-flex align-items-center gap-2">
-            {#if session.status}
-                <div id="status-badge" class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">{session.status.state.name().replace('TRANSLATION_STATE_', '')}</div>
-                <span id="status-message" class="text-muted">{session.status.message}</span>
-            {#else}
-                <div id="status-badge" class="status-badge status-state-pending">PENDING</div>
-                <span id="status-message" class="text-muted">Waiting for agent connection...</span>
-            {/if}
-        </div>
+<header class="flex-between mb-2">
+    <div>
+        <h2>Translation: <code>{session.ticket.targetFormat}</code></h2>
+        <p class="text-muted small-text">{session.sessionId}</p>
     </div>
+    <a href="/translations" class="btn btn-secondary">Back to List</a>
+</header>
 
-    <div id="generated-payloads-container">
-        {#if !generatedEntities.isEmpty()}
-            <div class='mt-2 mb-2'>
-                <h3 class="h5 mb-1">Generated Output</h3>
-                <div class="list-group" id="payloads-list">
-                    {#for p in generatedEntities}
-                        <div class='list-item flex-between'>
-                          <span>{p.name}</span>
-                          <a href='/payloads/{p.id}/edit' class='btn btn-sm btn-outline-primary'>Edit</a>
-                        </div>
-                    {/for}
-                </div>
+<div class="card mb-2">
+    <div class="d-flex align-items-center gap-1">
+        {#if session.status}
+            <div id="status-badge" class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
+                {session.status.state.name().replace('TRANSLATION_STATE_', '')}
             </div>
+            <span id="status-message" class="text-muted">{session.status.message}</span>
         {#else}
-
-            <div id="dynamic-payloads-container" style="display: none;">
-                <div class='mt-2 mb-2'>
-                    <h3 class="h5 mb-1">Generated Output</h3>
-                    <div class="list-group" id="payloads-list"></div>
-                </div>
-            </div>
+            <div id="status-badge" class="status-badge status-state-pending">PENDING</div>
+            <span id="status-message" class="text-muted">Waiting for agent connection...</span>
         {/if}
-    </div>
-
-    <div id="telemetry-console">
-        <!-- Logs populated dynamically -->
     </div>
 </div>
 
+<section id="results-section" class="{#if generatedEntities.isEmpty()}d-none{/if} mb-2">
+    <h3>Generated Output</h3>
+    <div class="list-group" id="payloads-list">
+        {#for p in generatedEntities}
+            <div class="list-item flex-between">
+                {#if p.removed}
+                    <span class="text-muted">Payload #{p.id} (removed)</span>
+                {#else}
+                    <span>{p.name}</span>
+                    <a href="/payloads/{p.id}/edit" class="btn btn-sm btn-secondary">Edit</a>
+                {/if}
+            </div>
+        {/for}
+    </div>
+</section>
+
+<div id="telemetry-console">
+    <!-- Logs arrive here -->
+</div>
+
 <script>
-    const sessionId = "{session.sessionId}";
-    const consoleDiv = document.getElementById('telemetry-console');
-    const statusBadge = document.getElementById('status-badge');
-    const statusMessage = document.getElementById('status-message');
-    const dynamicContainer = document.getElementById('dynamic-payloads-container');
-    const payloadsList = document.getElementById('payloads-list');
-
-    function appendLog(log) {
-        const line = document.createElement('div');
-        line.className = 'log-line';
-        
-        const timestamp = new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const severityClass = "log-severity-" + (log.level || "INFO").toLowerCase();
-        
-        line.innerHTML = '<span class="log-timestamp">' + timestamp + '</span> <span class="' + severityClass + '">[' + log.level + ']</span> ' + log.message;
-        
-        consoleDiv.appendChild(line);
-        consoleDiv.scrollTop = consoleDiv.scrollHeight;
-    }
-
-
-    function updateStatusUI(status) {
-        const stateName = status.state.replace('TRANSLATION_STATE_', '');
-        statusBadge.textContent = stateName;
-        statusBadge.className = 'status-badge status-state-' + status.state.toLowerCase().replace('translation_state_', '');
-        statusMessage.textContent = status.message || 'Processing...';
-
-        if (status.state === 'TRANSLATION_STATE_COMPLETED') {
-             appendLog({
-                 timestamp: Date.now(),
-                 level: 'SUCCESS',
-                 message: 'Final artifacts saved to database.'
-             });
-        }
-    }
-
-    function renderResults(payloads) {
-        if (!payloadsList) return;
-        if (dynamicContainer) dynamicContainer.style.display = 'block';
-        
-        // We don't want to clear the list if it already has hydrated results
-        // Just append the new ones if they aren't there
-        payloads.forEach(p => {
-            const existing = document.querySelector('a[href="/payloads/' + p.id + '/edit"]');
-            if (existing) return;
-
-            const item = document.createElement('div');
-            item.className = 'list-item flex-between';
-            item.innerHTML = '<span>Payload #' + p.id + '</span> <a href="/payloads/' + p.id + '/edit" class="btn btn-sm btn-outline-primary">Edit</a>';
-            payloadsList.appendChild(item);
-        });
-    }
-
-
-    // Connect to WebSocket
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = protocol + "//" + window.location.host + "/telemetry/translation/" + sessionId;
-    const socket = new WebSocket(wsUrl);
-
-
-    socket.onopen = () => {
-        appendLog({ timestamp: Date.now(), level: 'INFO', message: 'Connected to telemetry stream.' });
-    };
-
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'TELEMETRY') {
-            appendLog(data);
-        } else if (data.type === 'STATUS') {
-            updateStatusUI(data);
-        } else if (data.type === 'RESULT') {
-            renderResults(data.payloads);
-        } else if (data.type === 'ERROR') {
-            appendLog({ timestamp: Date.now(), level: 'ERROR', message: data.message });
-        }
-    };
-
-    socket.onclose = () => {
-        appendLog({ timestamp: Date.now(), level: 'WARN', message: 'Telemetry stream closed.' });
-    };
-
-    socket.onerror = (error) => {
-        appendLog({ timestamp: Date.now(), level: 'ERROR', message: 'WebSocket Error: ' + error });
-    };
+    window.sessionId = "{session.sessionId}";
 </script>
+<script src="/js/translations_status.js"></script>
 {/body}
+{/include}

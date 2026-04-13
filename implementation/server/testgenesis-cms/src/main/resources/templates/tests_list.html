@@ -1,59 +1,83 @@
 {#include base.html}
-{#title}Test Management{/title}
+{#title}Tests Dashboard{/title}
 
 {#body}
-<div id="tests-container">
-    <header id="list-header" class="flex-between">
-        <h2 id="list-title">All Tests</h2>
-        <a href="/tests/new" id="btn-create-test" class="btn btn-primary">Create New Test</a>
-    </header>
+<header class="flex-between mb-2">
+    <h2>Tests Dashboard</h2>
+    <a href="/tests/new" class="btn btn-primary">Create New Configuration</a>
+</header>
 
-    <div id="table-wrapper" class="mt-1">
-        <table id="tests-table">
-            <thead>
-                <tr id="table-head-row">
-                    <th id="th-name">Name</th>
-                    <th id="th-type">Test Type</th>
-                    <th id="th-payloads">Payloads</th>
-                    <th id="th-actions">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-                {#for test in tests}
-                <tr id="test-row-{test.id}">
-                    <td id="test-name-{test.id}">
-                        <strong>{test.name}</strong>
-                        <p class="small-note">{test.description}</p>
-                    </td>
-                    <td id="test-type-{test.id}">{test.testType}</td>
-                    <td id="test-payloads-{test.id}">
-                        <span class="badge" id="badge-payload-count-{test.id}">{test.payloads.size()} Payloads</span>
-                    </td>
-                    <td id="test-actions-{test.id}">
-                        <a href="/tests/{test.id}/edit" id="link-edit-test-{test.id}" class="btn btn-secondary">Edit</a>
-                        
-                        <form action="/tests/{test.id}/copy" method="POST" class="inline-form">
-                            <button type="submit" id="btn-copy-test-{test.id}" class="btn btn-secondary">Copy</button>
-                        </form>
-                        
-                        <form action="/tests/{test.id}/delete" method="POST" class="inline-form" onsubmit="return confirm('Are you sure?');">
-                            <button type="submit" id="btn-delete-test-{test.id}" class="btn btn-danger">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-                {/for}
-            </tbody>
-        </table>
+{#if !sessions.isEmpty()}
+<section class="mb-2">
+    <h3>Active Sessions</h3>
+    <div class="list-group">
+        {#for session in sessions}
+        <div class="list-item flex-between">
+            <div>
+                <strong>{session.ticket.testType}</strong>
+                <code class="text-muted small-text ml-1">{session.sessionId}</code>
+                <div class="mt-1 d-flex align-items-center gap-1">
+                    {#if session.status}
+                        <span class="status-badge status-state-{session.status.state.name().toLowerCase().replace('test_state_', '')}">
+                            {session.status.state.name().replace('TEST_STATE_', '')}
+                        </span>
+                        <span class="small-text text-muted">{session.status.message}</span>
+                    {#else}
+                        <span class="status-badge status-state-pending">PENDING</span>
+                    {/if}
+                </div>
+            </div>
+            <a href="/tests/{session.sessionId}/status" class="btn btn-sm btn-secondary">Open Status</a>
+        </div>
+        {/for}
     </div>
-</div>
+</section>
+{/if}
 
-<style>
-    .badge {
-        background-color: var(--surface-color);
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        border: 1px solid var(--border-color);
-    }
-</style>
+<section>
+    <h3>Configurations</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Test Type</th>
+                <th>Payloads</th>
+                <th style="text-align: right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {#for test in tests}
+            <tr>
+                <td>
+                    <strong>{test.name}</strong>
+                    <p class="text-muted small-text mb-0">{test.description}</p>
+                </td>
+                <td><code>{test.testType}</code></td>
+                <td>
+                    <span class="status-badge">{test.payloads.size()} Payloads</span>
+                </td>
+                <td style="text-align: right;">
+                    <div class="d-flex justify-content-end gap-1" style="justify-content: flex-end;">
+                        <a href="/tests/{test.id}/run" class="btn btn-sm btn-primary">Run</a>
+                        <a href="/tests/{test.id}/edit" class="btn btn-sm btn-secondary">Edit</a>
+                        <form action="/tests/{test.id}/copy" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-secondary">Copy</button>
+                        </form>
+                        <form action="/tests/{test.id}/delete" method="POST" onsubmit="return confirm('Are you sure?');" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {#else}
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 2rem;" class="text-muted">
+                    No test configurations found.
+                </td>
+            </tr>
+            {/for}
+        </tbody>
+    </table>
+</section>
 {/body}
+{/include}

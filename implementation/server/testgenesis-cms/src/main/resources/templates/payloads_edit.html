@@ -2,137 +2,68 @@
 {#title}{#if payload.id}Edit {payload.name}{#else}New Payload{/if}{/title}
 
 {#head}
-<!-- JSONEditor library -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.10.2/jsoneditor.min.css" rel="stylesheet" type="text/css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.10.2/jsoneditor.min.js"></script>
-
 {/head}
 
 {#body}
-<div id="payload-edit-container">
-    <header id="form-header">
-        <h2 id="form-title">{#if payload.id}Edit Payload: {payload.name}{#else}Create New Payload{/if}</h2>
-    </header>
+<h2 class="mb-2">{#if payload.id}Edit {payload.name}{#else}New Payload{/if}</h2>
 
-    <form id="payload-form" action="/payloads/save" method="POST" enctype="multipart/form-data">
+<form action="/payloads/save" method="POST" enctype="multipart/form-data">
+    {#if payload.id}
+        <input type="hidden" name="id" value="{payload.id}">
+    {/if}
+
+    <div class="form-group">
+        <label>Display Name</label>
+        <input type="text" name="name" value="{payload.name}" required placeholder="My Project">
+    </div>
+
+    <div class="form-group">
+        <label>Description</label>
+        <textarea name="description" rows="3">{payload.description}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label>Protocol Type</label>
+        <input type="text" name="type" value="{payload.type}" required list="available-payload-types">
+        <datalist id="available-payload-types">
+            {#for type in availableTypes}
+                <option value="{type}"></option>
+            {/for}
+        </datalist>
+    </div>
+
+    <div class="form-group">
+        <label>Attachment (File)</label>
+        <input type="file" id="payload-file" name="attachment" {#if !payload.id}required{/if}>
+        <div id="mime-error" class="status-badge status-failed mt-1 d-none"></div>
         {#if payload.id}
-            <input type="hidden" name="id" value="{payload.id}">
-        {/if}
-
-        <div class="form-group">
-            <label for="input-name">Display Name</label>
-            <input type="text" id="input-name" name="name" value="{payload.name}" required placeholder="e.g. My Selenium Project">
-        </div>
-
-        <div class="form-group">
-            <label for="input-description">Description</label>
-            <textarea id="input-description" name="description" rows="3" placeholder="Brief explanation of this artifact">{payload.description}</textarea>
-        </div>
-
-        <div class="form-group">
-            <label for="input-type">Protocol Type (type)</label>
-            <input type="text" id="input-type" name="type" value="{payload.type}" required placeholder="e.g. selenium-side" list="available-payload-types">
-            <datalist id="available-payload-types">
-                {#for type in availableTypes}
-                    <option value="{type}"></option>
-                {/for}
-            </datalist>
-        </div>
-
-
-        <div class="form-group">
-            <label for="input-attachment">Attachment (File)</label>
-            <input type="file" id="input-attachment" name="attachment" {#if !payload.id}required{/if}>
-            <p id="mime-type-error" class="small-note mt-1" style="color: #ff5555; display: none;"></p>
-            {#if payload.id && payload.attachmentName}
-                <p id="label-current-attachment" class="small-note">Current: {payload.attachmentName} (Upload new to replace)</p>
+            {#if payload.attachmentName}
+                <p class="text-muted small-text mt-1">Current: <code>{payload.attachmentName}</code> (Upload new to replace)</p>
             {/if}
+        {/if}
+    </div>
 
-        </div>
+    <div class="form-group">
+        <label>Metadata (JSON)</label>
+        <div id="json-editor" class="mt-1" style="height: 400px;"></div>
+        <input type="hidden" id="metadata-input" name="metadata" value="{payload.metadata ?: '{}'}">
+    </div>
 
-        <div class="form-group">
-            <label for="jsoneditor-container">Metadata (JSON)</label>
-            <div id="jsoneditor-container" class="mt-1" style="height: 400px;"></div>
-            <input type="hidden" id="input-metadata" name="metadata" value="{payload.metadata ?: '{}'}">
-        </div>
+    <div class="mt-2 d-flex gap-1" style="margin-top: 2rem;">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="/payloads" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
 
-        <footer id="form-footer" class="mt-2">
-            <button type="submit" id="btn-save-payload" class="btn btn-primary">Save Payload</button>
-            <a href="/payloads" id="btn-cancel" class="btn btn-secondary">Cancel</a>
-        </footer>
-
-    </form>
-</div>
-
-<script id="jsoneditor-init-script">
-    const container = document.getElementById("jsoneditor-container");
-    const metadataInput = document.getElementById("input-metadata");
-    
-    const options = {
-        mode: 'tree',
-        modes: ['tree', 'code', 'text'], // allowed modes
-        onChange: function () {
-            try {
-                const json = editor.get();
-                metadataInput.value = JSON.stringify(json);
-            } catch (err) {
-                console.error("Invalid JSON", err);
-            }
-        }
-    };
-    
-    const editor = new JSONEditor(container, options);
-    
-    // Initial data
-    let initialJson = {};
-    try {
-        initialJson = JSON.parse(metadataInput.value);
-    } catch (e) {
-        console.warn("Could not parse initial metadata JSON, using empty object", e);
-    }
-    
-    editor.set(initialJson);
-    
-    // Ensure input is updated even if user doesn't change anything
-    metadataInput.value = JSON.stringify(initialJson);
-
-    // MIME Type Validation Logic
-    const mimeTypeMapping = {
+<script>
+    window.mimeTypeMapping = {
         {#for entry in mimeTypeMapping.entrySet()}
             "{entry.key}": [{#for mime in entry.value}"{mime}"{#if mime_hasNext},{/if}{/for}]{#if entry_hasNext},{/if}
         {/for}
     };
-
-
-    const typeInput = document.getElementById("input-type");
-    const attachmentInput = document.getElementById("input-attachment");
-    const mimeError = document.getElementById("mime-type-error");
-
-    function validateMimeType() {
-        const type = typeInput.value;
-        const file = attachmentInput.files[0];
-        
-        if (!type || !file) {
-            mimeError.style.display = 'none';
-            return;
-        }
-
-        const allowedMimes = mimeTypeMapping[type];
-        if (allowedMimes && allowedMimes.length > 0) {
-            if (!allowedMimes.includes(file.type)) {
-                mimeError.textContent = "Warning: MIME type '" + file.type + "' might not be supported for protocol '" + type + "'. Expected: " + allowedMimes.join(', ');
-                mimeError.style.display = 'block';
-            } else {
-
-                mimeError.style.display = 'none';
-            }
-        } else {
-            mimeError.style.display = 'none';
-        }
-    }
-
-    typeInput.addEventListener("input", validateMimeType);
-    attachmentInput.addEventListener("change", validateMimeType);
 </script>
-
+<script src="/js/payloads_edit.js"></script>
 {/body}
+{/include}

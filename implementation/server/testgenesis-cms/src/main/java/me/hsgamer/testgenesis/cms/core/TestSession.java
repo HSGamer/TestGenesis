@@ -86,6 +86,10 @@ public class TestSession implements Session {
         }
     }
 
+    public void removeResultConsumer(Consumer<TestResult> consumer) {
+        resultConsumers.remove(consumer);
+    }
+
     public void onCompletion(Runnable callback) {
         if (status != null && StatusUtil.isTerminal(status.getState())) {
             callback.run();

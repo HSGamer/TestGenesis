@@ -1,114 +1,67 @@
 {#include base.html}
 {#title}{#if test.id}Edit {test.name}{#else}New Test{/if}{/title}
 
-{#head}
-<style>
-    .payload-selection {
-        max-height: 400px;
-        overflow-y: auto;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1rem;
-        background-color: rgba(255, 255, 255, 0.02);
-    }
-    .payload-item {
-        display: flex;
-        align-items: center;
-        padding: 0.5rem;
-        border-bottom: 1px solid var(--border-color);
-    }
-    .payload-item:last-child { border-bottom: none; }
-    .payload-item input { margin-right: 1rem; width: auto; }
-    .payload-item label { margin-bottom: 0; cursor: pointer; flex: 1; }
-    
-    .highlight-suggested {
-        background-color: rgba(6, 182, 212, 0.1);
-        border: 1px solid var(--primary-color) !important;
-        position: relative;
-    }
-    .highlight-suggested::after {
-        content: "Suggested";
-        position: absolute;
-        right: 0.5rem;
-        top: 0.2rem;
-        font-size: 0.65rem;
-        color: var(--primary-color);
-        font-weight: bold;
-        text-transform: uppercase;
-    }
-</style>
-
-{/head}
-
 {#body}
-<div id="test-edit-container">
-    <header id="form-header">
-        <h2 id="form-title">{#if test.id}Edit Test: {test.name}{#else}Create New Test{/if}</h2>
-    </header>
+<h2 class="mb-2">{#if test.id}Edit Test: {test.name}{#else}New Test Configuration{/if}</h2>
 
-    <form id="test-form" action="/tests/save" method="POST">
-        {#if test.id}
-            <input type="hidden" name="id" value="{test.id}">
-        {/if}
+<form action="/tests/save" method="POST">
+    {#if test.id}
+        <input type="hidden" name="id" value="{test.id}">
+    {/if}
 
-        <div class="form-group">
-            <label for="input-name">Test Name</label>
-            <input type="text" id="input-name" name="name" value="{test.name}" required placeholder="e.g. Chrome Regression Suite">
+    <div class="form-group">
+        <label>Test Name</label>
+        <input type="text" name="name" value="{test.name}" required placeholder="e.g. Chrome Regression">
+    </div>
+
+    <div class="form-group">
+        <label>Description</label>
+        <textarea name="description" rows="3">{test.description}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label>Protocol Test Type</label>
+        <input type="text" id="test-type-input" name="testType" value="{test.testType}" required list="test-type-suggestions">
+        <datalist id="test-type-suggestions">
+            <!-- Populated by JS -->
+        </datalist>
+    </div>
+
+    <div class="form-group">
+        <label>Reference Agent (Guidance)</label>
+        <select id="agent-selector">
+            <option value="">-- No Agent Selected --</option>
+            <!-- Populated by JS -->
+        </select>
+        <p class="text-muted small-text mt-1">Select an agent to see recommended payloads.</p>
+    </div>
+
+    <div class="form-group">
+        <label>Select Payloads</label>
+        <div id="payload-selector" class="list-group mt-1" style="max-height: 400px; overflow-y: auto;">
+            {#for p in allPayloads}
+                <label class="list-item d-flex gap-1 align-items-center" data-type="{p.type}" style="cursor: pointer;">
+                    <input type="checkbox" name="payloadIds" value="{p.id}" style="width: auto;" {#if test.payloads.contains(p)}checked{/if}>
+                    <span>
+                        <strong>{p.name}</strong> 
+                        <code class="text-muted small-text">({p.type})</code>
+                    </span>
+                    <span class="suggestion-label d-none status-badge status-warn" style="margin-left: auto;">Suggested</span>
+                </label>
+            {#else}
+                <p class="p-1 text-muted">No payloads available. <a href="/payloads/new">Create one first</a>.</p>
+            {/for}
         </div>
+    </div>
 
-        <div class="form-group">
-            <label for="input-description">Description</label>
-            <textarea id="input-description" name="description" rows="3" placeholder="Explain the purpose of this test configuration">{test.description}</textarea>
-        </div>
+    <div class="mt-2 d-flex gap-1" style="margin-top: 2rem;">
+        <button type="submit" class="btn btn-primary">Save Test</button>
+        <a href="/tests" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
 
-        <div class="form-group">
-            <label for="input-test-type">Protocol Test Type (testType)</label>
-            <input type="text" id="input-test-type" name="testType" value="{test.testType}" required placeholder="e.g. selenium-web" list="available-test-types">
-            <datalist id="available-test-types">
-                <!-- Populated by JS -->
-            </datalist>
-        </div>
-
-        <div class="form-group">
-            <label for="select-reference-agent">Reference Agent (Guidance Only)</label>
-            <select id="select-reference-agent">
-                <option value="">-- No Agent Selected --</option>
-                <!-- Populated by JS -->
-            </select>
-            <p class="small-note mt-1">Select an agent to see recommended payloads for your chosen test type.</p>
-        </div>
-
-
-        <div class="form-group">
-            <label>Select Payloads</label>
-            <div id="payload-selection-list" class="payload-selection">
-                {#for p in allPayloads}
-                    <div class="payload-item" data-payload-type="{p.type}" data-payload-id="{p.id}">
-                        <input type="checkbox" id="p-{p.id}" name="payloadIds" value="{p.id}" 
-                            {#if test.payloads.contains(p)}checked{/if}>
-                        <label for="p-{p.id}">
-                            <strong>{p.name}</strong> 
-                            <span class="small-note">({p.type})</span>
-                        </label>
-                    </div>
-                {/for}
-
-                {#if allPayloads.isEmpty()}
-                    <p class="small-note">No payloads available. <a href="/payloads/new">Create one first</a>.</p>
-                {/if}
-            </div>
-        </div>
-
-        <footer id="form-footer" class="mt-2">
-            <button type="submit" id="btn-save-test" class="btn btn-primary">Save Test</button>
-            <a href="/tests" id="btn-cancel" class="btn btn-secondary">Cancel</a>
-        </footer>
-    </form>
-</div>
-
-<script id="guidance-logic">
-    // Agent data passed from backend
-    const agents = [
+<script>
+    window.agents = [
         {#for agent in agents}
         {
             id: "{agent.id}",
@@ -120,113 +73,12 @@
                     required: [{#for r in st.requiredPayloadTypes}"{r}"{#if r_hasNext},{/if}{/for}],
                     optional: [{#for o in st.optionalPayloadTypes}"{o}"{#if o_hasNext},{/if}{/for}]
                 }{#if st_hasNext},{/if}
-
                 {/for}
             ]
         }{#if agent_hasNext},{/if}
-
         {/for}
     ];
-
-    const typeInput = document.getElementById('input-test-type');
-    const agentSelect = document.getElementById('select-reference-agent');
-    const testTypeDatalist = document.getElementById('available-test-types');
-    const payloadItems = document.querySelectorAll('.payload-item');
-
-    // Initial population of datalist
-    function updateTestTypeSuggestions() {
-        const types = new Set();
-        agents.forEach(a => a.supportedTypes.forEach(st => types.add(st.testType)));
-        
-        testTypeDatalist.innerHTML = '';
-        types.forEach(type => {
-            const opt = document.createElement('option');
-            opt.value = type;
-            testTypeDatalist.appendChild(opt);
-        });
-    }
-
-    // Update Agent list based on Test Type
-    function updateAgentOptions(selectedType) {
-        const currentVal = agentSelect.value;
-        agentSelect.innerHTML = '<option value="">-- No Agent Selected --</option>';
-        
-        agents.forEach(agent => {
-            const supportsType = !selectedType || agent.supportedTypes.some(st => st.testType === selectedType);
-            if (supportsType) {
-                const opt = document.createElement('option');
-                opt.value = agent.id;
-                opt.textContent = agent.displayName;
-                agentSelect.appendChild(opt);
-            }
-        });
-        
-        // Restore selection if possible
-        if (Array.from(agentSelect.options).some(o => o.value === currentVal)) {
-            agentSelect.value = currentVal;
-        }
-    }
-
-    // Update Test Type field based on Agent
-    function updateTestTypeFromAgent(agentId) {
-        const agent = agents.find(a => a.id === agentId);
-        if (!agent) return;
-        
-        // If current type is not supported by this agent, suggest the first one
-        const currentType = typeInput.value;
-        if (currentType && !agent.supportedTypes.some(st => st.testType === currentType)) {
-            if (agent.supportedTypes.length > 0) {
-                typeInput.value = agent.supportedTypes[0].testType;
-            }
-        }
-    }
-
-    // Highlight suitable payloads
-    function refreshHighlights() {
-        const selectedType = typeInput.value;
-        const selectedAgentId = agentSelect.value;
-        
-        // Reset all
-        payloadItems.forEach(item => item.classList.remove('highlight-suggested'));
-        
-        if (!selectedType) return;
-        
-        let targetPayloadTypes = new Set();
-        
-        if (selectedAgentId) {
-            const agent = agents.find(a => a.id === selectedAgentId);
-            const capability = agent?.supportedTypes.find(st => st.testType === selectedType);
-            if (capability) {
-                capability.required.forEach(t => targetPayloadTypes.add(t));
-                capability.optional.forEach(t => targetPayloadTypes.add(t));
-            }
-        } else {
-            // If no agent, just highlight anything that matches the test type (basic suggestion)
-            targetPayloadTypes.add(selectedType);
-        }
-        
-        payloadItems.forEach(item => {
-            const pType = item.getAttribute('data-payload-type');
-            if (targetPayloadTypes.has(pType)) {
-                item.classList.add('highlight-suggested');
-            }
-        });
-    }
-
-    typeInput.addEventListener('input', () => {
-        updateAgentOptions(typeInput.value);
-        refreshHighlights();
-    });
-
-    agentSelect.addEventListener('change', () => {
-        updateTestTypeFromAgent(agentSelect.value);
-        refreshHighlights();
-    });
-
-    // Init
-    updateTestTypeSuggestions();
-    updateAgentOptions(typeInput.value);
-    refreshHighlights();
 </script>
+<script src="/js/tests_edit.js"></script>
 {/body}
-
+{/include}

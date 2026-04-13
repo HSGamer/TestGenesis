@@ -10,4 +10,6 @@ public interface Agent {
     List<Capability> capabilities();
 
     boolean isReady();
+
+    boolean supportsTestType(String testType);
 }

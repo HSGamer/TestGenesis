@@ -2,46 +2,49 @@
 {#title}Payload Management{/title}
 
 {#body}
-<div id="payloads-container">
-    <header id="list-header" class="flex-between">
-        <h2 id="list-title">All Payloads</h2>
-        <a href="/payloads/new" id="btn-create-payload" class="btn btn-primary">Create New Payload</a>
-    </header>
+<header class="flex-between mb-2">
+    <h2>All Payloads</h2>
+    <a href="/payloads/new" class="btn btn-primary">Create New Payload</a>
+</header>
 
-    <div id="table-wrapper">
-        <table id="payloads-table">
-            <thead>
-                <tr id="table-head-row">
-
-                    <th id="th-name">Name</th>
-                    <th id="th-type">Protocol Type</th>
-                    <th id="th-attachment">Attachment</th>
-                    <th id="th-actions">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-                {#for payload in payloads}
-                <tr id="payload-row-{payload.id}" style="border-bottom: 1px solid #eee;">
-                    <td id="payload-name-{payload.id}">{payload.name}</td>
-                    <td id="payload-type-{payload.id}">{payload.type}</td>
-                    <td id="payload-attachment-{payload.id}">
-                        {#if payload.attachmentName}
-                            <a href="/payloads/{payload.id}/attachment" id="link-download-{payload.id}">{payload.attachmentName}</a>
-                        {#else}
-                            <span id="label-no-attachment-{payload.id}">No file</span>
-                        {/if}
-                    </td>
-                    <td id="payload-actions-{payload.id}">
-                        <a href="/payloads/{payload.id}/edit" id="link-edit-{payload.id}" class="btn btn-secondary">Edit</a>
-                        <form action="/payloads/{payload.id}/delete" method="POST" class="inline-form" onsubmit="return confirm('Are you sure?');">
-                            <button type="submit" id="btn-delete-{payload.id}" class="btn btn-danger">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-{/for}
-
-            </tbody>
-        </table>
-    </div>
-</div>
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Protocol Type</th>
+            <th>Attachment</th>
+            <th style="text-align: right;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {#for payload in payloads}
+        <tr>
+            <td><strong>{payload.name}</strong></td>
+            <td><code>{payload.type}</code></td>
+            <td>
+                {#if payload.attachmentName}
+                    <a href="/payloads/{payload.id}/attachment">{payload.attachmentName}</a>
+                {#else}
+                    <span class="text-muted small-text">No file</span>
+                {/if}
+            </td>
+            <td style="text-align: right;">
+                <div class="d-flex justify-content-end gap-1" style="justify-content: flex-end;">
+                    <a href="/payloads/{payload.id}/edit" class="btn btn-sm btn-secondary">Edit</a>
+                    <form action="/payloads/{payload.id}/delete" method="POST" onsubmit="return confirm('Are you sure?');" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {#else}
+        <tr>
+            <td colspan="4" style="text-align: center; padding: 2rem;" class="text-muted">
+                No payloads found. <a href="/payloads/new">Create one</a> to get started.
+            </td>
+        </tr>
+        {/for}
+    </tbody>
+</table>
 {/body}
+{/include}

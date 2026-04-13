@@ -18,6 +18,7 @@ export * from "./generated/SessionProposal_pb.js";
 export * from "./generated/SessionReady_pb.js";
 export * from "./generated/Severity_pb.js";
 export * from "./generated/StepReport_pb.js";
+export * from "./generated/StepStatus_pb.js";
 export * from "./generated/Summary_pb.js";
 export * from "./generated/Telemetry_pb.js";
 export * from "./generated/TestCapability_pb.js";

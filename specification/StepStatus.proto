@@ -1,0 +1,15 @@
+// StepStatus.proto — Standard step delivery states for the Universal Agent Protocol (UAP).
+syntax = "proto3";
+
+package uap.v1;
+
+option java_package = "me.hsgamer.testgenesis.uap.v1";
+option java_multiple_files = true;
+
+// StepStatus represents the outcome of a single test step.
+enum StepStatus {
+  STEP_STATUS_UNSPECIFIED = 0;
+  STEP_STATUS_PASSED = 1;
+  STEP_STATUS_FAILED = 2;
+  STEP_STATUS_SKIPPED = 3;
+}

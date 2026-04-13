@@ -1,0 +1,40 @@
+{#include base.html}
+{#title}Execution Status - {session.sessionId}{/title}
+
+{#body}
+<header class="flex-between mb-2">
+    <div>
+        <h2>Test: <code>{session.ticket.testType}</code></h2>
+        <p class="text-muted small-text">{session.sessionId}</p>
+    </div>
+    <div class="d-flex gap-1" style="align-items: center;">
+        <div id="status-badge" class="status-badge status-state-pending">PENDING</div>
+        <a href="/tests" class="btn btn-secondary">Back to List</a>
+    </div>
+</header>
+
+<div class="grid-2" style="grid-template-columns: 1fr 2fr;">
+    <section>
+        <h3>Live Telemetry</h3>
+        <div id="telemetry-console"></div>
+    </section>
+
+    <section>
+        <div class="flex-between mb-1">
+            <h3>Execution Steps</h3>
+            <div id="summary-stats" class="d-flex gap-1"></div>
+        </div>
+        <div id="steps-container">
+            <div class="card" style="text-align: center; padding: 3rem;">
+                <p id="status-message" class="text-muted">Waiting for agent to begin execution...</p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    window.sessionId = "{session.sessionId}";
+</script>
+<script src="/js/tests_status.js"></script>
+{/body}
+{/include}

@@ -1,0 +1,45 @@
+{#include base.html}
+{#title}Run Test - {test.name}{/title}
+
+{#body}
+<header class="flex-between mb-2">
+    <div>
+        <h2>Run Configuration</h2>
+        <p class="text-muted small-text">Selected Test: <strong>{test.name}</strong> (<code>{test.testType}</code>)</p>
+    </div>
+    <a href="/tests" class="btn btn-secondary">Back to List</a>
+</header>
+
+<form action="/tests/{test.id}/start" method="POST">
+    <div class="form-group">
+        <h3>Select Execution Agent</h3>
+        <div class="list-group mt-1">
+            {#for agent in agents}
+                {#if agent.supportsTestType(test.testType)}
+                    <label class="list-item d-flex gap-1 align-items-center" style="cursor: pointer;">
+                        <input type="radio" name="agentId" value="{agent.id}" required style="width: auto;">
+                        <div style="flex: 1;">
+                            <div class="d-flex flex-between">
+                                <strong>{agent.displayName}</strong>
+                                <span class="status-badge status-passed">READY</span>
+                            </div>
+                            <code class="text-muted small-text">{agent.id}</code>
+                        </div>
+                    </label>
+                {/if}
+            {#else}
+                <div class="status-badge status-failed p-1" style="display: block; width: 100%;">
+                    No agents currently online support the <strong>{test.testType}</strong> test type.
+                </div>
+            {/for}
+        </div>
+    </div>
+
+    <div class="mt-2" style="text-align: center; margin-top: 3rem;">
+        <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1.1rem;">
+            Launch Execution
+        </button>
+    </div>
+</form>
+{/body}
+{/include}

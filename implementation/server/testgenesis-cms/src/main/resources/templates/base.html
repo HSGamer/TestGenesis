@@ -5,33 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{#insert title}TestGenesis CMS{/insert}</title>
     <link rel="stylesheet" href="/style.css">
-
     {#insert head}{/insert}
 </head>
 <body>
-    <aside id="main-sidebar">
-        <nav id="primary-navigation">
+    <aside>
+        <nav>
             <ul>
-                <li><a href="/" id="nav-link-home">Dashboard</a></li>
-                <li><a href="/payloads" id="nav-link-payloads">Payload Management</a></li>
-                <li><a href="/tests" id="nav-link-tests">Test Management</a></li>
-                <li><a href="/translations" id="nav-link-translations">Translation</a></li>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/payloads">Payloads</a></li>
+                <li><a href="/tests">Tests</a></li>
+                <li><a href="/translations">Translations</a></li>
             </ul>
         </nav>
     </aside>
 
-    <main id="main-content">
-        <header id="page-header">
-            <h1 id="page-title">{#insert title}Dashboard{/insert}</h1>
+    <main>
+        <header>
+            <h1>{#insert title}Dashboard{/insert}</h1>
         </header>
 
-        <section id="content-section" class="container">
+        <section class="container">
             {#insert body}{/insert}
         </section>
-        <footer id="main-footer">
-            <p id="footer-text">&copy; 2026 TestGenesis - Universal Agent Protocol CMS</p>
+
+        <footer>
+            <p>&copy; 2026 TestGenesis - Universal Agent Protocol CMS</p>
         </footer>
     </main>
-</body>
 
+    <script>
+        // Set active nav link based on current path
+        document.querySelectorAll('aside nav a').forEach(link => {
+            if (window.location.pathname === link.getAttribute('href') || (link.getAttribute('href') !== '/' && window.location.pathname.startsWith(link.getAttribute('href')))) {
+                link.classList.add('active');
+            }
+        });
+    </script>
+</body>
 </html>

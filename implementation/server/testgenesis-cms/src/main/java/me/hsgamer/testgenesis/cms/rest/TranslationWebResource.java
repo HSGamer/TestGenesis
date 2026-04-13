@@ -94,6 +94,8 @@ public class TranslationWebResource {
     }
 
 
+    public record GeneratedPayloadInfo(Long id, String name, boolean removed) {}
+
     @GET
     @Path("/{sessionId}/status")
     @Produces(MediaType.TEXT_HTML)
@@ -104,9 +106,10 @@ public class TranslationWebResource {
             throw new NotFoundException("Translation session not found: " + sessionId);
         }
 
-        List<PayloadEntity> generatedEntities = session.getResultPayloads().stream()
-                .map(p -> payloadService.findById(p.id()).orElse(null))
-                .filter(java.util.Objects::nonNull)
+        List<GeneratedPayloadInfo> generatedEntities = session.getResultPayloads().stream()
+                .map(p -> payloadService.findById(p.id())
+                        .map(entity -> new GeneratedPayloadInfo(p.id(), entity.name, false))
+                        .orElseGet(() -> new GeneratedPayloadInfo(p.id(), null, true)))
                 .toList();
 
         return translations_status

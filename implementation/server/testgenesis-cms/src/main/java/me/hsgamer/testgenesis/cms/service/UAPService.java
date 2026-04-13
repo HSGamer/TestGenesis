@@ -293,6 +293,12 @@ public class UAPService {
                 this.streamDispatcher.accept(response);
             }
         }
+
+        @Override
+        public boolean supportsTestType(String testType) {
+            return capabilities.stream()
+                    .anyMatch(c -> c.hasTest() && c.getTest().getType().equals(testType));
+        }
     }
 }
 

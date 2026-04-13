@@ -18,9 +18,6 @@ message TranslationResult {
   // The list of translated scripts / projects.
   repeated Payload payloads = 2;
 
-  // Combined logs for the translation process.
-  string translation_log = 3;
-
   // Summary information for the entire session.
-  Summary summary = 4;
+  Summary summary = 3;
 }
