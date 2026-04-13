@@ -24,19 +24,20 @@
             <h1>{#insert title}Dashboard{/insert}</h1>
         </header>
 
-        <section class="container">
+        <div class="container">
             {#insert body}{/insert}
-        </section>
+        </div>
 
         <footer>
-            <p>&copy; 2026 TestGenesis - Universal Agent Protocol CMS</p>
+            <p>&copy; 2026 TestGenesis</p>
         </footer>
     </main>
 
     <script>
-        // Set active nav link based on current path
         document.querySelectorAll('aside nav a').forEach(link => {
-            if (window.location.pathname === link.getAttribute('href') || (link.getAttribute('href') !== '/' && window.location.pathname.startsWith(link.getAttribute('href')))) {
+            const path = window.location.pathname;
+            const href = link.getAttribute('href');
+            if (path === href || (href !== '/' && path.startsWith(href))) {
                 link.classList.add('active');
             }
         });

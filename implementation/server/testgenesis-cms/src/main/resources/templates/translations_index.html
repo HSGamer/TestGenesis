@@ -2,15 +2,15 @@
 {#title}Translation Dashboard{/title}
 
 {#body}
-<header class="flex-between mb-2">
-    <h2>Active Sessions</h2>
-    <a href="/translations/new" class="btn btn-primary">New Translation</a>
-</header>
+<div class="flex-between" style="margin-bottom: 2rem;">
+    <h2>Translations</h2>
+    <a href="/translations/new" class="btn btn-primary">New Task</a>
+</div>
 
 <table>
     <thead>
         <tr>
-            <th style="width: 35%;">Session ID</th>
+            <th>Session ID</th>
             <th>Format</th>
             <th>Status</th>
             <th style="text-align: right;">Actions</th>
@@ -22,26 +22,24 @@
             <td><code>{session.sessionId}</code></td>
             <td><code>{session.ticket.targetFormat}</code></td>
             <td>
-                <div class="d-flex align-items-center gap-1">
+                <div class="flex">
                     {#if session.status}
                         <span class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
                             {session.status.state.name().replace('TRANSLATION_STATE_', '')}
                         </span>
-                        <span class="small-text text-muted" title="{session.status.message}">{session.status.message}</span>
+                        <span class="small text-muted">{session.status.message}</span>
                     {#else}
                         <span class="status-badge status-state-pending">PENDING</span>
                     {/if}
                 </div>
             </td>
             <td style="text-align: right;">
-                <a href="/translations/{session.sessionId}/status" class="btn btn-sm btn-secondary">Open Status</a>
+                <a href="/translations/{session.sessionId}/status" class="btn">View Status</a>
             </td>
         </tr>
         {#else}
         <tr>
-            <td colspan="4" style="text-align: center; padding: 2rem;" class="text-muted">
-                No active translation sessions found.
-            </td>
+            <td colspan="4" class="text-muted" style="text-align: center; padding: 2rem;">No active tasks found.</td>
         </tr>
         {/for}
     </tbody>

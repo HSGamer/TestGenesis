@@ -1,46 +1,46 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const sessionId = window.sessionId;
-    if (!sessionId) return;
+    const sid = window.sessionId;
+    if (!sid) return;
 
-    const consoleDiv = document.getElementById('telemetry-console');
-    const statusBadge = document.getElementById('status-badge');
-    const statusMessage = document.getElementById('status-message');
-    const resultsSection = document.getElementById('results-section');
-    const payloadsList = document.getElementById('payloads-list');
-
-    const appendLog = (log) => {
-        if (!consoleDiv) return;
-        const line = document.createElement('div');
-        line.className = 'log-line';
-        const ts = new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        line.innerHTML = `<span class="log-timestamp">${ts}</span> <span class="log-severity-${(log.level || 'INFO').toLowerCase()}">[${log.level}]</span> ${log.message}`;
-        consoleDiv.appendChild(line);
-        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    const el = id => document.getElementById(id);
+    const logDiv = el('telemetry-console');
+    
+    const log = (m) => {
+        if (!logDiv) return;
+        const div = document.createElement('div');
+        div.innerHTML = `<span class="text-muted small">${new Date(m.timestamp).toLocaleTimeString([], {hour12:false})} [${m.level||'INFO'}]</span> ${m.message}`;
+        logDiv.appendChild(div);
+        logDiv.scrollTop = logDiv.scrollHeight;
     };
 
-    const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/telemetry/translation/${sessionId}`);
-    socket.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        if (data.type === 'TELEMETRY') {
-            appendLog(data);
-        } else if (data.type === 'STATUS') {
-            if (statusBadge) {
-                statusBadge.textContent = data.state.replace('TRANSLATION_STATE_', '');
-                statusBadge.className = `status-badge status-state-${data.state.toLowerCase().replace('translation_state_', '')}`;
+    const ws = new WebSocket(`${location.protocol.replace('http','ws')}//${location.host}/telemetry/translation/${sid}`);
+    ws.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.type === 'TELEMETRY') log(d);
+        if (d.type === 'STATUS') {
+            const b = el('status-badge');
+            if (b) {
+                b.textContent = d.state.replace('TRANSLATION_STATE_', '');
+                b.className = `status-badge status-state-${d.state.toLowerCase().replace('translation_state_', '')}`;
             }
-            if (statusMessage) statusMessage.textContent = data.message || 'Processing...';
-        } else if (data.type === 'RESULT') {
-            if (resultsSection) resultsSection.classList.remove('d-none');
-            if (payloadsList) {
-                data.payloads.forEach(p => {
-                    if (document.querySelector(`a[href="/payloads/${p.id}/edit"]`)) return;
-                    const item = document.createElement('div');
-                    item.className = 'list-item flex-between';
-                    item.innerHTML = `<span>Payload #${p.id}</span> <a href="/payloads/${p.id}/edit" class="btn btn-sm btn-secondary">Edit</a>`;
-                    payloadsList.appendChild(item);
+            if (el('status-message')) el('status-message').textContent = d.message || 'Processing...';
+        }
+        if (d.type === 'RESULT') {
+            if (el('results-section')) el('results-section').classList.remove('d-none');
+            const list = el('payloads-list');
+            if (list) {
+                d.payloads.forEach(p => {
+                    if (document.querySelector(`[data-payload-id="${p.id}"]` )) return;
+                    const div = document.createElement('div');
+                    div.className = 'list-item flex-between';
+                    div.setAttribute('data-payload-id', p.id);
+                    div.innerHTML = p.removed 
+                        ? `<span class="text-muted small">Payload #${p.id} (removed)</span>`
+                        : `<span class="small">Payload #${p.id}</span> <a href="/payloads/${p.id}/edit" class="btn">Edit</a>`;
+                    list.appendChild(div);
                 });
             }
         }
     };
-    socket.onopen = () => appendLog({ level: 'INFO', message: 'Connected to telemetry stream.', timestamp: Date.now() });
+    ws.onopen = () => log({ level: 'INFO', message: 'Connected.', timestamp: Date.now() });
 });

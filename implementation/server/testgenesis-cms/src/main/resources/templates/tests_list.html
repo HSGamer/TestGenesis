@@ -2,32 +2,32 @@
 {#title}Tests Dashboard{/title}
 
 {#body}
-<header class="flex-between mb-2">
-    <h2>Tests Dashboard</h2>
-    <a href="/tests/new" class="btn btn-primary">Create New Configuration</a>
-</header>
+<div class="flex-between" style="margin-bottom: 2rem;">
+    <h2>Tests</h2>
+    <a href="/tests/new" class="btn btn-primary">New Config</a>
+</div>
 
 {#if !sessions.isEmpty()}
-<section class="mb-2">
+<section>
     <h3>Active Sessions</h3>
-    <div class="list-group">
+    <div class="list">
         {#for session in sessions}
         <div class="list-item flex-between">
             <div>
                 <strong>{session.ticket.testType}</strong>
-                <code class="text-muted small-text ml-1">{session.sessionId}</code>
-                <div class="mt-1 d-flex align-items-center gap-1">
+                <code class="text-muted small ml-1">{session.sessionId}</code>
+                <div class="flex" style="margin-top: 0.5rem;">
                     {#if session.status}
                         <span class="status-badge status-state-{session.status.state.name().toLowerCase().replace('test_state_', '')}">
                             {session.status.state.name().replace('TEST_STATE_', '')}
                         </span>
-                        <span class="small-text text-muted">{session.status.message}</span>
+                        <span class="small text-muted">{session.status.message}</span>
                     {#else}
                         <span class="status-badge status-state-pending">PENDING</span>
                     {/if}
                 </div>
             </div>
-            <a href="/tests/{session.sessionId}/status" class="btn btn-sm btn-secondary">Open Status</a>
+            <a href="/tests/{session.sessionId}/status" class="btn">View Status</a>
         </div>
         {/for}
     </div>
@@ -40,7 +40,7 @@
         <thead>
             <tr>
                 <th>Name</th>
-                <th>Test Type</th>
+                <th>Type</th>
                 <th>Payloads</th>
                 <th style="text-align: right;">Actions</th>
             </tr>
@@ -50,30 +50,23 @@
             <tr>
                 <td>
                     <strong>{test.name}</strong>
-                    <p class="text-muted small-text mb-0">{test.description}</p>
+                    <div class="text-muted small">{test.description}</div>
                 </td>
                 <td><code>{test.testType}</code></td>
-                <td>
-                    <span class="status-badge">{test.payloads.size()} Payloads</span>
-                </td>
+                <td>{test.payloads.size()}</td>
                 <td style="text-align: right;">
-                    <div class="d-flex justify-content-end gap-1" style="justify-content: flex-end;">
-                        <a href="/tests/{test.id}/run" class="btn btn-sm btn-primary">Run</a>
-                        <a href="/tests/{test.id}/edit" class="btn btn-sm btn-secondary">Edit</a>
-                        <form action="/tests/{test.id}/copy" method="POST" style="display: inline;">
-                            <button type="submit" class="btn btn-sm btn-secondary">Copy</button>
-                        </form>
+                    <div class="flex" style="justify-content: flex-end;">
+                        <a href="/tests/{test.id}/run" class="btn btn-primary">Run</a>
+                        <a href="/tests/{test.id}/edit" class="btn">Edit</a>
                         <form action="/tests/{test.id}/delete" method="POST" onsubmit="return confirm('Are you sure?');" style="display: inline;">
-                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            <button type="submit" class="btn btn-danger">Del</button>
                         </form>
                     </div>
                 </td>
             </tr>
             {#else}
             <tr>
-                <td colspan="4" style="text-align: center; padding: 2rem;" class="text-muted">
-                    No test configurations found.
-                </td>
+                <td colspan="4" class="text-muted" style="text-align: center; padding: 2rem;">No configs found.</td>
             </tr>
             {/for}
         </tbody>

@@ -2,13 +2,14 @@
 {#title}New Translation{/title}
 
 {#body}
-<header class="mb-2">
-    <h2>Start New Translation</h2>
-</header>
+<div class="flex-between" style="margin-bottom: 2rem;">
+    <h2>New Task</h2>
+    <a href="/translations" class="btn">Cancel</a>
+</div>
 
 <form action="/translations/start" method="POST">
-    <div class="form-group">
-        <label>Translation Agent</label>
+    <div class="card">
+        <label>Agent</label>
         <select id="agent-select" name="agentId" required>
             <option value="">-- Select Agent --</option>
             {#for agent in agents}
@@ -19,34 +20,33 @@
         </select>
     </div>
 
-    <div class="form-group">
+    <div class="card">
         <label>Translation Type</label>
         <select id="type-select" name="type" required disabled>
             <option value="">-- Select Agent First --</option>
         </select>
-        <div id="type-info" class="status-badge status-warn mt-1 d-none"></div>
+        <div id="type-info" class="status-badge status-warn d-none" style="margin-top: 0.5rem;"></div>
     </div>
 
-    <div class="form-group">
-        <label>Source Payloads</label>
-        <div id="payload-list" class="list-group mt-1" style="max-height: 400px; overflow-y: auto;">
+    <section>
+        <h3>Source Payloads</h3>
+        <div id="payload-list" class="list" style="max-height: 400px; overflow-y: auto;">
             {#for p in allPayloads}
-                <label class="list-item d-flex gap-1 align-items-center" data-type="{p.type}" style="cursor: pointer;">
+                <label class="list-item flex" data-type="{p.type}" style="cursor: pointer;">
                     <input type="checkbox" name="payloadIds" value="{p.id}" style="width: auto;">
-                    <span>
+                    <span class="small">
                         <strong>{p.name}</strong> 
-                        <code class="text-muted small-text">({p.type})</code>
+                        <code class="text-muted">({p.type})</code>
                     </span>
                 </label>
             {#else}
-                <p class="p-1 text-muted">No payloads available. <a href="/payloads/new">Create one first</a>.</p>
+                <div class="list-item text-muted small">No payloads found.</div>
             {/for}
         </div>
-    </div>
+    </section>
 
-    <div class="mt-2 d-flex gap-1">
-        <button type="submit" id="start-btn" class="btn btn-primary" disabled>Start Translation</button>
-        <a href="/translations" class="btn btn-secondary">Cancel</a>
+    <div style="margin-top: 2rem;">
+        <button type="submit" id="start-btn" class="btn btn-primary" disabled>Start Task</button>
     </div>
 </form>
 

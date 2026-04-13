@@ -2,47 +2,48 @@
 {#title}Translation Status - {session.sessionId}{/title}
 
 {#body}
-<header class="flex-between mb-2">
+<div class="flex-between" style="margin-bottom: 2rem;">
     <div>
-        <h2>Translation: <code>{session.ticket.targetFormat}</code></h2>
-        <p class="text-muted small-text">{session.sessionId}</p>
+        <h2>Translation Status</h2>
+        <div class="text-muted small"><code>{session.sessionId}</code></div>
     </div>
-    <a href="/translations" class="btn btn-secondary">Back to List</a>
-</header>
+    <a href="/translations" class="btn">Back</a>
+</div>
 
-<div class="card mb-2">
-    <div class="d-flex align-items-center gap-1">
+<div class="card">
+    <div class="flex">
         {#if session.status}
             <div id="status-badge" class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
                 {session.status.state.name().replace('TRANSLATION_STATE_', '')}
             </div>
-            <span id="status-message" class="text-muted">{session.status.message}</span>
+            <span id="status-message" class="text-muted small">{session.status.message}</span>
         {#else}
             <div id="status-badge" class="status-badge status-state-pending">PENDING</div>
-            <span id="status-message" class="text-muted">Waiting for agent connection...</span>
+            <span id="status-message" class="text-muted small">Waiting for agent...</span>
         {/if}
     </div>
 </div>
 
-<section id="results-section" class="{#if generatedEntities.isEmpty()}d-none{/if} mb-2">
-    <h3>Generated Output</h3>
-    <div class="list-group" id="payloads-list">
+<section id="results-section" class="{#if generatedEntities.isEmpty()}d-none{/if}">
+    <h3>Output</h3>
+    <div class="list" id="payloads-list">
         {#for p in generatedEntities}
-            <div class="list-item flex-between">
+            <div class="list-item flex-between" data-payload-id="{p.id}">
                 {#if p.removed}
-                    <span class="text-muted">Payload #{p.id} (removed)</span>
+                    <span class="text-muted small">Payload #{p.id} (removed)</span>
                 {#else}
-                    <span>{p.name}</span>
-                    <a href="/payloads/{p.id}/edit" class="btn btn-sm btn-secondary">Edit</a>
+                    <span class="small">{p.name}</span>
+                    <a href="/payloads/{p.id}/edit" class="btn">Edit</a>
                 {/if}
             </div>
         {/for}
     </div>
 </section>
 
-<div id="telemetry-console">
-    <!-- Logs arrive here -->
-</div>
+<section>
+    <h3>Console</h3>
+    <div id="telemetry-console"></div>
+</section>
 
 <script>
     window.sessionId = "{session.sessionId}";

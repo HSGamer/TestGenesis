@@ -2,17 +2,17 @@
 {#title}Payload Management{/title}
 
 {#body}
-<header class="flex-between mb-2">
-    <h2>All Payloads</h2>
-    <a href="/payloads/new" class="btn btn-primary">Create New Payload</a>
-</header>
+<div class="flex-between" style="margin-bottom: 2rem;">
+    <h2>Payloads</h2>
+    <a href="/payloads/new" class="btn btn-primary">New Payload</a>
+</div>
 
 <table>
     <thead>
         <tr>
             <th>Name</th>
-            <th>Protocol Type</th>
-            <th>Attachment</th>
+            <th>Type</th>
+            <th>File</th>
             <th style="text-align: right;">Actions</th>
         </tr>
     </thead>
@@ -23,25 +23,23 @@
             <td><code>{payload.type}</code></td>
             <td>
                 {#if payload.attachmentName}
-                    <a href="/payloads/{payload.id}/attachment">{payload.attachmentName}</a>
+                    <a href="/payloads/{payload.id}/attachment" class="small">{payload.attachmentName}</a>
                 {#else}
-                    <span class="text-muted small-text">No file</span>
+                    <span class="text-muted small">No file</span>
                 {/if}
             </td>
             <td style="text-align: right;">
-                <div class="d-flex justify-content-end gap-1" style="justify-content: flex-end;">
-                    <a href="/payloads/{payload.id}/edit" class="btn btn-sm btn-secondary">Edit</a>
+                <div class="flex" style="justify-content: flex-end;">
+                    <a href="/payloads/{payload.id}/edit" class="btn">Edit</a>
                     <form action="/payloads/{payload.id}/delete" method="POST" onsubmit="return confirm('Are you sure?');" style="display: inline;">
-                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        <button type="submit" class="btn btn-danger">Del</button>
                     </form>
                 </div>
             </td>
         </tr>
         {#else}
         <tr>
-            <td colspan="4" style="text-align: center; padding: 2rem;" class="text-muted">
-                No payloads found. <a href="/payloads/new">Create one</a> to get started.
-            </td>
+            <td colspan="4" class="text-muted" style="text-align: center; padding: 2rem;">No payloads found.</td>
         </tr>
         {/for}
     </tbody>

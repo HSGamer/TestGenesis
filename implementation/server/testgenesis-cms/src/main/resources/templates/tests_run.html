@@ -2,43 +2,39 @@
 {#title}Run Test - {test.name}{/title}
 
 {#body}
-<header class="flex-between mb-2">
+<div class="flex-between" style="margin-bottom: 2rem;">
     <div>
-        <h2>Run Configuration</h2>
-        <p class="text-muted small-text">Selected Test: <strong>{test.name}</strong> (<code>{test.testType}</code>)</p>
+        <h2>Launch Test</h2>
+        <div class="text-muted small">Target: <strong>{test.name}</strong> <code>({test.testType})</code></div>
     </div>
-    <a href="/tests" class="btn btn-secondary">Back to List</a>
-</header>
+    <a href="/tests" class="btn">Back</a>
+</div>
 
 <form action="/tests/{test.id}/start" method="POST">
-    <div class="form-group">
-        <h3>Select Execution Agent</h3>
-        <div class="list-group mt-1">
+    <section>
+        <h3>Agents</h3>
+        <div class="list">
             {#for agent in agents}
                 {#if agent.supportsTestType(test.testType)}
-                    <label class="list-item d-flex gap-1 align-items-center" style="cursor: pointer;">
+                    <label class="list-item flex" style="cursor: pointer;">
                         <input type="radio" name="agentId" value="{agent.id}" required style="width: auto;">
                         <div style="flex: 1;">
-                            <div class="d-flex flex-between">
-                                <strong>{agent.displayName}</strong>
-                                <span class="status-badge status-passed">READY</span>
+                            <div class="flex-between">
+                                <span class="small"><strong>{agent.displayName}</strong></span>
+                                <span class="status-badge status-passed">Online</span>
                             </div>
-                            <code class="text-muted small-text">{agent.id}</code>
+                            <code class="text-muted small">{agent.id}</code>
                         </div>
                     </label>
                 {/if}
             {#else}
-                <div class="status-badge status-failed p-1" style="display: block; width: 100%;">
-                    No agents currently online support the <strong>{test.testType}</strong> test type.
-                </div>
+                <div class="list-item text-muted small">No agents available for <strong>{test.testType}</strong>.</div>
             {/for}
         </div>
-    </div>
+    </section>
 
-    <div class="mt-2" style="text-align: center; margin-top: 3rem;">
-        <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1.1rem;">
-            Launch Execution
-        </button>
+    <div style="margin-top: 2rem;">
+        <button type="submit" class="btn btn-primary">Launch Execution</button>
     </div>
 </form>
 {/body}

@@ -1,42 +1,32 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const container = document.getElementById("json-editor");
-    const metadataInput = document.getElementById("metadata-input");
-    const typeInput = document.querySelector('input[name="type"]');
-    const attachmentInput = document.getElementById("payload-file");
-    const mimeError = document.getElementById("mime-error");
+    const el = id => document.getElementById(id);
+    const container = el("json-editor");
+    const input = el("metadata-input");
+    const type = document.querySelector('input[name="type"]');
+    const file = el("payload-file");
+    const error = el("mime-error");
 
-    if (container && metadataInput) {
-        // JSONEditor Initialization
+    if (container && input) {
         const editor = new JSONEditor(container, {
             mode: 'code',
-            modes: ['code', 'text'],
-            onChange: () => {
-                try {
-                    metadataInput.value = JSON.stringify(editor.get());
-                } catch (e) {}
-            }
+            onChange: () => { try { input.value = JSON.stringify(editor.get()); } catch (e) {} }
         });
-
         try {
-            const initial = JSON.parse(metadataInput.value || '{}');
+            const initial = JSON.parse(input.value || '{}');
             editor.set(initial);
-            metadataInput.value = JSON.stringify(initial);
+            input.value = JSON.stringify(initial);
         } catch (e) {}
     }
 
-    // MIME Validation
     const validate = () => {
-        if (!typeInput || !attachmentInput || !window.mimeTypeMapping) return;
-        const mimes = window.mimeTypeMapping[typeInput.value];
-        const file = attachmentInput.files[0];
-        if (mimes && file && !mimes.includes(file.type)) {
-            mimeError.textContent = `Warning: ${file.type} might not be supported.`;
-            mimeError.classList.remove('d-none');
-        } else {
-            mimeError.classList.add('d-none');
-        }
+        if (!type || !file || !window.mimeTypeMapping) return;
+        const mimes = window.mimeTypeMapping[type.value];
+        const f = file.files[0];
+        const invalid = mimes && f && !mimes.includes(f.type);
+        error.textContent = invalid ? `Warning: ${f.type} might not be supported.` : '';
+        error.classList.toggle('d-none', !invalid);
     };
 
-    if (typeInput) typeInput.addEventListener('input', validate);
-    if (attachmentInput) attachmentInput.addEventListener('change', validate);
+    if (type) type.addEventListener('input', validate);
+    if (file) file.addEventListener('change', validate);
 });

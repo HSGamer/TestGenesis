@@ -2,61 +2,60 @@
 {#title}{#if test.id}Edit {test.name}{#else}New Test{/if}{/title}
 
 {#body}
-<h2 class="mb-2">{#if test.id}Edit Test: {test.name}{#else}New Test Configuration{/if}</h2>
+<div class="flex-between" style="margin-bottom: 2rem;">
+    <h2>{#if test.id}Edit Test{#else}New Test{/if}</h2>
+    <a href="/tests" class="btn">Cancel</a>
+</div>
 
 <form action="/tests/save" method="POST">
     {#if test.id}
         <input type="hidden" name="id" value="{test.id}">
     {/if}
 
-    <div class="form-group">
-        <label>Test Name</label>
-        <input type="text" name="name" value="{test.name}" required placeholder="e.g. Chrome Regression">
+    <div class="card">
+        <label>Name</label>
+        <input type="text" name="name" value="{test.name}" required>
     </div>
 
-    <div class="form-group">
+    <div class="card">
         <label>Description</label>
         <textarea name="description" rows="3">{test.description}</textarea>
     </div>
 
-    <div class="form-group">
+    <div class="card">
         <label>Protocol Test Type</label>
         <input type="text" id="test-type-input" name="testType" value="{test.testType}" required list="test-type-suggestions">
-        <datalist id="test-type-suggestions">
-            <!-- Populated by JS -->
-        </datalist>
+        <datalist id="test-type-suggestions"></datalist>
     </div>
 
-    <div class="form-group">
+    <div class="card">
         <label>Reference Agent (Guidance)</label>
         <select id="agent-selector">
             <option value="">-- No Agent Selected --</option>
-            <!-- Populated by JS -->
         </select>
-        <p class="text-muted small-text mt-1">Select an agent to see recommended payloads.</p>
+        <div class="text-muted small" style="margin-top: 0.5rem;">Select an agent to see recommendations.</div>
     </div>
 
-    <div class="form-group">
-        <label>Select Payloads</label>
-        <div id="payload-selector" class="list-group mt-1" style="max-height: 400px; overflow-y: auto;">
+    <section>
+        <h3>Payloads</h3>
+        <div id="payload-selector" class="list" style="max-height: 400px; overflow-y: auto;">
             {#for p in allPayloads}
-                <label class="list-item d-flex gap-1 align-items-center" data-type="{p.type}" style="cursor: pointer;">
+                <label class="list-item flex" data-type="{p.type}" style="cursor: pointer;">
                     <input type="checkbox" name="payloadIds" value="{p.id}" style="width: auto;" {#if test.payloads.contains(p)}checked{/if}>
-                    <span>
+                    <span class="small">
                         <strong>{p.name}</strong> 
-                        <code class="text-muted small-text">({p.type})</code>
+                        <code class="text-muted">({p.type})</code>
                     </span>
-                    <span class="suggestion-label d-none status-badge status-warn" style="margin-left: auto;">Suggested</span>
+                    <span class="suggestion-label d-none status-badge status-warn" style="margin-left: auto;">Recommended</span>
                 </label>
             {#else}
-                <p class="p-1 text-muted">No payloads available. <a href="/payloads/new">Create one first</a>.</p>
+                <div class="list-item text-muted small">No payloads available.</div>
             {/for}
         </div>
-    </div>
+    </section>
 
-    <div class="mt-2 d-flex gap-1" style="margin-top: 2rem;">
+    <div style="margin-top: 2rem;">
         <button type="submit" class="btn btn-primary">Save Test</button>
-        <a href="/tests" class="btn btn-secondary">Cancel</a>
     </div>
 </form>
 
