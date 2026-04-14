@@ -27,15 +27,15 @@ export abstract class SessionContext<TInit, TResponse> {
  * Domain-specific context for Test sessions.
  */
 export class TestSessionContext extends SessionContext<TestInit, TestResponse> {
-    public sendStatus(status: TestStatus) {
-        this.responseIterable.write(create(TestResponseSchema, {
+    public async sendStatus(status: TestStatus) {
+        await this.responseIterable.write(create(TestResponseSchema, {
             timestamp: timestampNow(),
             event: {case: "status", value: status}
         }));
     }
 
-    public sendTelemetry(message: string, severity = Severity.INFO) {
-        this.responseIterable.write(create(TestResponseSchema, {
+    public async sendTelemetry(message: string, severity = Severity.INFO) {
+        await this.responseIterable.write(create(TestResponseSchema, {
             timestamp: timestampNow(),
             event: {
                 case: "telemetry",
@@ -49,8 +49,8 @@ export class TestSessionContext extends SessionContext<TestInit, TestResponse> {
         }));
     }
 
-    public sendResult(result: TestResult) {
-        this.responseIterable.write(create(TestResponseSchema, {
+    public async sendResult(result: TestResult) {
+        await this.responseIterable.write(create(TestResponseSchema, {
             timestamp: timestampNow(),
             event: {case: "result", value: result}
         }));
@@ -61,15 +61,15 @@ export class TestSessionContext extends SessionContext<TestInit, TestResponse> {
  * Domain-specific context for Translation sessions.
  */
 export class TranslationSessionContext extends SessionContext<TranslationInit, TranslationResponse> {
-    public sendStatus(status: TranslationStatus) {
-        this.responseIterable.write(create(TranslationResponseSchema, {
+    public async sendStatus(status: TranslationStatus) {
+        await this.responseIterable.write(create(TranslationResponseSchema, {
             timestamp: timestampNow(),
             event: {case: "status", value: status}
         }));
     }
 
-    public sendTelemetry(message: string, severity = Severity.INFO) {
-        this.responseIterable.write(create(TranslationResponseSchema, {
+    public async sendTelemetry(message: string, severity = Severity.INFO) {
+        await this.responseIterable.write(create(TranslationResponseSchema, {
             timestamp: timestampNow(),
             event: {
                 case: "telemetry",
@@ -83,8 +83,8 @@ export class TranslationSessionContext extends SessionContext<TranslationInit, T
         }));
     }
 
-    public sendResult(result: TranslationResult) {
-        this.responseIterable.write(create(TranslationResponseSchema, {
+    public async sendResult(result: TranslationResult) {
+        await this.responseIterable.write(create(TranslationResponseSchema, {
             timestamp: timestampNow(),
             event: {case: "result", value: result}
         }));

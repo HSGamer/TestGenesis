@@ -63,12 +63,14 @@ export class Agent {
 
         // 2. Control Stream Dispatcher
         const requestIterable = createWritableIterable<ListenRequest>();
-        requestIterable.write(create(ListenRequestSchema, {event: {case: "ready", value: {}}}));
-
         const pendingSessions = new Map<string, ProcessorType>();
+        console.log("[Agent] Opening Control Stream...");
         const listenStream = this.agentClient.listen(requestIterable, {
             headers: {"x-client-id": clientId}
         });
+        await requestIterable.write(create(ListenRequestSchema, {event: {case: "ready", value: {}}}));
+
+        console.log("[Agent] Waiting for Hub events...");
 
         for await (const response of listenStream) {
             const event = response.event;
@@ -81,7 +83,7 @@ export class Agent {
 
                 if (this.processors.has(type)) {
                     pendingSessions.set(proposal.sessionId, type);
-                    requestIterable.write(create(ListenRequestSchema, {
+                    await requestIterable.write(create(ListenRequestSchema, {
                         event: {
                             case: "sessionAcceptance",
                             value: {sessionId: proposal.sessionId, accepted: true}
@@ -89,7 +91,7 @@ export class Agent {
                     }));
                 } else {
                     console.warn(`[Agent][${type}] Rejecting: No processor registered for this type.`);
-                    requestIterable.write(create(ListenRequestSchema, {
+                    await requestIterable.write(create(ListenRequestSchema, {
                         event: {
                             case: "sessionAcceptance",
                             value: {sessionId: proposal.sessionId, accepted: false}
@@ -118,20 +120,19 @@ export class Agent {
                 headers: {"x-session-id": sessionId},
             });
 
-            // Wait for Init
-            let initMsg = null;
-            for await (const msg of stream) {
-                initMsg = msg;
-                break; // First message is Init
-            }
+            console.log(`[Agent][Test] Session started: ${sessionId}. Waiting for Init...`);
 
-            if (!initMsg) throw new Error("Stream closed before TestInit was received.");
+            // Wait for Init without closing the stream (avoiding 'for await...break')
+            const streamIterator = stream[Symbol.asyncIterator]();
+            const { value: initMsg, done } = await streamIterator.next();
+
+            if (done || !initMsg) throw new Error("Stream closed before TestInit was received.");
 
             const context = new TestSessionContext(initMsg, responseIterable);
             try {
                 await processor.process(sessionId, context);
             } catch (err: any) {
-                context.sendResult(create(TestResultSchema, {
+                await context.sendResult(create(TestResultSchema, {
                     status: create(TestStatusSchema, {
                         state: TestState.FAILED,
                         message: `Internal Agent Error: ${err.message || String(err)}`
@@ -154,20 +155,19 @@ export class Agent {
                 headers: {"x-session-id": sessionId},
             });
 
-            // Wait for Init
-            let initMsg = null;
-            for await (const msg of stream) {
-                initMsg = msg;
-                break; // First message is Init
-            }
+            console.log(`[Agent][Translation] Session started: ${sessionId}. Waiting for Init...`);
 
-            if (!initMsg) throw new Error("Stream closed before TranslationInit was received.");
+            // Wait for Init without closing the stream (avoiding 'for await...break')
+            const streamIterator = stream[Symbol.asyncIterator]();
+            const { value: initMsg, done } = await streamIterator.next();
+
+            if (done || !initMsg) throw new Error("Stream closed before TranslationInit was received.");
 
             const context = new TranslationSessionContext(initMsg, responseIterable);
             try {
                 await processor.process(sessionId, context);
             } catch (err: any) {
-                context.sendResult(create(TranslationResultSchema, {
+                await context.sendResult(create(TranslationResultSchema, {
                     status: create(TranslationStatusSchema, {
                         state: TranslationState.FAILED,
                         message: `Internal Agent Error: ${err.message || String(err)}`

@@ -42,14 +42,14 @@ export class TranslationProcessor implements TranslationSessionProcessor {
     public async process(sessionId: string, context: TranslationSessionContext) {
         try {
             const init = context.init;
-            context.sendStatus(create(TranslationStatusSchema, {
+            await context.sendStatus(create(TranslationStatusSchema, {
                 state: TranslationState.ACKNOWLEDGED,
                 message: "Starting SIDE project decomposition..."
             }));
 
             const sourcePayload = init.payloads[0];
             if (!sourcePayload?.attachment) {
-                context.sendStatus(create(TranslationStatusSchema, {
+                await context.sendStatus(create(TranslationStatusSchema, {
                     state: TranslationState.FAILED,
                     message: "No source SIDE project attachment found"
                 }));
@@ -57,37 +57,36 @@ export class TranslationProcessor implements TranslationSessionProcessor {
             }
 
             const project: ProjectShape = JSON.parse(new TextDecoder().decode(sourcePayload.attachment.data));
-            context.sendTelemetry(`Parsing project: ${project.name}`);
-            context.sendStatus(create(TranslationStatusSchema, {
+            await context.sendTelemetry(`Parsing project: ${project.name}`);
+            await context.sendStatus(create(TranslationStatusSchema, {
                 state: TranslationState.PROCESSING,
                 message: `Extracting ${project.tests.length} tests...`
             }));
 
-            const results = project.tests.map(test => {
-                context.sendTelemetry(`Extracted test: ${test.name}`);
-                return create(PayloadSchema, {
+            const results = [];
+            for (const test of project.tests) {
+                await context.sendTelemetry(`Extracted test: ${test.name}`);
+                results.push(create(PayloadSchema, {
                     type: "selenium-side",
                     attachment: create(AttachmentSchema, {
                         name: `${test.name}.json`,
                         mimeType: "application/json",
                         data: new TextEncoder().encode(JSON.stringify(test))
                     })
-                });
-            });
+                }));
+            }
 
-            context.sendResult(create(TranslationResultSchema, {
+            await context.sendResult(create(TranslationResultSchema, {
                 status: create(TranslationStatusSchema, {state: TranslationState.COMPLETED}),
                 payloads: results
             }));
-
-            context.sendStatus(create(TranslationStatusSchema, {
+            await context.sendStatus(create(TranslationStatusSchema, {
                 state: TranslationState.COMPLETED,
                 message: `Successfully split into ${results.length} tests.`
             }));
-
         } catch (err: any) {
             console.error(`[Translate ${sessionId}] Error:`, err);
-            context.sendStatus(create(TranslationStatusSchema, {
+            await context.sendStatus(create(TranslationStatusSchema, {
                 state: TranslationState.FAILED,
                 message: `Translation Error: ${err.message}`
             }));

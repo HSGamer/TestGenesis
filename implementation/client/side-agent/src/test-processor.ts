@@ -16,6 +16,8 @@ import {
 
 import {TestLogger, TestRunner} from "@hsgamer/side-engine";
 import {Builder, WebDriver} from "selenium-webdriver";
+import * as selenium from "selenium-webdriver";
+const seleniumVersion = (selenium as any).version as string | undefined;
 import * as os from "os";
 import {CommandStates, PlaybackStates, Variables, WebDriverExecutor,} from "@seleniumhq/side-runtime";
 import type {TestShape} from "@seleniumhq/side-model";
@@ -82,7 +84,7 @@ class TestSession {
             const payload = payloads.find((p: any) => p.type === testType);
 
             if (!payload?.attachment) {
-                this.context.sendStatus(create(TestStatusSchema, {
+                await this.context.sendStatus(create(TestStatusSchema, {
                     state: TestState.INVALID,
                     message: "Missing required test payload or attachment"
                 }));
@@ -100,7 +102,7 @@ class TestSession {
                 }
             }
 
-            this.context.sendStatus(create(TestStatusSchema, {
+            await this.context.sendStatus(create(TestStatusSchema, {
                 state: TestState.ACKNOWLEDGED,
                 message: "Initializing Selenium..."
             }));
@@ -128,6 +130,8 @@ class TestSession {
             this.driver = await builder.build();
             this.onDriverCreated(this.driver);
 
+            const capabilities = await this.driver.getCapabilities();
+
             const logger = new TestLogger();
             const testRunner = TestRunner.createRunner(test, {
                 logger: logger.createConsole(),
@@ -136,8 +140,8 @@ class TestSession {
             });
             logger.bind(testRunner);
 
-            this.context.sendTelemetry(`Session started for browser: ${browser}`);
-            this.context.sendStatus(create(TestStatusSchema, {
+            await this.context.sendTelemetry(`Session started for browser: ${browser}`);
+            await this.context.sendStatus(create(TestStatusSchema, {
                 state: TestState.RUNNING,
                 message: "Running steps..."
             }));
@@ -146,10 +150,10 @@ class TestSession {
             await testRunner.run();
             const endTime = new Date();
 
-            const report = (await testRunner.createReport(logger)) as TestReport;
+            const report = testRunner.createReport(logger) as TestReport;
             const finalState = report.state === PlaybackStates.FINISHED ? TestState.COMPLETED : TestState.FAILED;
 
-            this.context.sendResult(create(TestResultSchema, {
+            await this.context.sendResult(create(TestResultSchema, {
                 status: create(TestStatusSchema, {state: finalState}),
                 reports: report.commands.map(cmd => create(StepReportSchema, {
                     name: `${cmd.command.command} ${cmd.command.target || ""}`,
@@ -177,7 +181,10 @@ class TestSession {
                     ),
                     metadata: {
                         total_steps: report.commands.length,
-                        browser,
+                        selenium_webdriver_version: seleniumVersion || "unknown",
+                        browser_name: capabilities.getBrowserName() || "unknown",
+                        browser_version: capabilities.getBrowserVersion() || "unknown",
+                        platform_name: capabilities.getPlatform() || "unknown",
                         execute_duration: endTime.getTime() - startTime.getTime(),
                         os_platform: os.platform(),
                         os_release: os.release(),
@@ -189,10 +196,10 @@ class TestSession {
                 })
             }));
 
-            this.context.sendStatus(create(TestStatusSchema, {state: finalState}));
+            await this.context.sendStatus(create(TestStatusSchema, {state: finalState}));
         } catch (err: any) {
             console.error(`[Test ${this.sessionId}] Error:`, err);
-            this.context.sendStatus(create(TestStatusSchema, {
+            await this.context.sendStatus(create(TestStatusSchema, {
                 state: TestState.FAILED,
                 message: `Error: ${err.message}`
             }));

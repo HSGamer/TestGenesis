@@ -80,7 +80,7 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
     }
 
     public List<AgentGuidedInfo> getAgentGuidedInfos() {
-        return agents.values().stream().map(a -> {
+        return agents.values().stream().filter(Agent::isReady).map(a -> {
             List<TestTypeInfo> tests = a.capabilities.stream()
                     .filter(Capability::hasTest).map(c -> {
                         var t = c.getTest();
@@ -93,7 +93,7 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
     }
 
     public List<AgentTranslationInfo> getAgentTranslationInfos() {
-        return agents.values().stream().map(a -> {
+        return agents.values().stream().filter(Agent::isReady).map(a -> {
             List<TranslationTypeInfo> trans = a.capabilities.stream()
                     .filter(Capability::hasTranslation).map(c -> {
                         var t = c.getTranslation();
@@ -106,7 +106,7 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
     }
 
     public Set<String> getAvailablePayloadTypes() {
-        return agents.values().stream().flatMap(a -> a.capabilities.stream())
+        return agents.values().stream().filter(Agent::isReady).flatMap(a -> a.capabilities.stream())
                 .flatMap(c -> switch (c.getFormatCase()) {
                     case TEST -> c.getTest().getPayloadsList().stream().map(PayloadRequirement::getType);
                     case TRANSLATION ->
@@ -116,7 +116,7 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
     }
 
     public Map<String, Set<String>> getPayloadMimeTypeMapping() {
-        return agents.values().stream().flatMap(a -> a.capabilities.stream())
+        return agents.values().stream().filter(Agent::isReady).flatMap(a -> a.capabilities.stream())
                 .flatMap(c -> switch (c.getFormatCase()) {
                     case TEST -> c.getTest().getPayloadsList().stream();
                     case TRANSLATION ->
