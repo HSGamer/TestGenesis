@@ -33,14 +33,14 @@ public class PayloadEntity extends PanacheEntity {
 
     public Payload toProto() {
         return Payload.newBuilder()
-                .setType(type)
-                .setMetadata(ProtoUtil.jsonToStruct(metadata))
-                .setAttachment(Attachment.newBuilder()
-                        .setName(attachmentName)
-                        .setMimeType(attachmentMimeType)
-                        .setData(ByteString.copyFrom(attachmentData))
-                        .build())
-                .build();
+            .setType(type)
+            .setMetadata(ProtoUtil.jsonToStruct(metadata))
+            .setAttachment(Attachment.newBuilder()
+                .setName(attachmentName)
+                .setMimeType(attachmentMimeType)
+                .setData(ByteString.copyFrom(attachmentData))
+                .build())
+            .build();
     }
 
     public void fillFromProto(Payload p) {

@@ -48,8 +48,8 @@ public class PayloadWebResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance createForm() {
         return payloads_edit.data("payload", new PayloadEntity())
-                .data("availableTypes", uapService.getAvailablePayloadTypes())
-                .data("mimeTypeMapping", uapService.getPayloadMimeTypeMapping());
+            .data("availableTypes", uapService.getAvailablePayloadTypes())
+            .data("mimeTypeMapping", uapService.getPayloadMimeTypeMapping());
     }
 
 
@@ -58,10 +58,10 @@ public class PayloadWebResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance editForm(@PathParam("id") Long id) {
         PayloadEntity entity = payloadService.findById(id)
-                .orElseThrow(() -> new NotFoundException("Payload not found: " + id));
+            .orElseThrow(() -> new NotFoundException("Payload not found: " + id));
         return payloads_edit.data("payload", entity)
-                .data("availableTypes", uapService.getAvailablePayloadTypes())
-                .data("mimeTypeMapping", uapService.getPayloadMimeTypeMapping());
+            .data("availableTypes", uapService.getAvailablePayloadTypes())
+            .data("mimeTypeMapping", uapService.getPayloadMimeTypeMapping());
     }
 
 
@@ -69,12 +69,12 @@ public class PayloadWebResource {
     @Path("/save")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public Response save(
-            @RestForm("id") Long id,
-            @RestForm("name") String name,
-            @RestForm("description") String description,
-            @RestForm("type") String type,
-            @RestForm("metadata") String metadata,
-            @RestForm("attachment") FileUpload attachment) {
+        @RestForm("id") Long id,
+        @RestForm("name") String name,
+        @RestForm("description") String description,
+        @RestForm("type") String type,
+        @RestForm("metadata") String metadata,
+        @RestForm("attachment") FileUpload attachment) {
 
         PayloadEntity entity = new PayloadEntity();
         entity.setName(name);
@@ -89,8 +89,8 @@ public class PayloadWebResource {
                 if (!mapping.get(type).contains(mimeType)) {
                     log.warn("MIME type '{}' is not supported for payload type '{}' by any registered agents", mimeType, type);
                     return Response.status(Response.Status.BAD_REQUEST)
-                            .entity("Unsupported file type: " + mimeType + " for protocol " + type + ". Expected: " + mapping.get(type))
-                            .build();
+                        .entity("Unsupported file type: " + mimeType + " for protocol " + type + ". Expected: " + mapping.get(type))
+                        .build();
                 }
             }
 
@@ -101,7 +101,7 @@ public class PayloadWebResource {
             } catch (IOException e) {
                 log.error("Failed to read uploaded file", e);
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity("Failed to upload attachment").build();
+                    .entity("Failed to upload attachment").build();
             }
         }
 
@@ -126,15 +126,15 @@ public class PayloadWebResource {
     @Path("/{id}/attachment")
     public Response downloadAttachment(@PathParam("id") Long id) {
         PayloadEntity entity = payloadService.findById(id)
-                .orElseThrow(() -> new NotFoundException("Payload not found: " + id));
+            .orElseThrow(() -> new NotFoundException("Payload not found: " + id));
 
         if (entity.getAttachmentData() == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
 
         return Response.ok(entity.getAttachmentData())
-                .type(entity.getAttachmentMimeType())
-                .header("Content-Disposition", "attachment; filename=\"" + entity.getAttachmentName() + "\"")
-                .build();
+            .type(entity.getAttachmentMimeType())
+            .header("Content-Disposition", "attachment; filename=\"" + entity.getAttachmentName() + "\"")
+            .build();
     }
 }

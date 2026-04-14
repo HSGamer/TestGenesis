@@ -25,7 +25,7 @@ public class TestManager {
 
     public Uni<TestTicketResult> startTest(Long testId, String agentId, List<Long> extraPayloadIds) {
         TestEntity test = testService.findById(testId)
-                .orElseThrow(() -> new IllegalArgumentException("Test not found: " + testId));
+            .orElseThrow(() -> new IllegalArgumentException("Test not found: " + testId));
 
         java.util.Set<PayloadEntity> allPayloads = new java.util.HashSet<>(test.getPayloads());
         if (extraPayloadIds != null) {
@@ -33,8 +33,8 @@ public class TestManager {
         }
 
         List<Payload> protoPayloads = allPayloads.stream()
-                .map(PayloadEntity::toProto)
-                .toList();
+            .map(PayloadEntity::toProto)
+            .toList();
 
         TestTicket ticket = new TestTicket(test.getTestType(), protoPayloads);
 

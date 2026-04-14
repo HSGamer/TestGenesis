@@ -68,9 +68,9 @@ public class TestSession implements Session<TestResponse> {
     @Override
     public void fail(String reason) {
         updateStatus(TestStatus.newBuilder()
-                .setState(TestState.TEST_STATE_FAILED)
-                .setMessage(reason)
-                .build());
+            .setState(TestState.TEST_STATE_FAILED)
+            .setMessage(reason)
+            .build());
     }
 
     public void addTelemetryConsumer(Consumer<Telemetry> consumer) {

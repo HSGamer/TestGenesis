@@ -8,7 +8,7 @@ public class WSMessage {
     public record TelemetryMsg(String type, String level, String message, long timestamp) {
         public static TelemetryMsg from(Telemetry t) {
             return new TelemetryMsg("TELEMETRY", t.getSeverity().name(), t.getMessage(),
-                    t.getTimestamp().getSeconds() * 1000 + t.getTimestamp().getNanos() / 1000000);
+                t.getTimestamp().getSeconds() * 1000 + t.getTimestamp().getNanos() / 1000000);
         }
     }
 

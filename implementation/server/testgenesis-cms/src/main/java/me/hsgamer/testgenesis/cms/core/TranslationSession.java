@@ -66,9 +66,9 @@ public class TranslationSession implements Session<TranslationResponse> {
     @Override
     public void fail(String reason) {
         updateStatus(TranslationStatus.newBuilder()
-                .setState(TranslationState.TRANSLATION_STATE_FAILED)
-                .setMessage(reason)
-                .build());
+            .setState(TranslationState.TRANSLATION_STATE_FAILED)
+            .setMessage(reason)
+            .build());
     }
 
     public void addTelemetryConsumer(Consumer<Telemetry> consumer) {

@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const el = id => document.getElementById(id);
     const agent = el('agent-select'), type = el('type-select'), btn = el('start-btn'), info = el('type-info');
     const items = document.querySelectorAll('#payload-list .list-item');
 
@@ -9,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const allowed = c ? c.sources : [];
         
         if (info) {
-            info.textContent = c ? `${c.sources.join(', ')} \u2192 ${c.targets.join(', ')}` : '';
+            info.textContent = c ? c.sources.join(', ') + ' \u2192 ' + c.targets.join(', ') : '';
             info.classList.toggle('d-none', !c);
         }
         if (btn) btn.disabled = !type.value;
@@ -23,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (agent) agent.addEventListener('change', () => {
         const a = window.agents?.find(x => x.id === agent.value);
-        type.innerHTML = '';
+        type.textContent = '';
         
         const defaultOpt = el('option-template').content.cloneNode(true);
         const optEl = defaultOpt.querySelector('option');

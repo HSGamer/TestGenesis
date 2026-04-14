@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const el = id => document.getElementById(id);
     const container = el("json-editor");
     const input = el("metadata-input");
     const type = document.querySelector('input[name="type"]');
@@ -23,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mimes = window.mimeTypeMapping[type.value];
         const f = file.files[0];
         const invalid = mimes && f && !mimes.includes(f.type);
-        error.textContent = invalid ? `Warning: ${f.type} might not be supported.` : '';
+        error.textContent = invalid ? 'Warning: ' + f.type + ' might not be supported.' : '';
         error.classList.toggle('d-none', !invalid);
     };
 

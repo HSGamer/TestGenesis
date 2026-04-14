@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const el = id => document.getElementById(id);
     const type = el('test-type-input');
     const agent = el('agent-selector');
     const list = el('test-type-suggestions');
@@ -21,15 +20,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const val = agent.value;
         const filtered = window.agents.filter(x => !t || x.supportedTypes.some(st => st.testType === t));
-        agent.innerHTML = '<option value="">-- No Agent --</option>' + 
-            filtered.map(x => `<option value="${x.id}" ${x.id === val ? 'selected' : ''}>${x.displayName}</option>`).join('');
+        
+        agent.textContent = '';
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = '-- No Agent --';
+        agent.appendChild(defaultOpt);
+
+        filtered.forEach(x => {
+            const opt = document.createElement('option');
+            opt.value = x.id;
+            opt.textContent = x.displayName;
+            if (x.id === val) opt.selected = true;
+            agent.appendChild(opt);
+        });
     };
 
     const init = () => {
         if (!window.agents) return;
         const types = new Set();
         window.agents.forEach(a => a.supportedTypes.forEach(st => types.add(st.testType)));
-        if (list) list.innerHTML = [...types].map(t => `<option value="${t}"></option>`).join('');
+
+        if (list) {
+            list.textContent = '';
+            [...types].forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t;
+                list.appendChild(opt);
+            });
+        }
         refresh();
     };
 

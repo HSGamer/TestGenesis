@@ -59,35 +59,35 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
 
     public Uni<TestTicketResult> registerTest(String agentId, TestTicket ticket) {
         return registerSession(agentId, "JOB-",
-                p -> p.setTest(TestProposalDetails.newBuilder().setType(ticket.testType()).build()),
-                (id, ok) -> {
-                    if (!ok) return new TestTicketResult(false, "Rejected by agent", null);
-                    TestSession s = new TestSession(id, ticket);
-                    testSessions.put(id, s);
-                    return new TestTicketResult(true, "Accepted", s);
-                });
+            p -> p.setTest(TestProposalDetails.newBuilder().setType(ticket.testType()).build()),
+            (id, ok) -> {
+                if (!ok) return new TestTicketResult(false, "Rejected by agent", null);
+                TestSession s = new TestSession(id, ticket);
+                testSessions.put(id, s);
+                return new TestTicketResult(true, "Accepted", s);
+            });
     }
 
     public Uni<TranslationTicketResult> registerTranslation(String agentId, TranslationTicket ticket) {
         return registerSession(agentId, "TRN-",
-                p -> p.setTranslation(TranslationProposalDetails.newBuilder().setType(ticket.targetFormat()).build()),
-                (id, ok) -> {
-                    if (!ok) return new TranslationTicketResult(false, "Rejected by agent", null);
-                    TranslationSession s = new TranslationSession(id, ticket);
-                    translationSessions.put(id, s);
-                    return new TranslationTicketResult(true, "Accepted", s);
-                });
+            p -> p.setTranslation(TranslationProposalDetails.newBuilder().setType(ticket.targetFormat()).build()),
+            (id, ok) -> {
+                if (!ok) return new TranslationTicketResult(false, "Rejected by agent", null);
+                TranslationSession s = new TranslationSession(id, ticket);
+                translationSessions.put(id, s);
+                return new TranslationTicketResult(true, "Accepted", s);
+            });
     }
 
     public List<AgentGuidedInfo> getAgentGuidedInfos() {
         return agents.values().stream().filter(Agent::isReady).map(a -> {
             List<TestTypeInfo> tests = a.capabilities.stream()
-                    .filter(Capability::hasTest).map(c -> {
-                        var t = c.getTest();
-                        var req = t.getPayloadsList().stream().filter(PayloadRequirement::getIsRequired).map(PayloadRequirement::getType).toList();
-                        var opt = t.getPayloadsList().stream().filter(p -> !p.getIsRequired()).map(PayloadRequirement::getType).toList();
-                        return new TestTypeInfo(t.getType(), req, opt);
-                    }).toList();
+                .filter(Capability::hasTest).map(c -> {
+                    var t = c.getTest();
+                    var req = t.getPayloadsList().stream().filter(PayloadRequirement::getIsRequired).map(PayloadRequirement::getType).toList();
+                    var opt = t.getPayloadsList().stream().filter(p -> !p.getIsRequired()).map(PayloadRequirement::getType).toList();
+                    return new TestTypeInfo(t.getType(), req, opt);
+                }).toList();
             return new AgentGuidedInfo(a.id, a.displayName, tests);
         }).toList();
     }
@@ -95,34 +95,34 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
     public List<AgentTranslationInfo> getAgentTranslationInfos() {
         return agents.values().stream().filter(Agent::isReady).map(a -> {
             List<TranslationTypeInfo> trans = a.capabilities.stream()
-                    .filter(Capability::hasTranslation).map(c -> {
-                        var t = c.getTranslation();
-                        var src = t.getSourcePayloadsList().stream().map(PayloadRequirement::getType).toList();
-                        var trg = t.getTargetPayloadsList().stream().map(PayloadRequirement::getType).toList();
-                        return new TranslationTypeInfo(t.getType(), src, trg);
-                    }).toList();
+                .filter(Capability::hasTranslation).map(c -> {
+                    var t = c.getTranslation();
+                    var src = t.getSourcePayloadsList().stream().map(PayloadRequirement::getType).toList();
+                    var trg = t.getTargetPayloadsList().stream().map(PayloadRequirement::getType).toList();
+                    return new TranslationTypeInfo(t.getType(), src, trg);
+                }).toList();
             return new AgentTranslationInfo(a.id, a.displayName, trans);
         }).filter(i -> !i.supportedTranslations().isEmpty()).toList();
     }
 
     public Set<String> getAvailablePayloadTypes() {
         return agents.values().stream().filter(Agent::isReady).flatMap(a -> a.capabilities.stream())
-                .flatMap(c -> switch (c.getFormatCase()) {
-                    case TEST -> c.getTest().getPayloadsList().stream().map(PayloadRequirement::getType);
-                    case TRANSLATION ->
-                            Stream.concat(c.getTranslation().getSourcePayloadsList().stream(), c.getTranslation().getTargetPayloadsList().stream()).map(PayloadRequirement::getType);
-                    default -> Stream.empty();
-                }).collect(Collectors.toCollection(TreeSet::new));
+            .flatMap(c -> switch (c.getFormatCase()) {
+                case TEST -> c.getTest().getPayloadsList().stream().map(PayloadRequirement::getType);
+                case TRANSLATION ->
+                    Stream.concat(c.getTranslation().getSourcePayloadsList().stream(), c.getTranslation().getTargetPayloadsList().stream()).map(PayloadRequirement::getType);
+                default -> Stream.empty();
+            }).collect(Collectors.toCollection(TreeSet::new));
     }
 
     public Map<String, Set<String>> getPayloadMimeTypeMapping() {
         return agents.values().stream().filter(Agent::isReady).flatMap(a -> a.capabilities.stream())
-                .flatMap(c -> switch (c.getFormatCase()) {
-                    case TEST -> c.getTest().getPayloadsList().stream();
-                    case TRANSLATION ->
-                            Stream.concat(c.getTranslation().getSourcePayloadsList().stream(), c.getTranslation().getTargetPayloadsList().stream());
-                    default -> Stream.empty();
-                }).collect(Collectors.groupingBy(PayloadRequirement::getType, Collectors.flatMapping(r -> r.getAcceptedMimeTypesList().stream(), Collectors.toSet())));
+            .flatMap(c -> switch (c.getFormatCase()) {
+                case TEST -> c.getTest().getPayloadsList().stream();
+                case TRANSLATION ->
+                    Stream.concat(c.getTranslation().getSourcePayloadsList().stream(), c.getTranslation().getTargetPayloadsList().stream());
+                default -> Stream.empty();
+            }).collect(Collectors.groupingBy(PayloadRequirement::getType, Collectors.flatMapping(r -> r.getAcceptedMimeTypesList().stream(), Collectors.toSet())));
     }
 
     @Override
@@ -141,12 +141,12 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
             return Multi.createFrom().failure(Status.NOT_FOUND.withDescription("Invalid Client ID").asRuntimeException());
 
         reqs.subscribe().with(
-                v -> {
-                    if (v.hasSessionAcceptance())
-                        Optional.ofNullable(pendingAcceptances.get(v.getSessionAcceptance().getSessionId())).ifPresent(c -> c.accept(v.getSessionAcceptance()));
-                },
-                e -> cleanupAgent(id),
-                () -> cleanupAgent(id)
+            v -> {
+                if (v.hasSessionAcceptance())
+                    Optional.ofNullable(pendingAcceptances.get(v.getSessionAcceptance().getSessionId())).ifPresent(c -> c.accept(v.getSessionAcceptance()));
+            },
+            e -> cleanupAgent(id),
+            () -> cleanupAgent(id)
         );
         return Multi.createFrom().emitter(e -> agent.setDispatcher(e::emit));
     }
@@ -170,9 +170,9 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
     private <R, InitT> Multi<InitT> handleStream(me.hsgamer.testgenesis.cms.core.Session<R> session, Multi<R> reqs, java.util.function.BiConsumer<me.hsgamer.testgenesis.cms.core.Session<R>, io.smallrye.mutiny.subscription.MultiEmitter<? super InitT>> initer) {
         if (session == null) return Multi.createFrom().failure(Status.NOT_FOUND.asRuntimeException());
         reqs.subscribe().with(
-                session::handleResponse,
-                e -> session.fail("Stream error: " + e.getMessage()),
-                () -> log.debug("Stream closed for session {}", session.getSessionId())
+            session::handleResponse,
+            e -> session.fail("Stream error: " + e.getMessage()),
+            () -> log.debug("Stream closed for session {}", session.getSessionId())
         );
         return Multi.createFrom().emitter(e -> initer.accept(session, e));
     }
@@ -205,14 +205,14 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
         a.activeSessions.forEach(sid -> {
             if (sid.startsWith("JOB-")) {
                 Optional.ofNullable(testSessions.remove(sid)).ifPresent(s -> s.updateStatus(TestStatus.newBuilder()
-                        .setState(TestState.TEST_STATE_FAILED)
-                        .setMessage("Agent disconnected")
-                        .build()));
+                    .setState(TestState.TEST_STATE_FAILED)
+                    .setMessage("Agent disconnected")
+                    .build()));
             } else if (sid.startsWith("TRN-")) {
                 Optional.ofNullable(translationSessions.remove(sid)).ifPresent(s -> s.updateStatus(TranslationStatus.newBuilder()
-                        .setState(TranslationState.TRANSLATION_STATE_FAILED)
-                        .setMessage("Agent disconnected")
-                        .build()));
+                    .setState(TranslationState.TRANSLATION_STATE_FAILED)
+                    .setMessage("Agent disconnected")
+                    .build()));
             }
         });
     }

@@ -51,12 +51,18 @@
 </template>
 
 <template id="attachment-template">
-    <img src="" style="max-width:300px; cursor:zoom-in" onclick="window.open(this.src)">
+    <figure class="attachment-card card">
+        <div class="attachment-preview">
+            <img class="attachment-img d-none">
+        </div>
+        <figcaption class="attachment-name small text-center"></figcaption>
+        <a class="download-link btn btn-sm" target="_blank" style="width: 100%; justify-content: center;">Download</a>
+    </figure>
 </template>
 
-<section id="attachments-section" class="d-none" style="margin-top: 2rem;">
+<section id="attachments-section" class="d-none">
     <h3>Attachments</h3>
-    <div id="attachments-container" class="card flex" style="gap:0.5rem; flex-wrap:wrap"></div>
+    <div id="attachments-container" class="attachment-grid"></div>
 </section>
 
 <section>

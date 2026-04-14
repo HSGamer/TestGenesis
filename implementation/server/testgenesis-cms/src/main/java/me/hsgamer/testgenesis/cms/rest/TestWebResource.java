@@ -54,8 +54,8 @@ public class TestWebResource {
     @Blocking
     public TemplateInstance list() {
         return tests_list
-                .data("tests", testService.listAll())
-                .data("sessions", uapService.getTestSessions());
+            .data("tests", testService.listAll())
+            .data("sessions", uapService.getTestSessions());
     }
 
     @GET
@@ -63,8 +63,8 @@ public class TestWebResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance createForm() {
         return tests_edit.data("test", new TestEntity())
-                .data("allPayloads", payloadService.listAll())
-                .data("agents", uapService.getAgentGuidedInfos());
+            .data("allPayloads", payloadService.listAll())
+            .data("agents", uapService.getAgentGuidedInfos());
     }
 
 
@@ -73,10 +73,10 @@ public class TestWebResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance editForm(@PathParam("id") Long id) {
         TestEntity entity = testService.findById(id)
-                .orElseThrow(() -> new NotFoundException("Test not found: " + id));
+            .orElseThrow(() -> new NotFoundException("Test not found: " + id));
         return tests_edit.data("test", entity)
-                .data("allPayloads", payloadService.listAll())
-                .data("agents", uapService.getAgentGuidedInfos());
+            .data("allPayloads", payloadService.listAll())
+            .data("agents", uapService.getAgentGuidedInfos());
     }
 
 
@@ -84,11 +84,11 @@ public class TestWebResource {
     @Path("/save")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public Response save(
-            @RestForm("id") Long id,
-            @RestForm("name") String name,
-            @RestForm("description") String description,
-            @RestForm("testType") String testType,
-            @RestForm("payloadIds") List<Long> payloadIds) {
+        @RestForm("id") Long id,
+        @RestForm("name") String name,
+        @RestForm("description") String description,
+        @RestForm("testType") String testType,
+        @RestForm("payloadIds") List<Long> payloadIds) {
 
         TestEntity entity = new TestEntity();
         entity.setName(name);
@@ -124,20 +124,20 @@ public class TestWebResource {
     @Blocking
     public TemplateInstance runForm(@PathParam("id") Long id) {
         TestEntity test = testService.findById(id)
-                .orElseThrow(() -> new NotFoundException("Test not found: " + id));
+            .orElseThrow(() -> new NotFoundException("Test not found: " + id));
 
         java.util.Set<Long> linkedIds = test.getPayloads().stream()
-                .map(p -> p.id)
-                .collect(java.util.stream.Collectors.toSet());
+            .map(p -> p.id)
+            .collect(java.util.stream.Collectors.toSet());
 
         java.util.List<PayloadEntity> extraPayloads = payloadService.listAll().stream()
-                .filter(p -> !linkedIds.contains(p.id))
-                .toList();
+            .filter(p -> !linkedIds.contains(p.id))
+            .toList();
 
         return tests_run
-                .data("test", test)
-                .data("agents", uapService.getAgentGuidedInfos())
-                .data("extraPayloads", extraPayloads);
+            .data("test", test)
+            .data("agents", uapService.getAgentGuidedInfos())
+            .data("extraPayloads", extraPayloads);
     }
 
     @POST
@@ -145,20 +145,20 @@ public class TestWebResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Blocking
     public Uni<Response> start(
-            @PathParam("id") Long id,
-            @RestForm("agentId") String agentId,
-            @RestForm("extraPayloadIds") java.util.List<Long> extraPayloadIds) {
+        @PathParam("id") Long id,
+        @RestForm("agentId") String agentId,
+        @RestForm("extraPayloadIds") java.util.List<Long> extraPayloadIds) {
 
         return testManager.startTest(id, agentId, extraPayloadIds)
-                .map(result -> {
-                    if (result.accepted()) {
-                        return Response.seeOther(URI.create("/tests/" + result.session().getSessionId() + "/status")).build();
-                    } else {
-                        return Response.status(Response.Status.BAD_REQUEST)
-                                .entity("Agent rejected test: " + result.reason())
-                                .build();
-                    }
-                });
+            .map(result -> {
+                if (result.accepted()) {
+                    return Response.seeOther(URI.create("/tests/" + result.session().getSessionId() + "/status")).build();
+                } else {
+                    return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Agent rejected test: " + result.reason())
+                        .build();
+                }
+            });
     }
 
     @GET
@@ -167,8 +167,27 @@ public class TestWebResource {
     @Blocking
     public TemplateInstance status(@PathParam("sessionId") String sessionId) {
         TestSession session = uapService.getTestSession(sessionId)
-                .orElseThrow(() -> new NotFoundException("Test session not found: " + sessionId));
+            .orElseThrow(() -> new NotFoundException("Test session not found: " + sessionId));
 
         return tests_status.data("session", session);
+    }
+
+    @GET
+    @Path("/{sessionId}/attachments/{index}")
+    @Blocking
+    public Response getAttachment(@PathParam("sessionId") String sessionId, @PathParam("index") int index) {
+        TestSession session = uapService.getTestSession(sessionId)
+            .orElseThrow(() -> new NotFoundException("Test session not found: " + sessionId));
+
+        me.hsgamer.testgenesis.uap.v1.TestResult result = session.getResult();
+        if (result == null || index < 0 || index >= result.getAttachmentsCount()) {
+            throw new NotFoundException("Attachment not found");
+        }
+
+        me.hsgamer.testgenesis.uap.v1.Attachment attachment = result.getAttachments(index);
+        return Response.ok(attachment.getData().toByteArray())
+            .type(attachment.getMimeType())
+            .header("Content-Disposition", "attachment; filename=\"" + attachment.getName() + "\"")
+            .build();
     }
 }

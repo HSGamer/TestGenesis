@@ -1,19 +1,17 @@
 package me.hsgamer.testgenesis.cms.websocket;
 
+import com.google.protobuf.util.Durations;
 import io.quarkus.websockets.next.*;
 import jakarta.inject.Inject;
-import com.google.protobuf.util.Durations;
 import me.hsgamer.testgenesis.cms.core.TestSession;
 import me.hsgamer.testgenesis.cms.service.UAPService;
 import me.hsgamer.testgenesis.cms.util.ProtoUtil;
 import me.hsgamer.testgenesis.uap.v1.TestResult;
 import me.hsgamer.testgenesis.uap.v1.TestStatus;
 
-import java.util.Base64;
-import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 @WebSocket(path = "/telemetry/test/{sessionId}")
 public class TestWebSocket extends BaseWebSocket<TestSession> {
@@ -32,7 +30,7 @@ public class TestWebSocket extends BaseWebSocket<TestSession> {
             s.addStatusConsumer(sc);
             addCleanup(conn, () -> s.removeStatusConsumer(sc));
 
-            Consumer<TestResult> rc = result -> send(conn, WSMessage.ResultMsg.from(mapResult(result)));
+            Consumer<TestResult> rc = result -> send(conn, WSMessage.ResultMsg.from(mapResult(s, result)));
             s.addResultConsumer(rc);
             addCleanup(conn, () -> s.removeResultConsumer(rc));
         });
@@ -43,20 +41,25 @@ public class TestWebSocket extends BaseWebSocket<TestSession> {
         onCloseBase(conn, id);
     }
 
-    private ResultDTO mapResult(TestResult r) {
+    private ResultDTO mapResult(TestSession session, TestResult r) {
+        AtomicInteger ai = new AtomicInteger(0);
         return new ResultDTO(
-                r.getReportsList().stream().map(report -> new StepReportDTO(
-                        report.getStatus().name(), report.getName(),
-                        new StepSummaryDTO(Durations.toMillis(report.getSummary().getTotalDuration()),
-                                ProtoUtil.structToMap(report.getSummary().getMetadata()))
-                )).toList(),
-                r.getAttachmentsList().stream().map(a -> new AttachmentDTO(a.getMimeType(), Base64.getEncoder().encodeToString(a.getData().toByteArray()))).toList(),
-                new ResultSummaryDTO(Durations.toMillis(r.getSummary().getTotalDuration()), ProtoUtil.structToMap(r.getSummary().getMetadata()))
+            r.getReportsList().stream().map(report -> new StepReportDTO(
+                report.getStatus().name(), report.getName(),
+                new StepSummaryDTO(Durations.toMillis(report.getSummary().getTotalDuration()),
+                    ProtoUtil.structToMap(report.getSummary().getMetadata()))
+            )).toList(),
+            r.getAttachmentsList().stream().map(a -> {
+                int idx = ai.getAndIncrement();
+                return new AttachmentDTO(a.getMimeType(), a.getName(), "/tests/" + session.getSessionId() + "/attachments/" + idx);
+            }).toList(),
+            new ResultSummaryDTO(Durations.toMillis(r.getSummary().getTotalDuration()), ProtoUtil.structToMap(r.getSummary().getMetadata()))
         );
     }
 
 
-    public record ResultDTO(java.util.List<StepReportDTO> reports, java.util.List<AttachmentDTO> attachments, ResultSummaryDTO summary) {
+    public record ResultDTO(java.util.List<StepReportDTO> reports, java.util.List<AttachmentDTO> attachments,
+                            ResultSummaryDTO summary) {
     }
 
     public record StepReportDTO(String status, String name, StepSummaryDTO summary) {
@@ -68,6 +71,6 @@ public class TestWebSocket extends BaseWebSocket<TestSession> {
     public record ResultSummaryDTO(long totalDuration, java.util.Map<String, Object> metadata) {
     }
 
-    public record AttachmentDTO(String mimeType, String data) {
+    public record AttachmentDTO(String mimeType, String name, String url) {
     }
 }

@@ -33,8 +33,7 @@ export class Agent {
     }
 
     public async start() {
-        console.log(`[Agent] Starting: ${this.config.displayName}`);
-        console.log(`[Agent] Registered Capabilities: ${Array.from(this.processors.keys()).join(", ")}`);
+        console.log(`[Agent] Ready: ${this.config.displayName} (${Array.from(this.processors.keys()).join(", ")})`);
 
         while (!this.isShuttingDown) {
             try {
@@ -59,18 +58,15 @@ export class Agent {
         }));
 
         const clientId = registration.clientId;
-        console.log(`[Agent][Connected] Client ID: ${clientId}`);
+        console.log(`[Agent] Connected as ${registration.clientId}`);
 
         // 2. Control Stream Dispatcher
         const requestIterable = createWritableIterable<ListenRequest>();
         const pendingSessions = new Map<string, ProcessorType>();
-        console.log("[Agent] Opening Control Stream...");
         const listenStream = this.agentClient.listen(requestIterable, {
             headers: {"x-client-id": clientId}
         });
         await requestIterable.write(create(ListenRequestSchema, {event: {case: "ready", value: {}}}));
-
-        console.log("[Agent] Waiting for Hub events...");
 
         for await (const response of listenStream) {
             const event = response.event;
@@ -79,7 +75,7 @@ export class Agent {
                 const proposal = event.value;
                 const type = proposal.details.case as ProcessorType;
 
-                console.log(`[Agent][${type}] Received Proposal: ${proposal.sessionId}`);
+                console.log(`[Agent][${type}] Handling Proposal: ${proposal.sessionId}`);
 
                 if (this.processors.has(type)) {
                     pendingSessions.set(proposal.sessionId, type);
@@ -120,7 +116,7 @@ export class Agent {
                 headers: {"x-session-id": sessionId},
             });
 
-            console.log(`[Agent][Test] Session started: ${sessionId}. Waiting for Init...`);
+            console.log(`[Agent][Test] Active: ${sessionId}`);
 
             // Wait for Init without closing the stream (avoiding 'for await...break')
             const streamIterator = stream[Symbol.asyncIterator]();
@@ -155,7 +151,7 @@ export class Agent {
                 headers: {"x-session-id": sessionId},
             });
 
-            console.log(`[Agent][Translation] Session started: ${sessionId}. Waiting for Init...`);
+            console.log(`[Agent][Translation] Active: ${sessionId}`);
 
             // Wait for Init without closing the stream (avoiding 'for await...break')
             const streamIterator = stream[Symbol.asyncIterator]();

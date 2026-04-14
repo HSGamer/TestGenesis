@@ -23,17 +23,16 @@ const CONFIG = {
     SELENIUM_REMOTE_URL: values.selenium || process.env.SELENIUM_REMOTE_URL,
 };
 
-console.log(`[Config] Hub: ${CONFIG.HUB_URL}`);
-console.log(`[Config] Name: ${CONFIG.CLIENT_NAME}`);
+console.log(`[SideAgent] Hub: ${CONFIG.HUB_URL}`);
+console.log(`[SideAgent] Name: ${CONFIG.CLIENT_NAME}`);
 if (CONFIG.SELENIUM_REMOTE_URL) {
-    console.log(`[Config] Selenium: ${CONFIG.SELENIUM_REMOTE_URL}`);
+    console.log(`[SideAgent] Selenium: ${CONFIG.SELENIUM_REMOTE_URL}`);
 }
 
 const activeDrivers = new Set<WebDriver>();
 let isShuttingDown = false;
 
 async function main() {
-    console.log(`Starting High-Level Side Agent: ${CONFIG.CLIENT_NAME}`);
 
     const agent = new Agent({
         hubUrl: CONFIG.HUB_URL,

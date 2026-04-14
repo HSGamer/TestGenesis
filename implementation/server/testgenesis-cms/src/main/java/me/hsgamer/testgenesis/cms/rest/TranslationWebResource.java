@@ -57,8 +57,8 @@ public class TranslationWebResource {
     @Blocking
     public TemplateInstance createForm() {
         return translations_new
-                .data("agents", uapService.getAgentTranslationInfos())
-                .data("allPayloads", payloadService.listAll());
+            .data("agents", uapService.getAgentTranslationInfos())
+            .data("allPayloads", payloadService.listAll());
     }
 
     @POST
@@ -66,31 +66,31 @@ public class TranslationWebResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Blocking
     public Uni<Response> start(
-            @RestForm("agentId") String agentId,
-            @RestForm("type") String type,
-            @RestForm("payloadIds") List<Long> payloadIds) {
+        @RestForm("agentId") String agentId,
+        @RestForm("type") String type,
+        @RestForm("payloadIds") List<Long> payloadIds) {
 
         if (payloadIds == null || payloadIds.isEmpty()) {
             return Uni.createFrom().item(Response.status(Response.Status.BAD_REQUEST)
-                    .entity("No source payloads selected")
-                    .build());
+                .entity("No source payloads selected")
+                .build());
         }
 
         List<Payload> sourcePayloads = payloadIds.stream()
-                .map(id -> payloadService.findById(id).orElseThrow(() -> new NotFoundException("Payload not found: " + id)))
-                .map(PayloadEntity::toProto)
-                .toList();
+            .map(id -> payloadService.findById(id).orElseThrow(() -> new NotFoundException("Payload not found: " + id)))
+            .map(PayloadEntity::toProto)
+            .toList();
 
         return translationManager.startTranslation(agentId, type, sourcePayloads)
-                .map(result -> {
-                    if (result.accepted()) {
-                        return Response.seeOther(URI.create("/translations/" + result.session().getSessionId() + "/status")).build();
-                    } else {
-                        return Response.status(Response.Status.BAD_REQUEST)
-                                .entity("Agent rejected translation: " + result.reason())
-                                .build();
-                    }
-                });
+            .map(result -> {
+                if (result.accepted()) {
+                    return Response.seeOther(URI.create("/translations/" + result.session().getSessionId() + "/status")).build();
+                } else {
+                    return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Agent rejected translation: " + result.reason())
+                        .build();
+                }
+            });
     }
 
     @GET
@@ -99,17 +99,17 @@ public class TranslationWebResource {
     @Blocking
     public TemplateInstance status(@PathParam("sessionId") String sessionId) {
         TranslationSession session = uapService.getTranslationSession(sessionId)
-                .orElseThrow(() -> new NotFoundException("Translation session not found: " + sessionId));
+            .orElseThrow(() -> new NotFoundException("Translation session not found: " + sessionId));
 
         List<GeneratedPayloadInfo> generatedEntities = session.getResultPayloads().stream()
-                .map(p -> payloadService.findById(p.id())
-                        .map(entity -> new GeneratedPayloadInfo(p.id(), entity.name, false))
-                        .orElseGet(() -> new GeneratedPayloadInfo(p.id(), null, true)))
-                .toList();
+            .map(p -> payloadService.findById(p.id())
+                .map(entity -> new GeneratedPayloadInfo(p.id(), entity.name, false))
+                .orElseGet(() -> new GeneratedPayloadInfo(p.id(), null, true)))
+            .toList();
 
         return translations_status
-                .data("session", session)
-                .data("generatedEntities", generatedEntities);
+            .data("session", session)
+            .data("generatedEntities", generatedEntities);
     }
 
     public record GeneratedPayloadInfo(Long id, String name, boolean removed) {
