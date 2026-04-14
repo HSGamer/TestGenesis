@@ -1,17 +1,19 @@
 import {
-  CapabilitySchema,
-  create,
-  msToDuration,
-  StepReportSchema,
-  StepStatus,
-  SummarySchema,
-  TestCapabilitySchema,
-  TestResultSchema,
-  TestSessionContext,
-  TestSessionProcessor,
-  TestState,
-  TestStatusSchema,
-  timestampFromDate
+    Attachment,
+    AttachmentSchema,
+    CapabilitySchema,
+    create,
+    msToDuration,
+    StepReportSchema,
+    StepStatus,
+    SummarySchema,
+    TestCapabilitySchema,
+    TestResultSchema,
+    TestSessionContext,
+    TestSessionProcessor,
+    TestState,
+    TestStatusSchema,
+    timestampFromDate
 } from "testgenesis-client-node";
 
 import {TestLogger, TestRunner} from "@hsgamer/side-engine";
@@ -21,6 +23,7 @@ const seleniumVersion = (selenium as any).version as string | undefined;
 import * as os from "os";
 import {CommandStates, PlaybackStates, Variables, WebDriverExecutor,} from "@seleniumhq/side-runtime";
 import type {TestShape} from "@seleniumhq/side-model";
+import {WebDriverExecutorConstructorArgs} from "@seleniumhq/side-runtime/dist/webdriver";
 
 
 type TestReport = ReturnType<TestLogger["createReport"]>;
@@ -44,7 +47,8 @@ export class TestProcessor implements TestSessionProcessor {
                     type: "selenium-side",
                     payloads: [
                         {type: "selenium-side", isRequired: true, acceptedMimeTypes: ["application/json"]},
-                        {type: "runtime-env", acceptedMimeTypes: ["application/json"]}
+                        {type: "selenium-variable", isRepeatable: true, acceptedMimeTypes: ["application/json"]},
+                        {type: "selenium-config", acceptedMimeTypes: ["application/json"]}
                     ]
                 })
             }
@@ -80,8 +84,8 @@ class TestSession {
     public async execute() {
         try {
             const init = this.context.init;
-            const {testType, payloads} = init;
-            const payload = payloads.find((p: any) => p.type === testType);
+            const {payloads} = init;
+            const payload = payloads.find((p: any) => p.type === "selenium-side");
 
             if (!payload?.attachment) {
                 await this.context.sendStatus(create(TestStatusSchema, {
@@ -91,13 +95,28 @@ class TestSession {
                 return;
             }
 
-            // Determine browser from environment config if available
-            const envPayload = payloads.find((p: any) => p.type === "runtime-env");
+            const variables = new Variables();
+            const variablePayloads = payloads.filter((p: any) => p.type === "selenium-variable");
+            for (const variablePayload of variablePayloads) {
+                if (variablePayload.attachment) {
+                    try {
+                        const variableObject = JSON.parse(new TextDecoder().decode(variablePayload.attachment.data));
+                        for (const [key, value] of Object.entries(variableObject)) {
+                            variables.set(key, value);
+                        }
+                    } catch (e) {
+                    }
+                }
+            }
+
             let browser = "chrome";
-            if (envPayload?.attachment) {
+            let takeScreenshot = false;
+            const configPayload = payloads.find((p: any) => p.type === "selenium-config");
+            if (configPayload?.attachment) {
                 try {
-                    const config = JSON.parse(new TextDecoder().decode(envPayload.attachment.data));
+                    const config = JSON.parse(new TextDecoder().decode(configPayload.attachment.data));
                     browser = config.browser || browser;
+                    takeScreenshot = config.takeScreenshot || takeScreenshot;
                 } catch (e) {
                 }
             }
@@ -117,7 +136,7 @@ class TestSession {
             const test: TestShape = {
                 id: parsedTest.id || this.sessionId,
                 name: parsedTest.name || "UAP Execution",
-                commands: parsedTest.commands || []
+                commands: (parsedTest.commands || []).filter(cmd => !cmd.comment?.includes("#LOCAL_ONLY#"))
             };
 
             if (!test.commands.length) {
@@ -132,11 +151,31 @@ class TestSession {
 
             const capabilities = await this.driver.getCapabilities();
 
+            let attachments: Attachment[] = [];
+            const screenshotMap = new Map<string, string>();
+            let webDriverExecutorArgs: WebDriverExecutorConstructorArgs = {
+                driver: this.driver,
+                hooks: {
+                    onAfterCommand: async (hook) => {
+                        if (takeScreenshot) {
+                            const data = await this.driver!.takeScreenshot();
+                            const name = `screenshot-${hook.command.id}.png`;
+                            attachments.push(create(AttachmentSchema, {
+                                name,
+                                mimeType: "image/png",
+                                data: Buffer.from(data, 'base64')
+                            }));
+                            screenshotMap.set(hook.command.id, name);
+                        }
+                    }
+                }
+            };
+
             const logger = new TestLogger();
             const testRunner = TestRunner.createRunner(test, {
                 logger: logger.createConsole(),
-                variables: new Variables(),
-                executor: new WebDriverExecutor({driver: this.driver}),
+                variables: variables,
+                executor: new WebDriverExecutor(webDriverExecutorArgs)
             });
             logger.bind(testRunner);
 
@@ -166,8 +205,16 @@ class TestSession {
                                 : 0
                         ),
                         metadata: {
-                            message: cmd.timestamp.find(t => t.message || t.error)?.message ||
-                                cmd.timestamp.find(t => t.error)?.error?.message || ""
+                            timestamp: cmd.timestamp.map(t => ({
+                                timestamp: t.timestamp.toISOString(),
+                                state: String(t.state),
+                                message: t.message || "",
+                                error: t.error ? {
+                                    message: t.error.message,
+                                    stack: t.error.stack || ""
+                                } : null
+                            })),
+                            screenshot: screenshotMap.get(cmd.id) || ""
                         }
                     })
                 })),
@@ -193,7 +240,8 @@ class TestSession {
                         cpu_count: os.cpus().length,
                         memory_total_gb: Math.round(os.totalmem() / (1024 ** 3))
                     }
-                })
+                }),
+                attachments
             }));
 
             await this.context.sendStatus(create(TestStatusSchema, {state: finalState}));
