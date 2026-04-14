@@ -2,13 +2,9 @@ import {createGrpcTransport} from "@connectrpc/connect-node";
 import {Client, createClient, Transport} from "@connectrpc/connect";
 import {create} from "@bufbuild/protobuf";
 import {createWritableIterable} from "@connectrpc/connect/protocol";
-import {AgentHub} from "./generated/index.js";
-import {AgentRegistrationSchema} from "./generated/index.js";
-import {ListenRequest, ListenRequestSchema} from "./generated/index.js";
+import {AgentHub, AgentRegistrationSchema, ListenRequest, ListenRequestSchema, SummarySchema, TestResponse, TestResultSchema, TestState, TestStatusSchema, TranslationResponse, TranslationResultSchema, TranslationState, TranslationStatusSchema} from "./generated/index.js";
 import {AnyProcessor, ProcessorType, TestSessionProcessor, TranslationSessionProcessor} from "./processor.js";
 import {TestSessionContext, TranslationSessionContext} from "./context.js";
-import {TestResponse} from "./generated/index.js";
-import {TranslationResponse} from "./generated/index.js";
 
 export interface AgentConfig {
     hubUrl: string;
@@ -134,6 +130,20 @@ export class Agent {
             const context = new TestSessionContext(initMsg, responseIterable);
             try {
                 await processor.process(sessionId, context);
+            } catch (err: any) {
+                context.sendResult(create(TestResultSchema, {
+                    status: create(TestStatusSchema, {
+                        state: TestState.FAILED,
+                        message: `Internal Agent Error: ${err.message || String(err)}`
+                    }),
+                    summary: create(SummarySchema, {
+                        metadata: {
+                            exception: String(err),
+                            stack: err.stack || "No stack trace available"
+                        }
+                    })
+                }));
+                throw err;
             } finally {
                 responseIterable.close();
             }
@@ -156,6 +166,20 @@ export class Agent {
             const context = new TranslationSessionContext(initMsg, responseIterable);
             try {
                 await processor.process(sessionId, context);
+            } catch (err: any) {
+                context.sendResult(create(TranslationResultSchema, {
+                    status: create(TranslationStatusSchema, {
+                        state: TranslationState.FAILED,
+                        message: `Internal Agent Error: ${err.message || String(err)}`
+                    }),
+                    summary: create(SummarySchema, {
+                        metadata: {
+                            exception: String(err),
+                            stack: err.stack || "No stack trace available"
+                        }
+                    })
+                }));
+                throw err;
             } finally {
                 responseIterable.close();
             }
