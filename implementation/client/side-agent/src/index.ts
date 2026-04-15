@@ -3,6 +3,7 @@ import {WebDriver} from "selenium-webdriver";
 import {parseArgs} from "node:util";
 import {TestProcessor} from "./test-processor.js";
 import {TranslationProcessor} from "./translation-processor.js";
+import JavaCodeExportProcessor from "./code-export-java.js";
 
 /**
  * Encapsulates the application configuration from CLI arguments
@@ -47,6 +48,8 @@ async function main() {
     ));
 
     agent.registerTranslationProcessor(new TranslationProcessor());
+
+    agent.registerTranslationProcessor(new JavaCodeExportProcessor());
 
     // Handle Shutdown
     async function shutdown() {

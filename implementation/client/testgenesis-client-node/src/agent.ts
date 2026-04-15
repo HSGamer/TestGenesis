@@ -13,7 +13,7 @@ export interface AgentConfig {
 export class Agent {
     private readonly transport: Transport;
     private readonly agentClient: Client<typeof AgentHub>;
-    private readonly processors = new Map<ProcessorType, AnyProcessor>();
+    private readonly processors: AnyProcessor[] = [];
     private isShuttingDown = false;
 
     constructor(private readonly config: AgentConfig) {
@@ -24,15 +24,15 @@ export class Agent {
     }
 
     public registerTestProcessor(processor: TestSessionProcessor) {
-        this.processors.set("test", processor);
+        this.processors.push(processor);
     }
 
     public registerTranslationProcessor(processor: TranslationSessionProcessor) {
-        this.processors.set("translation", processor);
+        this.processors.push(processor);
     }
 
     public async start() {
-        console.log(`[Agent] Ready: ${this.config.displayName} (${Array.from(this.processors.keys()).join(", ")})`);
+        console.log(`[Agent] Ready: ${this.config.displayName} (${this.processors.length} processors)`);
 
         while (!this.isShuttingDown) {
             try {
@@ -53,7 +53,7 @@ export class Agent {
         // 1. Identification & Capability Registration
         const registration = await this.agentClient.register(create(AgentRegistrationSchema, {
             displayName: this.config.displayName,
-            capabilities: Array.from(this.processors.values()).map(p => p.getCapability()),
+            capabilities: this.processors.map(p => p.getCapability()),
         }));
 
         const clientId = registration.clientId;
@@ -61,7 +61,7 @@ export class Agent {
 
         // 2. Control Stream Dispatcher
         const requestIterable = createWritableIterable<ListenRequest>();
-        const pendingSessions = new Map<string, ProcessorType>();
+        const pendingSessions = new Map<string, AnyProcessor>();
         const listenStream = this.agentClient.listen(requestIterable, {
             headers: {"x-client-id": clientId}
         });
@@ -72,12 +72,18 @@ export class Agent {
 
             if (event?.case === "sessionProposal") {
                 const proposal = event.value;
-                const type = proposal.details.case as ProcessorType;
+                const category = proposal.details.case as ProcessorType;
+                const typeIdentifier = (proposal.details.value as any).type as string;
 
-                console.log(`[Agent][${type}] Handling Proposal: ${proposal.sessionId}`);
+                console.log(`[Agent][${category}] Handling Proposal: ${proposal.sessionId} (${typeIdentifier})`);
 
-                if (this.processors.has(type)) {
-                    pendingSessions.set(proposal.sessionId, type);
+                const processor = this.processors.find(p => {
+                    const cap = p.getCapability();
+                    return cap.format.case === category && (cap.format.value as any).type === typeIdentifier;
+                });
+
+                if (processor) {
+                    pendingSessions.set(proposal.sessionId, processor);
                     await requestIterable.write(create(ListenRequestSchema, {
                         event: {
                             case: "sessionAcceptance",
@@ -85,7 +91,7 @@ export class Agent {
                         }
                     }));
                 } else {
-                    console.warn(`[Agent][${type}] Rejecting: No processor registered for this type.`);
+                    console.warn(`[Agent][${category}] Rejecting: No processor registered for type: ${typeIdentifier}`);
                     await requestIterable.write(create(ListenRequestSchema, {
                         event: {
                             case: "sessionAcceptance",
@@ -95,21 +101,23 @@ export class Agent {
                 }
             } else if (event?.case === "sessionReady") {
                 const sessionId = event.value.sessionId;
-                const type = pendingSessions.get(sessionId);
+                const processor = pendingSessions.get(sessionId);
 
-                if (type) {
+                if (processor) {
                     pendingSessions.delete(sessionId);
-                    this.handleSessionReady(sessionId, type).catch(err => {
-                        console.error(`[Agent][${type}] Session Handling Error (${sessionId}):`, err);
+                    this.handleSessionReady(sessionId, processor).catch(err => {
+                        console.error(`[Agent] Session Handling Error (${sessionId}):`, err);
                     });
                 }
             }
         }
     }
 
-    private async handleSessionReady(sessionId: string, type: ProcessorType) {
-        if (type === "test") {
-            const processor = this.processors.get("test") as TestSessionProcessor;
+    private async handleSessionReady(sessionId: string, processor: AnyProcessor) {
+        const capability = processor.getCapability();
+        
+        if (capability.format.case === "test") {
+            const testProcessor = processor as TestSessionProcessor;
             const responseIterable = createWritableIterable<TestResponse>();
             const stream = this.agentClient.execute(responseIterable, {
                 headers: {"x-session-id": sessionId},
@@ -117,7 +125,6 @@ export class Agent {
 
             console.log(`[Agent][Test] Active: ${sessionId}`);
 
-            // Wait for Init without closing the stream (avoiding 'for await...break')
             const streamIterator = stream[Symbol.asyncIterator]();
             const { value: initMsg, done } = await streamIterator.next();
 
@@ -125,7 +132,7 @@ export class Agent {
 
             const context = new TestSessionContext(initMsg, responseIterable);
             try {
-                await processor.process(sessionId, context);
+                await testProcessor.process(sessionId, context);
             } catch (err: any) {
                 await context.sendResult(create(TestResultSchema, {
                     status: create(TestStatusSchema, {
@@ -143,8 +150,8 @@ export class Agent {
             } finally {
                 responseIterable.close();
             }
-        } else if (type === "translation") {
-            const processor = this.processors.get("translation") as TranslationSessionProcessor;
+        } else if (capability.format.case === "translation") {
+            const translationProcessor = processor as TranslationSessionProcessor;
             const responseIterable = createWritableIterable<TranslationResponse>();
             const stream = this.agentClient.translate(responseIterable, {
                 headers: {"x-session-id": sessionId},
@@ -152,7 +159,6 @@ export class Agent {
 
             console.log(`[Agent][Translation] Active: ${sessionId}`);
 
-            // Wait for Init without closing the stream (avoiding 'for await...break')
             const streamIterator = stream[Symbol.asyncIterator]();
             const { value: initMsg, done } = await streamIterator.next();
 
@@ -160,7 +166,7 @@ export class Agent {
 
             const context = new TranslationSessionContext(initMsg, responseIterable);
             try {
-                await processor.process(sessionId, context);
+                await translationProcessor.process(sessionId, context);
             } catch (err: any) {
                 await context.sendResult(create(TranslationResultSchema, {
                     status: create(TranslationStatusSchema, {

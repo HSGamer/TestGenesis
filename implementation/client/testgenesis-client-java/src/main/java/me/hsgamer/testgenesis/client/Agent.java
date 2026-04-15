@@ -14,6 +14,7 @@ import me.hsgamer.testgenesis.client.processor.TestSessionProcessor;
 import me.hsgamer.testgenesis.client.processor.TranslationSessionProcessor;
 import me.hsgamer.testgenesis.uap.v1.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.logging.Level;
@@ -28,8 +29,8 @@ public class Agent {
 
     private final String hubUrl;
     private final String displayName;
-    private final Map<String, Object> processors = new ConcurrentHashMap<>();
-    private final Map<String, String> pendingSessions = new ConcurrentHashMap<>();
+    private final List<Object> processors = new CopyOnWriteArrayList<>();
+    private final Map<String, Object> pendingSessions = new ConcurrentHashMap<>();
     private final ExecutorService sessionExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     private volatile boolean shuttingDown = false;
@@ -42,11 +43,11 @@ public class Agent {
     }
 
     public void registerTestProcessor(TestSessionProcessor processor) {
-        processors.put("test", processor);
+        processors.add(processor);
     }
 
     public void registerTranslationProcessor(TranslationSessionProcessor processor) {
-        processors.put("translation", processor);
+        processors.add(processor);
     }
 
     public void start() {
@@ -103,7 +104,7 @@ public class Agent {
         AgentRegistration.Builder registrationBuilder = AgentRegistration.newBuilder()
             .setDisplayName(displayName);
 
-        for (Object p : processors.values()) {
+        for (Object p : processors) {
             if (p instanceof TestSessionProcessor tp) {
                 registrationBuilder.addCapabilities(tp.getCapability());
             } else if (p instanceof TranslationSessionProcessor tp) {
@@ -154,46 +155,69 @@ public class Agent {
         if (response.hasSessionProposal()) {
             SessionProposal proposal = response.getSessionProposal();
             String sessionId = proposal.getSessionId();
-            String type = proposal.getDetailsCase().name().toLowerCase();
-
-            logger.info("[Agent][" + type + "] Handling Proposal: " + sessionId);
-
-            boolean accepted = processors.containsKey(type);
-
-            if (accepted) {
-                pendingSessions.put(sessionId, type);
-            } else {
-                logger.warning("[Agent][" + type + "] Rejecting: No processor registered.");
+            SessionProposal.DetailsCase category = proposal.getDetailsCase();
+            
+            String typeIdentifier = "";
+            if (category == SessionProposal.DetailsCase.TEST) {
+                typeIdentifier = proposal.getTest().getType();
+            } else if (category == SessionProposal.DetailsCase.TRANSLATION) {
+                typeIdentifier = proposal.getTranslation().getType();
             }
 
-            controlRequestObserver.onNext(ListenRequest.newBuilder()
-                .setSessionAcceptance(SessionAcceptance.newBuilder()
-                    .setSessionId(sessionId)
-                    .setAccepted(accepted)
-                    .build())
-                .build());
+            logger.info("[Agent][" + category + "] Handling Proposal: " + sessionId + " (" + typeIdentifier + ")");
+
+            Object matchedProcessor = null;
+            for (Object p : processors) {
+                if (category == SessionProposal.DetailsCase.TEST && p instanceof TestSessionProcessor tp) {
+                    if (tp.getCapability().getTest().getType().equals(typeIdentifier)) {
+                        matchedProcessor = tp;
+                        break;
+                    }
+                } else if (category == SessionProposal.DetailsCase.TRANSLATION && p instanceof TranslationSessionProcessor tp) {
+                    if (tp.getCapability().getTranslation().getType().equals(typeIdentifier)) {
+                        matchedProcessor = tp;
+                        break;
+                    }
+                }
+            }
+
+            if (matchedProcessor != null) {
+                pendingSessions.put(sessionId, matchedProcessor);
+                controlRequestObserver.onNext(ListenRequest.newBuilder()
+                        .setSessionAcceptance(SessionAcceptance.newBuilder()
+                                .setSessionId(sessionId)
+                                .setAccepted(true)
+                                .build())
+                        .build());
+            } else {
+                logger.warning("[Agent][" + category + "] Rejecting: No processor registered for type: " + typeIdentifier);
+                controlRequestObserver.onNext(ListenRequest.newBuilder()
+                        .setSessionAcceptance(SessionAcceptance.newBuilder()
+                                .setSessionId(sessionId)
+                                .setAccepted(false)
+                                .build())
+                        .build());
+            }
 
         } else if (response.hasSessionReady()) {
             String sessionId = response.getSessionReady().getSessionId();
-            String type = pendingSessions.remove(sessionId);
-            if (type != null) {
-                sessionExecutor.submit(() -> handleSessionReady(sessionId, type, stub));
+            Object processor = pendingSessions.remove(sessionId);
+            if (processor != null) {
+                sessionExecutor.submit(() -> handleSessionReady(sessionId, processor, stub));
             }
         }
     }
 
-    private void handleSessionReady(String sessionId, String type, AgentHubGrpc.AgentHubStub asyncStub) {
+    private void handleSessionReady(String sessionId, Object processor, AgentHubGrpc.AgentHubStub asyncStub) {
         Metadata metadata = new Metadata();
         Metadata.Key<String> sessionIdKey = Metadata.Key.of("x-session-id", Metadata.ASCII_STRING_MARSHALLER);
         metadata.put(sessionIdKey, sessionId);
         AgentHubGrpc.AgentHubStub sessionStub = asyncStub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
 
-        if ("test".equals(type)) {
-            TestSessionProcessor processor = (TestSessionProcessor) processors.get("test");
-            handleTestSession(sessionId, processor, sessionStub);
-        } else if ("translation".equals(type)) {
-            TranslationSessionProcessor processor = (TranslationSessionProcessor) processors.get("translation");
-            handleTranslationSession(sessionId, processor, sessionStub);
+        if (processor instanceof TestSessionProcessor tp) {
+            handleTestSession(sessionId, tp, sessionStub);
+        } else if (processor instanceof TranslationSessionProcessor tp) {
+            handleTranslationSession(sessionId, tp, sessionStub);
         }
     }
 

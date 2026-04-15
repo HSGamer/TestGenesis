@@ -1,13 +1,12 @@
 import {
     Attachment,
     AttachmentSchema,
-    CapabilitySchema,
     create,
     msToDuration,
     StepReportSchema,
     StepStatus,
     SummarySchema,
-    TestCapabilitySchema,
+    testCapability,
     TestResultSchema,
     TestSessionContext,
     TestSessionProcessor,
@@ -17,12 +16,13 @@ import {
 } from "testgenesis-client-node";
 
 import {TestLogger, TestRunner} from "@hsgamer/side-engine";
-import {Builder, WebDriver} from "selenium-webdriver";
 import * as selenium from "selenium-webdriver";
-const seleniumVersion = (selenium as any).version as string | undefined;
+import {Builder, WebDriver} from "selenium-webdriver";
 import * as os from "os";
 import {CommandStates, PlaybackStates, Variables, WebDriverExecutor,} from "@seleniumhq/side-runtime";
 import type {TestShape} from "@seleniumhq/side-model";
+
+const seleniumVersion = (selenium as any).version as string | undefined;
 
 type WebDriverExecutorConstructorArgs = ConstructorParameters<typeof WebDriverExecutor>[0];
 type TestReport = ReturnType<TestLogger["createReport"]>;
@@ -39,18 +39,13 @@ export class TestProcessor implements TestSessionProcessor {
     }
 
     public getCapability() {
-        return create(CapabilitySchema, {
-            format: {
-                case: "test",
-                value: create(TestCapabilitySchema, {
-                    type: "selenium-side",
-                    payloads: [
-                        {type: "selenium-side", isRequired: true, acceptedMimeTypes: ["application/json"]},
-                        {type: "selenium-variable", isRepeatable: true, acceptedMimeTypes: ["application/json"]},
-                        {type: "selenium-config", acceptedMimeTypes: ["application/json"]}
-                    ]
-                })
-            }
+        return testCapability({
+            type: "selenium-side",
+            payloads: [
+                {type: "selenium-side", isRequired: true, acceptedMimeTypes: ["application/json"]},
+                {type: "selenium-variable", isRepeatable: true, acceptedMimeTypes: ["application/json"]},
+                {type: "selenium-config", acceptedMimeTypes: ["application/json"]}
+            ]
         });
     }
 
@@ -94,6 +89,13 @@ class TestSession {
                 return;
             }
 
+            let parsedTest: Partial<TestShape>;
+            try {
+                parsedTest = JSON.parse(new TextDecoder().decode(payload.attachment.data));
+            } catch (err: any) {
+                throw new Error(`Failed to parse test payload as JSON: ${err.message}`);
+            }
+
             const variables = new Variables();
             const variablePayloads = payloads.filter((p: any) => p.type === "selenium-variable");
             for (const variablePayload of variablePayloads) {
@@ -124,13 +126,6 @@ class TestSession {
                 state: TestState.ACKNOWLEDGED,
                 message: "Initializing Selenium..."
             }));
-
-            let parsedTest: Partial<TestShape>;
-            try {
-                parsedTest = JSON.parse(new TextDecoder().decode(payload.attachment.data));
-            } catch (err: any) {
-                throw new Error(`Failed to parse test payload as JSON: ${err.message}`);
-            }
 
             const test: TestShape = {
                 id: parsedTest.id || this.sessionId,

@@ -1,10 +1,13 @@
-import {create} from "@bufbuild/protobuf";
+import {create, MessageInitShape} from "@bufbuild/protobuf";
 import {WritableIterable} from "@connectrpc/connect/protocol";
 import {
     Capability,
+    CapabilitySchema,
     Severity,
     TelemetrySchema,
+    TestCapability, TestCapabilitySchema,
     TestInit, TestResponse, TestResponseSchema, TestResult, TestStatus,
+    TranslationCapability, TranslationCapabilitySchema,
     TranslationInit, TranslationResponse, TranslationResponseSchema, TranslationResult, TranslationStatus
 } from "./generated/index.js";
 import {timestampNow} from "./utils.js";
@@ -112,3 +115,28 @@ export class TranslationSessionContext extends SessionContext<TranslationInit, T
         }));
     }
 }
+
+/**
+ * Helper to wrap a TestCapability into a Capability message.
+ */
+export function testCapability(value: MessageInitShape<typeof TestCapabilitySchema>): Capability {
+    return create(CapabilitySchema, {
+        format: {
+            case: "test",
+            value: create(TestCapabilitySchema, value)
+        }
+    });
+}
+
+/**
+ * Helper to wrap a TranslationCapability into a Capability message.
+ */
+export function translationCapability(value: MessageInitShape<typeof TranslationCapabilitySchema>): Capability {
+    return create(CapabilitySchema, {
+        format: {
+            case: "translation",
+            value: create(TranslationCapabilitySchema, value)
+        }
+    });
+}
+

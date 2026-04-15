@@ -1,9 +1,8 @@
 import {
     AttachmentSchema,
-    CapabilitySchema,
     create,
     PayloadSchema,
-    TranslationCapabilitySchema,
+    translationCapability,
     TranslationResultSchema,
     TranslationSessionContext,
     TranslationSessionProcessor,
@@ -18,24 +17,19 @@ import type {ProjectShape} from "@seleniumhq/side-model";
  */
 export class TranslationProcessor implements TranslationSessionProcessor {
     public getCapability() {
-        return create(CapabilitySchema, {
-            format: {
-                case: "translation",
-                value: create(TranslationCapabilitySchema, {
-                    type: "selenium-ide-project-to-test",
-                    sourcePayloads: [{
-                        type: "selenium-side-project",
-                        isRequired: true,
-                        acceptedMimeTypes: ["application/octet-stream"]
-                    }],
-                    targetPayloads: [{
-                        type: "selenium-side",
-                        isRequired: true,
-                        isRepeatable: true,
-                        acceptedMimeTypes: ["application/json"]
-                    }]
-                })
-            }
+        return translationCapability({
+            type: "selenium-ide-project-to-test",
+            sourcePayloads: [{
+                type: "selenium-side-project",
+                isRequired: true,
+                acceptedMimeTypes: ["application/octet-stream"]
+            }],
+            targetPayloads: [{
+                type: "selenium-side",
+                isRequired: true,
+                isRepeatable: true,
+                acceptedMimeTypes: ["application/json"]
+            }]
         });
     }
 
