@@ -1,31 +1,29 @@
 package me.hsgamer.testgenesis.agent.junit;
 
+import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
 import me.hsgamer.testgenesis.client.context.TestSessionContext;
 import me.hsgamer.testgenesis.client.processor.TestSessionProcessor;
+import me.hsgamer.testgenesis.client.utils.UapUtils;
 import me.hsgamer.testgenesis.uap.v1.*;
-import org.junit.platform.launcher.Launcher;
-import org.junit.platform.launcher.LauncherDiscoveryRequest;
-import org.junit.platform.launcher.TestPlan;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
-import org.junit.platform.launcher.listeners.TestExecutionSummary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 
@@ -35,119 +33,164 @@ public class SeleniumJUnitProcessor implements TestSessionProcessor {
     @Override
     public TestCapability getTestCapability() {
         return TestCapability.newBuilder()
+            .setType("selenium-junit")
+            .addPayloads(PayloadRequirement.newBuilder()
                 .setType("selenium-junit")
-                .addPayloads(PayloadRequirement.newBuilder()
-                        .setType("selenium-junit")
-                        .setIsRequired(true)
-                        .addAcceptedMimeTypes("text/x-java-source")
-                        .build())
-                .build();
+                .setIsRequired(true)
+                .addAcceptedMimeTypes("text/x-java-source")
+            )
+            .build();
     }
 
     @Override
     public void process(String sessionId, TestSessionContext context) throws Exception {
-        TestInit init = context.getInit();
-        Payload payload = init.getPayloadsList().stream()
-                .filter(p -> "selenium-junit".equals(p.getType()))
-                .findFirst()
-                .orElse(null);
+        long startTime = System.currentTimeMillis();
+        List<StepReport> reports = new ArrayList<>();
+        Path workDir = null;
 
-        if (payload == null || !payload.hasAttachment()) {
-            context.sendResult(TestResult.newBuilder()
-                    .setStatus(TestStatus.newBuilder()
-                            .setState(TestState.TEST_STATE_FAILED)
-                            .setMessage("Missing required selenium-junit payload")
-                            .build())
-                    .build());
-            return;
-        }
-
-        String sourceCode = payload.getAttachment().getData().toStringUtf8();
-        String className = payload.getAttachment().getName().replace(".java", "");
-
-        // 1. Setup Temporary Work Directory
-        Path workDir = Files.createTempDirectory("uap-junit-" + sessionId);
         try {
-            logger.info("[{}] Compiling test: {} in {}", sessionId, className, workDir);
+            // 1. Initialize
+            long stepStart = System.currentTimeMillis();
+            Payload payload = context.getInit().getPayloadsList().stream().filter(p -> "selenium-junit".equals(p.getType())).findFirst().orElse(null);
+            if (payload == null || !payload.hasAttachment()) {
+                fail(sessionId, context, reports, "Initialize", "Missing payload", stepStart, null);
+                return;
+            }
+            String sourceCode = payload.getAttachment().getData().toStringUtf8();
+            String className = payload.getAttachment().getName().replace(".java", "");
+            workDir = Files.createTempDirectory("uap-junit-" + sessionId);
+            reports.add(createReport("Initialize", StepStatus.STEP_STATUS_PASSED, stepStart));
+
+            // 2. Compile
+            stepStart = System.currentTimeMillis();
+            String binaryPath = System.getProperty("webdriver.chrome.binary");
+            String remoteUrl = System.getProperty("webdriver.remote.url");
+            sourceCode = transformSource(sourceCode, binaryPath, remoteUrl);
+
             Path javaFile = workDir.resolve(className + ".java");
             Files.writeString(javaFile, sourceCode, StandardCharsets.UTF_8);
 
-            // 2. Programmatic Compilation
-            JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-            if (compiler == null) {
-                throw new IllegalStateException("Java Compiler not found. Ensure you are running on a JDK.");
-            }
-
-            String classpath = System.getProperty("java.class.path");
-            List<String> options = Arrays.asList("-classpath", classpath, "-d", workDir.toString());
-            
-            int compilationResult = compiler.run(null, null, null, 
-                    javaFile.toString(), 
-                    "-classpath", classpath, 
-                    "-d", workDir.toString()
-            );
-
-            if (compilationResult != 0) {
-                context.sendResult(TestResult.newBuilder()
-                        .setStatus(TestStatus.newBuilder()
-                                .setState(TestState.TEST_STATE_FAILED)
-                                .setMessage("Compilation failed for " + className)
-                                .build())
-                        .build());
+            ByteArrayOutputStream errOutput = new ByteArrayOutputStream();
+            int res = ToolProvider.getSystemJavaCompiler().run(null, null, errOutput, javaFile.toString(), "-classpath", buildClasspath(), "-d", workDir.toString());
+            if (res != 0) {
+                fail(sessionId, context, reports, "Compile", errOutput.toString(StandardCharsets.UTF_8), stepStart, null);
                 return;
             }
+            reports.add(createReport("Compile", StepStatus.STEP_STATUS_PASSED, stepStart));
 
-            // 3. Load and Execute with JUnit Launcher
-            try (URLClassLoader classLoader = new URLClassLoader(new URL[]{workDir.toUri().toURL()}, 
-                    this.getClass().getClassLoader())) {
-                
-                Class<?> testClass = classLoader.loadClass(className);
-                
-                LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
-                        .selectors(selectClass(testClass))
-                        .build();
+            // 3. Run
+            stepStart = System.currentTimeMillis();
+            try (URLClassLoader cl = new URLClassLoader(new URL[]{workDir.toUri().toURL()}, this.getClass().getClassLoader())) {
+                SummaryGeneratingListener listener = new SummaryGeneratingListener();
+                LauncherFactory.create().execute(LauncherDiscoveryRequestBuilder.request().selectors(selectClass(cl.loadClass(className))).build(),
+                    listener, new TelemetryExecutionListener(context));
 
-                Launcher launcher = LauncherFactory.create();
-                SummaryGeneratingListener summaryListener = new SummaryGeneratingListener();
-                
-                // Register a custom listener for telemetry
-                launcher.registerTestExecutionListeners(summaryListener, new TelemetryExecutionListener(context));
-
-                logger.info("[{}] Starting JUnit 5 execution", sessionId);
-                launcher.execute(request);
-
-                TestExecutionSummary summary = summaryListener.getSummary();
+                var summary = listener.getSummary();
                 boolean success = summary.getTestsFailedCount() == 0 && summary.getTestsAbortedCount() == 0;
+                reports.add(createReport("Run", success ? StepStatus.STEP_STATUS_PASSED : StepStatus.STEP_STATUS_FAILED, stepStart));
 
-                context.sendResult(TestResult.newBuilder()
-                        .setStatus(TestStatus.newBuilder()
-                                .setState(success ? TestState.TEST_STATE_COMPLETED : TestState.TEST_STATE_FAILED)
-                                .setMessage(String.format("Executed %d tests. Failed: %d", 
-                                        summary.getTestsFoundCount(), summary.getTestsFailedCount()))
-                                .build())
-                        .setSummary(Summary.newBuilder()
-                                .setMetadata(com.google.protobuf.Struct.newBuilder()
-                                        .putFields("testsFound", com.google.protobuf.Value.newBuilder().setNumberValue(summary.getTestsFoundCount()).build())
-                                        .putFields("testsFailed", com.google.protobuf.Value.newBuilder().setNumberValue(summary.getTestsFailedCount()).build())
-                                        .putFields("testsSucceeded", com.google.protobuf.Value.newBuilder().setNumberValue(summary.getTestsSucceededCount()).build())
-                                        .build())
-                                .build())
-                        .build());
+                context.sendResult(TestResult.newBuilder().setStatus(TestStatus.newBuilder().setState(success ? TestState.TEST_STATE_COMPLETED : TestState.TEST_STATE_FAILED).build())
+                    .addAllReports(reports).setSummary(Summary.newBuilder().setStartTime(UapUtils.toTimestamp(java.time.Instant.ofEpochMilli(startTime)))
+                        .setTotalDuration(UapUtils.msToDuration(System.currentTimeMillis() - startTime)).build()).build());
             }
-
+        } catch (Exception e) {
+            fail(sessionId, context, reports, "Execution", e.getMessage(), startTime, e);
         } finally {
-            // Cleanup work directory
-            deleteDirectory(workDir.toFile());
+            if (workDir != null) deleteDir(workDir.toFile());
         }
     }
 
-    private void deleteDirectory(File dir) {
-        File[] files = dir.listFiles();
-        if (files != null) {
-            for (File file : files) {
-                deleteDirectory(file);
-            }
+    private String transformSource(String source, String binPath, String remoteUrl) {
+        if (remoteUrl != null) {
+            return source
+                .replace("driver = new ChromeDriver();", String.format(
+                    """
+                        org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
+                            try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL("%s"), opt); }
+                            catch (java.net.MalformedURLException e) { throw new RuntimeException(e); }""", remoteUrl))
+                .replace("driver = new FirefoxDriver();", String.format(
+                    """
+                        org.openqa.selenium.firefox.FirefoxOptions opt = new org.openqa.selenium.firefox.FirefoxOptions();
+                            try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL("%s"), opt); }
+                            catch (java.net.MalformedURLException e) { throw new RuntimeException(e); }""", remoteUrl));
         }
+
+        if (binPath != null) {
+            return source
+                .replace("driver = new ChromeDriver();", String.format(
+                    """
+                        org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
+                            opt.setBinary("%s");
+                            driver = new org.openqa.selenium.chrome.ChromeDriver(opt);""", binPath))
+                .replace("driver = new FirefoxDriver();", String.format(
+                    """
+                        org.openqa.selenium.firefox.FirefoxOptions opt = new org.openqa.selenium.firefox.FirefoxOptions();
+                            opt.setBinary("%s");
+                            driver = new org.openqa.selenium.firefox.FirefoxDriver(opt);""", binPath));
+        }
+        return source;
+    }
+
+    private String buildClasspath() {
+        StringBuilder cpBuilder = new StringBuilder();
+        cpBuilder.append(System.getProperty("java.class.path"));
+
+        ClassLoader cl = this.getClass().getClassLoader();
+        while (cl != null) {
+            if (cl instanceof URLClassLoader ucl) {
+                for (URL url : ucl.getURLs()) {
+                    String path = url.getPath();
+                    if (path != null && !path.isEmpty()) {
+                        cpBuilder.append(File.pathSeparator).append(path);
+                    }
+                }
+            }
+            cl = cl.getParent();
+        }
+
+        Class<?>[] keyClasses = {
+            me.hsgamer.testgenesis.client.Agent.class,
+            org.openqa.selenium.WebDriver.class,
+            org.openqa.selenium.chrome.ChromeDriver.class,
+            org.openqa.selenium.firefox.FirefoxDriver.class,
+            org.openqa.selenium.remote.RemoteWebDriver.class,
+            org.openqa.selenium.support.ui.WebDriverWait.class,
+            org.junit.Test.class,
+            org.hamcrest.Matcher.class,
+            org.junit.jupiter.api.Test.class,
+            org.slf4j.Logger.class
+        };
+
+        for (Class<?> clazz : keyClasses) {
+            try {
+                java.security.CodeSource cs = clazz.getProtectionDomain().getCodeSource();
+                if (cs != null && cs.getLocation() != null) {
+                    String path = cs.getLocation().getPath();
+                    if (path != null && !path.isEmpty()) {
+                        cpBuilder.append(File.pathSeparator).append(path);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        return cpBuilder.toString();
+    }
+
+    private StepReport createReport(String name, StepStatus status, long start) {
+        return StepReport.newBuilder().setName(name).setStatus(status).setSummary(Summary.newBuilder()
+            .setStartTime(UapUtils.toTimestamp(java.time.Instant.ofEpochMilli(start)))
+            .setTotalDuration(UapUtils.msToDuration(System.currentTimeMillis() - start)).build()).build();
+    }
+
+    private void fail(String sid, TestSessionContext ctx, List<StepReport> reports, String step, String err, long start, Exception e) {
+        logger.error("[{}] {} failed: {}", sid, step, err, e);
+        reports.add(createReport(step, StepStatus.STEP_STATUS_FAILED, start));
+        ctx.sendResult(TestResult.newBuilder().setStatus(TestStatus.newBuilder().setState(TestState.TEST_STATE_FAILED).build()).addAllReports(reports)
+            .setSummary(Summary.newBuilder().setMetadata(Struct.newBuilder().putFields("error", Value.newBuilder().setStringValue(err).build()).build()).build()).build());
+    }
+
+    private void deleteDir(File dir) {
+        File[] files = dir.listFiles();
+        if (files != null) for (File f : files) deleteDir(f);
         dir.delete();
     }
 }
