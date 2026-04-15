@@ -36,7 +36,7 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
                 type: "selenium-junit",
                 isRequired: true,
                 isRepeatable: true,
-                acceptedMimeTypes: ["text/x-java"]
+                acceptedMimeTypes: ["text/x-java", "text/x-java-source", "application/x-java-source"]
             }]
         });
     }
@@ -136,7 +136,7 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
                     type: "selenium-junit",
                     attachment: create(AttachmentSchema, {
                         name: filename,
-                        mimeType: "text/x-java",
+                        mimeType: "text/x-java-source",
                         data: new TextEncoder().encode(body)
                     })
                 })
