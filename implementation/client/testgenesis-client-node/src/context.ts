@@ -1,16 +1,38 @@
 import {create} from "@bufbuild/protobuf";
 import {WritableIterable} from "@connectrpc/connect/protocol";
-import {TestInit} from "./generated/index.js";
-import {TestResponse, TestResponseSchema} from "./generated/index.js";
-import {TestStatus} from "./generated/index.js";
-import {TestResult} from "./generated/index.js";
-import {TelemetrySchema} from "./generated/index.js";
-import {TranslationInit} from "./generated/index.js";
-import {TranslationResponse, TranslationResponseSchema} from "./generated/index.js";
-import {TranslationStatus} from "./generated/index.js";
-import {TranslationResult} from "./generated/index.js";
-import {Severity} from "./generated/index.js";
+import {
+    Capability,
+    Severity,
+    TelemetrySchema,
+    TestInit, TestResponse, TestResponseSchema, TestResult, TestStatus,
+    TranslationInit, TranslationResponse, TranslationResponseSchema, TranslationResult, TranslationStatus
+} from "./generated/index.js";
 import {timestampNow} from "./utils.js";
+
+/**
+ * Base for all specialized processors.
+ */
+export interface BaseProcessor {
+    getCapability(): Capability;
+}
+
+/**
+ * Interface for test execution logic.
+ */
+export interface TestSessionProcessor extends BaseProcessor {
+    process(sessionId: string, context: TestSessionContext): Promise<void>;
+}
+
+/**
+ * Interface for script translation logic.
+ */
+export interface TranslationSessionProcessor extends BaseProcessor {
+    process(sessionId: string, context: TranslationSessionContext): Promise<void>;
+}
+
+// Keep the internal types for the Agent to use
+export type ProcessorType = "test" | "translation";
+export type AnyProcessor = TestSessionProcessor | TranslationSessionProcessor;
 
 /**
  * Common high-level operations for any active test/translation session.

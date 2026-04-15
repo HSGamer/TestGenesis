@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "gen": "rm -rf src/generated/*.ts && buf generate ../../../specification && node scripts/generate-exports.cjs",
+    "gen": "node generate-exports.cjs",
     "build": "npm run gen && tsc"
   },
   "dependencies": {

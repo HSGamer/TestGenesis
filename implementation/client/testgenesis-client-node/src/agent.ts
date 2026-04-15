@@ -3,8 +3,7 @@ import {Client, createClient, Transport} from "@connectrpc/connect";
 import {create} from "@bufbuild/protobuf";
 import {createWritableIterable} from "@connectrpc/connect/protocol";
 import {AgentHub, AgentRegistrationSchema, ListenRequest, ListenRequestSchema, SummarySchema, TestResponse, TestResultSchema, TestState, TestStatusSchema, TranslationResponse, TranslationResultSchema, TranslationState, TranslationStatusSchema} from "./generated/index.js";
-import {AnyProcessor, ProcessorType, TestSessionProcessor, TranslationSessionProcessor} from "./processor.js";
-import {TestSessionContext, TranslationSessionContext} from "./context.js";
+import {AnyProcessor, ProcessorType, TestSessionProcessor, TranslationSessionProcessor, TestSessionContext, TranslationSessionContext} from "./context.js";
 
 export interface AgentConfig {
     hubUrl: string;

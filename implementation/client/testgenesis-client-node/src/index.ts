@@ -1,5 +1,4 @@
 export * from "./agent.js";
-export * from "./processor.js";
 export * from "./utils.js";
 export * from "./context.js";
 
