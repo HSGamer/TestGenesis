@@ -5,7 +5,7 @@ node_client  := "implementation/client/testgenesis-client-node"
 java_client  := "implementation/client/testgenesis-client-java"
 cms          := "implementation/server/testgenesis-cms"
 side_agent   := "implementation/client/side-agent"
-junit_agent  := "implementation/client/selenium-junit-agent-java"
+junit_agent  := "implementation/client/selenium-junit-agent"
 
 # Default: Build everything
 all: build-cms build-side build-junit
