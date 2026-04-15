@@ -35,7 +35,7 @@ public class SeleniumJUnitProcessor implements TestSessionProcessor {
             .addPayloads(PayloadRequirement.newBuilder()
                 .setType("selenium-junit")
                 .setIsRequired(true)
-                .addAcceptedMimeTypes("text/x-java-source")
+                .addAcceptedMimeTypes("text/x-java")
             )
             .build();
     }
