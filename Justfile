@@ -7,7 +7,7 @@ all: build-cms build-client-node build-side-agent
 
 # Build the common NodeJS client module
 build-client-node:
-    cd implementation/client/testgenesis-client-node && npm install && npm run build
+    cd implementation/client && npm install && npm run build -w testgenesis-client-node
 
 # Build the Quarkus CMS (includes internal gRPC generation)
 build-cms:
@@ -15,7 +15,7 @@ build-cms:
 
 # Build the Side Agent (depends on build-client-node)
 build-side-agent: build-client-node
-    cd implementation/client/side-agent && npm install && npx tsc
+    cd implementation/client && npm run build -w side-agent
 
 # Run the Side Agent in development mode
 run-side-agent:
@@ -28,6 +28,8 @@ run-cms:
 # Clean all generated build artifacts
 clean:
     cd implementation/server/testgenesis-cms && mvn clean
-    rm -rf implementation/client/side-agent/dist 
-    rm -rf implementation/client/side-agent/node_modules
-    rm -rf implementation/client/side-agent/src/generated
+    rm -rf implementation/client/node_modules
+    rm -rf implementation/client/side-agent/dist
+    rm -rf implementation/client/testgenesis-client-node/dist
+    rm -rf implementation/client/testgenesis-client-node/src/generated
+

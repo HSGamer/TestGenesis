@@ -23,9 +23,8 @@ const seleniumVersion = (selenium as any).version as string | undefined;
 import * as os from "os";
 import {CommandStates, PlaybackStates, Variables, WebDriverExecutor,} from "@seleniumhq/side-runtime";
 import type {TestShape} from "@seleniumhq/side-model";
-import {WebDriverExecutorConstructorArgs} from "@seleniumhq/side-runtime/dist/webdriver";
 
-
+type WebDriverExecutorConstructorArgs = ConstructorParameters<typeof WebDriverExecutor>[0];
 type TestReport = ReturnType<TestLogger["createReport"]>;
 
 /**
@@ -156,7 +155,7 @@ class TestSession {
             let webDriverExecutorArgs: WebDriverExecutorConstructorArgs = {
                 driver: this.driver,
                 hooks: {
-                    onAfterCommand: async (hook) => {
+                    onAfterCommand: async (hook: any) => {
                         if (takeScreenshot) {
                             const data = await this.driver!.takeScreenshot();
                             const name = `screenshot-${hook.command.id}.png`;

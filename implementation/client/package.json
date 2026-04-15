@@ -1,0 +1,8 @@
+{
+  "name": "testgenesis-client",
+  "private": true,
+  "workspaces": [
+    "testgenesis-client-node",
+    "side-agent"
+  ]
+}

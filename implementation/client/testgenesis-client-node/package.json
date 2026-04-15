@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "gen": "rm -rf src/generated/*.ts && buf generate ../../../specification && node scripts/generate-exports.cjs",
-    "build": "npm run gen && npx tsc"
+    "build": "npm run gen && tsc"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.11.0",
