@@ -1,38 +1,48 @@
-# Unified UAP Project Management
 set shell := ["bash", "-c"]
 
-# Build everything in order
-all: build-cms build-client-node build-side-agent
+# Project Roots
+node_client  := "implementation/client/testgenesis-client-node"
+java_client  := "implementation/client/testgenesis-client-java"
+cms          := "implementation/server/testgenesis-cms"
+side_agent   := "implementation/client/side-agent"
+junit_agent  := "implementation/client/selenium-junit-agent-java"
 
-# Build the common NodeJS client module
-build-client-node:
-    cd implementation/client/testgenesis-client-node && npm install && npm run build
+# Default: Build everything
+all: build-cms build-side build-junit
 
-# Build the common Java client module
-build-client-java:
-    cd implementation/client/testgenesis-client-java && mvn clean install
+# --- Build Recipes ---
 
-# Build the Quarkus CMS (includes internal gRPC generation)
 build-cms:
-    cd implementation/server/testgenesis-cms && mvn clean compile
+    mvn -f {{cms}} clean compile
 
-# Build the Side Agent (depends on build-client-node)
-build-side-agent: build-client-node
-    cd implementation/client/side-agent && npm install && npm run build
+build-node-client:
+    cd {{node_client}} && npm install && npm run build
 
-# Run the Side Agent in development mode
-run-side-agent:
-    cd implementation/client/side-agent && npm run start
+build-java-client:
+    mvn -f {{java_client}} clean install
 
-# Run the Quarkus CMS in development mode
+build-side: build-node-client
+    cd {{side_agent}} && npm install && npm run build
+
+build-junit: build-java-client
+    mvn -f {{junit_agent}} clean compile
+
+# --- Run Recipes ---
+
 run-cms:
-    cd implementation/server/testgenesis-cms && mvn quarkus:dev
+    mvn -f {{cms}} quarkus:dev
 
-# Clean all generated build artifacts
+run-side:
+    cd {{side_agent}} && npm start
+
+run-junit:
+    mvn -f {{junit_agent}} exec:java -Dexec.mainClass="me.hsgamer.testgenesis.agent.junit.Main"
+
+# --- Utility ---
+
 clean:
-    cd implementation/server/testgenesis-cms && mvn clean
-    rm -rf implementation/client/side-agent/dist
-    rm -rf implementation/client/side-agent/node_modules
-    rm -rf implementation/client/testgenesis-client-node/dist
-    rm -rf implementation/client/testgenesis-client-node/node_modules
-    rm -rf implementation/client/testgenesis-client-node/src/generated
+    mvn -f {{cms}} clean
+    mvn -f {{java_client}} clean
+    mvn -f {{junit_agent}} clean
+    rm -rf {{side_agent}}/{dist,node_modules}
+    rm -rf {{node_client}}/{dist,node_modules,src/generated}
