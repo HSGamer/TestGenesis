@@ -21,23 +21,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el('results-section')) el('results-section').classList.remove('d-none');
             const list = el('payloads-list');
             if (list) {
-                d.payloads.forEach(p => {
-                    if (document.querySelector('[data-payload-id="' + p.id + '"]')) return;
+                d.result.forEach(p => {
+                    if (document.querySelector('[data-payload-index="' + p.index + '"]')) return;
                     const t = el('payload-template').content.cloneNode(true);
-                    const item = t.querySelector('.list-item');
-                    item.setAttribute('data-payload-id', p.id);
+                    const item = t.querySelector('li');
+                    item.setAttribute('data-payload-index', p.index);
                     
-                    if (p.removed) {
-                        t.querySelector('.payload-name').remove();
-                        t.querySelector('.edit-link').remove();
-                        const removed = t.querySelector('.removed-info');
-                        removed.textContent = 'Payload #' + p.id + ' (removed)';
-                        removed.classList.remove('d-none');
-                    } else {
-                        t.querySelector('.payload-name').textContent = 'Payload #' + p.id;
-                        t.querySelector('.edit-link').href = '/payloads/' + p.id + '/edit';
-                        t.querySelector('.removed-info').remove();
-                    }
+                    t.querySelector('.payload-name').textContent = p.name || 'unnamed';
+                    t.querySelector('.payload-type').textContent = p.type;
+                    
+                    t.querySelector('.download-link').href = `/translations/${sid}/payloads/${p.index}/download`;
+                    t.querySelector('.save-link').href = `/translations/${sid}/payloads/${p.index}/save-form`;
+                    
                     list.appendChild(t);
                 });
             }

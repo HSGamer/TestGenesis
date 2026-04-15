@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const type = el('test-type-input');
     const agent = el('agent-selector');
     const list = el('test-type-suggestions');
-    const items = document.querySelectorAll('#payload-selector .list-item');
+    const items = document.querySelectorAll('#payload-selector li');
 
     const refresh = () => {
         if (!window.agents) return;

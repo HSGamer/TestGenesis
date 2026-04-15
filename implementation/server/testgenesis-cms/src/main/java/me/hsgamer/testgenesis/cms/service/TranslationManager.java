@@ -30,11 +30,7 @@ public class TranslationManager {
             if (result.accepted()) {
                 var session = result.session();
                 session.addResultConsumer(translationResult -> {
-                    log.info("Translation session {} completed with {} payloads. Auto-saving...", session.getSessionId(), translationResult.getPayloadsCount());
-                    managedExecutor.execute(() -> {
-                        var savedPayloads = payloadService.saveTranslatedPayloads(translationResult);
-                        session.dispatchResultPayloads(savedPayloads);
-                    });
+                    log.info("Translation session {} completed with {} payloads.", session.getSessionId(), translationResult.getPayloadsCount());
                 });
             }
         });

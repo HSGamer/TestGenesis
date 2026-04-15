@@ -1,51 +1,64 @@
 {#include base.html}
-{#title}Translation Status - {session.sessionId}{/title}
+{#title}Translation Status{/title}
 
 {#body}
-<div class="flex-between" style="margin-bottom: 2rem;">
-    <div>
-        <h2>Translation Status</h2>
-        <div class="text-muted small"><code>{session.sessionId}</code></div>
-    </div>
-    <a href="/translations" class="btn">Back</a>
-</div>
+<section>
+    <h2>Translation Status</h2>
+    <p><code>{session.sessionId}</code></p>
+    <nav class="actions">
+        <a href="/translations" class="btn">Back</a>
+    </nav>
+</section>
 
-<div class="card">
-    <div class="flex">
+<section>
+    <h3>Current Status</h3>
+    <div>
         {#if session.status}
-            <div id="status-badge" class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
+            <strong id="status-badge" class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
                 {session.status.state.name().replace('TRANSLATION_STATE_', '')}
-            </div>
-            <span id="status-message" class="text-muted small">{session.status.message}</span>
+            </strong>
+            <p><small id="status-message" class="text-muted">{session.status.message}</small></p>
         {#else}
-            <div id="status-badge" class="status-badge status-state-pending">PENDING</div>
-            <span id="status-message" class="text-muted small">Waiting for agent...</span>
+            <strong id="status-badge" class="status-badge status-state-pending">PENDING</strong>
+            <p id="status-message"><small class="text-muted">Waiting for agent...</small></p>
         {/if}
     </div>
-</div>
+</section>
 
 <template id="payload-template">
-    <div class="list-item flex-between">
-        <span class="payload-name small"></span>
-        <a class="edit-link btn">Edit</a>
-        <span class="removed-info text-muted small d-none"></span>
-    </div>
+    <li>
+        <div>
+            <strong class="payload-name"></strong>
+            <br><code class="payload-type text-muted small"></code>
+        </div>
+        <nav class="actions">
+            <a class="download-link btn">Download</a>
+            <a class="save-link btn btn-primary">Save to DB</a>
+            <a class="edit-link btn" style="display: none;">Edit</a>
+        </nav>
+    </li>
 </template>
 
-<section id="results-section" class="{#if generatedEntities.isEmpty()}d-none{/if}">
-    <h3 id="results-title">Output</h3>
-    <div class="list" id="payloads-list">
-        {#for p in generatedEntities}
-            <div class="list-item flex-between" data-payload-id="{p.id}">
-                {#if p.removed}
-                    <span class="text-muted small">Payload #{p.id} (removed)</span>
-                {#else}
-                    <span class="small">{p.name}</span>
-                    <a href="/payloads/{p.id}/edit" class="btn">Edit</a>
-                {/if}
-            </div>
+<section id="results-section" class="{#if generatedItems.isEmpty()}d-none{/if}">
+    <h3>Output</h3>
+    <ul id="payloads-list">
+        {#for p in generatedItems}
+            <li data-payload-index="{p.index}">
+                <div>
+                    <strong>{p.name}</strong>
+                    <br><code class="text-muted small">{p.type}</code>
+                </div>
+                <nav class="actions">
+                    <a href="/translations/{session.sessionId}/payloads/{p.index}/download" class="btn">Download</a>
+                    {#if p.databaseId}
+                        <a href="/payloads/{p.databaseId}/edit" class="btn">Edit</a>
+                    {#else}
+                        <a href="/translations/{session.sessionId}/payloads/{p.index}/save-form" class="btn btn-primary">Save to DB</a>
+                    {/if}
+                </nav>
+            </li>
         {/for}
-    </div>
+    </ul>
 </section>
 
 <section>

@@ -1,11 +1,13 @@
 {#include base.html}
-{#title}Translation Dashboard{/title}
+{#title}Translations{/title}
 
 {#body}
-<div class="flex-between" style="margin-bottom: 2rem;">
+<section>
     <h2>Translations</h2>
-    <a href="/translations/new" class="btn btn-primary">New Task</a>
-</div>
+    <nav class="actions">
+        <a href="/translations/new" class="btn btn-primary">New Task</a>
+    </nav>
+</section>
 
 <table>
     <thead>
@@ -13,7 +15,7 @@
             <th>Session ID</th>
             <th>Format</th>
             <th>Status</th>
-            <th style="text-align: right;">Actions</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -22,24 +24,22 @@
             <td><code>{session.sessionId}</code></td>
             <td><code>{session.ticket.targetFormat}</code></td>
             <td>
-                <div class="flex">
-                    {#if session.status}
-                        <span class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
-                            {session.status.state.name().replace('TRANSLATION_STATE_', '')}
-                        </span>
-                        <span class="small text-muted">{session.status.message}</span>
-                    {#else}
-                        <span class="status-badge status-state-pending">PENDING</span>
-                    {/if}
-                </div>
+                {#if session.status}
+                    <strong class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
+                        {session.status.state.name().replace('TRANSLATION_STATE_', '')}
+                    </strong>
+                    <br><small class="text-muted">{session.status.message}</small>
+                {#else}
+                    <strong class="status-badge status-state-pending">PENDING</strong>
+                {/if}
             </td>
-            <td style="text-align: right;">
+            <td>
                 <a href="/translations/{session.sessionId}/status" class="btn">View Status</a>
             </td>
         </tr>
         {#else}
         <tr>
-            <td colspan="4" class="text-muted" style="text-align: center; padding: 2rem;">No active tasks found.</td>
+            <td colspan="4"><p class="text-muted">No active tasks found.</p></td>
         </tr>
         {/for}
     </tbody>

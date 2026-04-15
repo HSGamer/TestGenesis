@@ -1,16 +1,19 @@
 {#include base.html}
-{#title}New Translation{/title}
+{#title}New Task{/title}
 
 {#body}
-<div class="flex-between" style="margin-bottom: 2rem;">
+<section>
     <h2>New Task</h2>
-    <a href="/translations" class="btn">Cancel</a>
-</div>
+    <nav class="actions">
+        <a href="/translations" class="btn">Cancel</a>
+    </nav>
+</section>
 
 <form action="/translations/start" method="POST">
-    <div class="card">
-        <label>Agent</label>
-        <select id="agent-select" name="agentId" required>
+    <fieldset>
+        <legend>Configuration</legend>
+        <label for="agent-select">Agent</label>
+        <select id="agent-select" name="agentId" required autofocus>
             <option value="">-- Select Agent --</option>
             {#for agent in agents}
                 <option value="{agent.id}">{agent.displayName}</option>
@@ -18,15 +21,13 @@
                 <option disabled>No agents available</option>
             {/for}
         </select>
-    </div>
 
-    <div class="card">
-        <label>Translation Type</label>
+        <label for="type-select">Translation Type</label>
         <select id="type-select" name="type" required disabled>
             <option value="">-- Select Agent First --</option>
         </select>
-        <div id="type-info" class="status-badge status-warn d-none" style="margin-top: 0.5rem;"></div>
-    </div>
+        <strong id="type-info" class="status-badge status-warn d-none"></strong>
+    </fieldset>
 
     <template id="option-template">
         <option value=""></option>
@@ -34,24 +35,22 @@
 
     <section>
         <h3>Source Payloads</h3>
-        <div id="payload-list" class="list" style="max-height: 400px; overflow-y: auto;">
+        <ul id="payload-list" style="max-height: 400px; overflow-y: auto;">
             {#for p in allPayloads}
-                <label class="list-item flex" data-type="{p.type}" style="cursor: pointer;">
-                    <input type="checkbox" name="payloadIds" value="{p.id}" style="width: auto;">
-                    <span class="small">
+                <li data-type="{p.type}">
+                    <label style="cursor: pointer; width: 100%; display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="payloadIds" value="{p.id}" style="width: auto; margin: 0;">
                         <strong>{p.name}</strong> 
-                        <code class="text-muted">({p.type})</code>
-                    </span>
-                </label>
+                        <code class="text-muted small">({p.type})</code>
+                    </label>
+                </li>
             {#else}
-                <div class="list-item text-muted small">No payloads found.</div>
+                <li><p class="text-muted">No payloads found.</p></li>
             {/for}
-        </div>
+        </ul>
     </section>
 
-    <div style="margin-top: 2rem;">
-        <button type="submit" id="start-btn" class="btn btn-primary" disabled>Start Task</button>
-    </div>
+    <button type="submit" id="start-btn" disabled>Start Task</button>
 </form>
 
 <script>

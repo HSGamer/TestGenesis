@@ -1,62 +1,49 @@
 {#include base.html}
-{#title}Execution Status - {session.sessionId}{/title}
+{#title}Execution Status{/title}
 
 {#body}
-<div class="flex-between" style="margin-bottom: 2rem;">
-    <div>
-        <h2>Test Status</h2>
-        <div class="text-muted small"><code>{session.sessionId}</code></div>
-    </div>
-    <div class="flex">
-        <div id="status-badge" class="status-badge status-state-pending">PENDING</div>
+<section>
+    <h2>Test Status</h2>
+    <p><code>{session.sessionId}</code></p>
+    <nav class="actions">
+        <strong id="status-badge" class="status-badge status-state-pending">PENDING</strong>
         <a href="/tests" class="btn">Back</a>
-    </div>
-</div>
+    </nav>
+</section>
 
 <section>
     <h3>Progress</h3>
     <div id="steps-container">
-        <div class="card" style="text-align: center; padding: 2rem;">
-            <p id="status-message" class="text-muted small">Waiting for agent...</p>
-        </div>
+        <p id="status-message" class="text-muted">Waiting for agent...</p>
     </div>
 </section>
 
 <section id="summary-section" class="d-none">
     <h3>Summary</h3>
-    <div id="summary-content" class="card">
-        <div class="flex-between">
-            <span class="small">Total Duration</span>
-            <strong id="summary-duration" class="small"></strong>
-        </div>
-        <div id="summary-metadata" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-            <pre class="metadata" id="summary-json"></pre>
-        </div>
-    </div>
+    <p>Total Duration: <strong id="summary-duration"></strong></p>
+    <pre id="summary-json"></pre>
 </section>
 
 <template id="step-template">
-    <div class="card">
-        <div class="flex-between header" style="cursor:pointer">
-            <div class="flex">
+    <article style="border: 1px solid var(--border-color); padding: 0.75rem; margin-bottom: 0.5rem; border-radius: var(--radius);">
+        <nav class="flex-between step-header" style="cursor:pointer;">
+            <strong>
                 <span class="status-badge"></span>
-                <strong class="step-name"></strong>
-            </div>
-            <span class="text-muted small duration"></span>
-        </div>
-        <div class="details d-none" style="margin-top:0.5rem; border-top:1px solid var(--border-color); padding-top:0.5rem">
+                <span class="step-name"></span>
+            </strong>
+            <code class="duration"></code>
+        </nav>
+        <section class="details d-none" style="margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
             <pre class="metadata"></pre>
-        </div>
-    </div>
+        </section>
+    </article>
 </template>
 
 <template id="attachment-template">
-    <figure class="attachment-card card">
-        <div class="attachment-preview">
-            <img class="attachment-img d-none">
-        </div>
-        <figcaption class="attachment-name small text-center"></figcaption>
-        <a class="download-link btn btn-sm" target="_blank" style="width: 100%; justify-content: center;">Download</a>
+    <figure>
+        <img class="attachment-img d-none">
+        <figcaption class="attachment-name"></figcaption>
+        <a class="download-link btn small" target="_blank">Download</a>
     </figure>
 </template>
 

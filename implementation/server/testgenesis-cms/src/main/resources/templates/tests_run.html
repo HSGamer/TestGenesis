@@ -1,77 +1,79 @@
 {#include base.html}
-{#title}Run Test - {test.name}{/title}
+{#title}Launch Test{/title}
 
 {#body}
-<div class="flex-between" style="margin-bottom: 2rem;">
-    <div>
-        <h2>Launch Test</h2>
-        <div class="text-muted small">Target: <strong>{test.name}</strong> <code>({test.testType})</code></div>
-    </div>
-    <a href="/tests" class="btn">Back</a>
-</div>
+<section>
+    <h2>Launch Test</h2>
+    <p class="text-muted">Target: <strong>{test.name}</strong> <code>({test.testType})</code></p>
+    <nav class="actions">
+        <a href="/tests" class="btn">Back</a>
+    </nav>
+</section>
 
 <form action="/tests/{test.id}/start" method="POST">
     <section>
-        <h3>Agents</h3>
-        <div class="list">
+        <h3>Available Agents</h3>
+        <ul>
             {#for agent in agents}
                 {#if agent.supportsTestType(test.testType)}
-                    <label class="list-item flex" style="cursor: pointer;">
-                        <input type="radio" name="agentId" value="{agent.id}" required style="width: auto;">
-                        <div style="flex: 1;">
-                            <div class="flex-between">
-                                <span class="small"><strong>{agent.displayName}</strong></span>
-                                <span class="status-badge status-passed">Online</span>
+                    <li>
+                        <label style="cursor: pointer; width: 100%; display: flex; align-items: flex-start; gap: 0.75rem;">
+                            <input type="radio" name="agentId" value="{agent.id}" required style="width: auto; margin-top: 0.25rem;">
+                            <div style="flex: 1;">
+                                <div class="flex-between">
+                                    <strong>{agent.displayName}</strong>
+                                    <strong class="status-badge status-passed">Online</strong>
+                                </div>
+                                <code>{agent.id}</code>
                             </div>
-                            <code class="text-muted small">{agent.id}</code>
-                        </div>
-                    </label>
+                        </label>
+                    </li>
                 {/if}
             {#else}
-                <div class="list-item text-muted small">No agents available for <strong>{test.testType}</strong>.</div>
+                <li><p class="text-muted">No agents available for <strong>{test.testType}</strong>.</p></li>
             {/for}
-        </div>
+        </ul>
     </section>
 
-    <section style="margin-top: 2rem;">
+    <section>
         <h3>Primary Payloads</h3>
-        <p class="text-muted small">These payloads are linked to the test definition and will always be included.</p>
-        <div class="list">
+        <p><small class="text-muted">Linked to the test definition.</small></p>
+        <ul>
             {#for payload in test.payloads}
-                <div class="list-item flex-between">
-                    <span class="small"><strong>{payload.name}</strong></span>
-                    <span class="status-badge">{payload.type}</span>
-                </div>
+                <li>
+                    <strong>{payload.name}</strong>
+                    <code class="status-badge">{payload.type}</code>
+                </li>
             {#else}
-                <div class="list-item text-muted small">No linked payloads.</div>
+                <li><p class="text-muted">No linked payloads.</p></li>
             {/for}
-        </div>
+        </ul>
     </section>
 
-    <section style="margin-top: 2rem;">
+    <section>
         <h3>Additional Payloads</h3>
-        <p class="text-muted small">Select any extra payloads to include in this execution.</p>
-        <div class="list">
+        <p><small class="text-muted">Select extra payloads for this run.</small></p>
+        <ul>
             {#for payload in extraPayloads}
-                <label class="list-item flex" style="cursor: pointer;">
-                    <input type="checkbox" name="extraPayloadIds" value="{payload.id}" style="width: auto;">
-                    <div style="flex: 1;">
-                        <div class="flex-between">
-                            <span class="small"><strong>{payload.name}</strong></span>
-                            <span class="status-badge">{payload.type}</span>
+                <li>
+                    <label style="cursor: pointer; width: 100%; display: flex; align-items: flex-start; gap: 0.75rem;">
+                        <input type="checkbox" name="extraPayloadIds" value="{payload.id}" style="width: auto; margin-top: 0.25rem;">
+                        <div style="flex: 1;">
+                            <div class="flex-between">
+                                <strong>{payload.name}</strong>
+                                <code class="status-badge">{payload.type}</code>
+                            </div>
+                            <p class="small text-muted">{payload.description}</p>
                         </div>
-                        <div class="text-muted small">{payload.description}</div>
-                    </div>
-                </label>
+                    </label>
+                </li>
             {#else}
-                <div class="list-item text-muted small">No additional payloads available.</div>
+                <li><p class="text-muted">No additional payloads available.</p></li>
             {/for}
-        </div>
+        </ul>
     </section>
 
-    <div style="margin-top: 2rem;">
-        <button type="submit" class="btn btn-primary">Launch Execution</button>
-    </div>
+    <button type="submit">Launch Execution</button>
 </form>
 {/body}
 {/include}

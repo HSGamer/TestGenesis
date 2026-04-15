@@ -1,0 +1,35 @@
+{#include base.html}
+{#title}Save Payload{/title}
+
+{#body}
+<section>
+    <h2>Save Payload</h2>
+    <nav class="actions">
+        <a href="/translations/{sessionId}/status" class="btn">Cancel</a>
+    </nav>
+</section>
+
+<form action="/translations/save-payload" method="POST">
+    <input type="hidden" name="sessionId" value="{sessionId}">
+    <input type="hidden" name="index" value="{index}">
+
+    <fieldset>
+        <legend>Repository Entity</legend>
+        <label for="name">Entity Name</label>
+        <input type="text" id="name" name="name" value="{defaultName}" required autofocus>
+        <p><small class="text-muted">Identification in the repository.</small></p>
+
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="3">Translated {type} from session {sessionId}</textarea>
+    </fieldset>
+
+    <fieldset>
+        <legend>Source Metadata</legend>
+        <label for="type-preview">Payload Type</label>
+        <input type="text" id="type-preview" value="{type}" readonly>
+    </fieldset>
+
+    <button type="submit">Save to Database</button>
+</form>
+{/body}
+{/include}

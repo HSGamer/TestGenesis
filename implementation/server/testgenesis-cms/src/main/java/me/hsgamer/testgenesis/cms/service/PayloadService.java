@@ -60,19 +60,32 @@ public class PayloadService {
     }
 
     @Transactional
-    public List<TranslationSession.GeneratedPayload> saveTranslatedPayloads(TranslationResult result) {
-        List<TranslationSession.GeneratedPayload> generated = new ArrayList<>();
-        for (Payload p : result.getPayloadsList()) {
-            try {
-                PayloadEntity entity = new PayloadEntity();
-                entity.fillFromProto(p);
-                entity.persist();
-                generated.add(new TranslationSession.GeneratedPayload(entity.id));
-                log.info("Saved translated payload: {}", entity.getName());
-            } catch (Exception e) {
-                log.error("Failed to save translated payload", e);
-            }
+    public PayloadEntity savePayload(String sessionId, Payload proto, String name, String description) {
+        PayloadEntity entity = new PayloadEntity();
+        entity.fillFromProto(proto);
+        entity.setName(name);
+        entity.setDescription(description);
+
+        // Add origin metadata
+        com.google.protobuf.Struct.Builder metadataBuilder = proto.getMetadata().toBuilder();
+        metadataBuilder.putFields("_originSessionId", com.google.protobuf.Value.newBuilder().setStringValue(sessionId).build());
+        if (proto.hasAttachment()) {
+            metadataBuilder.putFields("_originName", com.google.protobuf.Value.newBuilder().setStringValue(proto.getAttachment().getName()).build());
         }
-        return generated;
+        entity.setMetadata(me.hsgamer.testgenesis.cms.util.ProtoUtil.structToJson(metadataBuilder.build()));
+
+        entity.persist();
+        return entity;
+    }
+
+    public Optional<PayloadEntity> findByOrigin(String sessionId, String name) {
+        return PayloadEntity.<PayloadEntity>find("metadata LIKE ?1 AND metadata LIKE ?2",
+                "%" + sessionId + "%", "%" + name + "%")
+            .stream()
+            .filter(e -> {
+                java.util.Map<String, Object> map = me.hsgamer.testgenesis.cms.util.ProtoUtil.structToMap(me.hsgamer.testgenesis.cms.util.ProtoUtil.jsonToStruct(e.getMetadata()));
+                return sessionId.equals(map.get("_originSessionId")) && name.equals(map.get("_originName"));
+            })
+            .findFirst();
     }
 }

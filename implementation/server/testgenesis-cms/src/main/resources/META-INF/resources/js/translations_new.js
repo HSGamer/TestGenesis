@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const agent = el('agent-select'), type = el('type-select'), btn = el('start-btn'), info = el('type-info');
-    const items = document.querySelectorAll('#payload-list .list-item');
+    const items = document.querySelectorAll('#payload-list li');
 
     const update = () => {
         const a = window.agents?.find(x => x.id === agent.value);

@@ -19,6 +19,7 @@ import me.hsgamer.testgenesis.uap.v1.Payload;
 import org.jboss.resteasy.reactive.RestForm;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 
 @Path("/translations")
@@ -43,6 +44,9 @@ public class TranslationWebResource {
 
     @Inject
     Template translations_index;
+
+    @Inject
+    Template translations_save_payload;
 
     @GET
     @Produces(MediaType.TEXT_HTML)
@@ -101,17 +105,77 @@ public class TranslationWebResource {
         TranslationSession session = uapService.getTranslationSession(sessionId)
             .orElseThrow(() -> new NotFoundException("Translation session not found: " + sessionId));
 
-        List<GeneratedPayloadInfo> generatedEntities = session.getResultPayloads().stream()
-            .map(p -> payloadService.findById(p.id())
-                .map(entity -> new GeneratedPayloadInfo(p.id(), entity.name, false))
-                .orElseGet(() -> new GeneratedPayloadInfo(p.id(), null, true)))
-            .toList();
+        List<GeneratedPayloadInfo> generatedItems = new ArrayList<>();
+        List<Payload> payloads = session.getRawPayloads();
+        for (int i = 0; i < payloads.size(); i++) {
+            Payload p = payloads.get(i);
+            String name = p.hasAttachment() ? p.getAttachment().getName() : "unnamed";
+            var saved = payloadService.findByOrigin(sessionId, name);
+            generatedItems.add(new GeneratedPayloadInfo(i, name, p.getType(), saved.map(e -> e.id).orElse(null)));
+        }
 
         return translations_status
             .data("session", session)
-            .data("generatedEntities", generatedEntities);
+            .data("generatedItems", generatedItems);
     }
 
-    public record GeneratedPayloadInfo(Long id, String name, boolean removed) {
+    @GET
+    @Path("/{sessionId}/payloads/{index}/download")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    public Response download(@PathParam("sessionId") String sessionId, @PathParam("index") int index) {
+        TranslationSession session = uapService.getTranslationSession(sessionId)
+            .orElseThrow(() -> new NotFoundException("Session not found"));
+        if (index < 0 || index >= session.getRawPayloads().size()) {
+            throw new NotFoundException("Payload index out of range");
+        }
+        Payload payload = session.getRawPayloads().get(index);
+        byte[] data = payload.getAttachment().getData().toByteArray();
+        return Response.ok(data)
+            .header("Content-Disposition", "attachment; filename=\"" + payload.getAttachment().getName() + "\"")
+            .type(payload.getAttachment().getMimeType())
+            .build();
+    }
+
+    @GET
+    @Path("/{sessionId}/payloads/{index}/save-form")
+    @Produces(MediaType.TEXT_HTML)
+    @Blocking
+    public TemplateInstance saveForm(@PathParam("sessionId") String sessionId, @PathParam("index") int index) {
+        TranslationSession session = uapService.getTranslationSession(sessionId)
+            .orElseThrow(() -> new NotFoundException("Session not found"));
+        if (index < 0 || index >= session.getRawPayloads().size()) {
+            throw new NotFoundException("Payload index out of range");
+        }
+        Payload payload = session.getRawPayloads().get(index);
+        String defaultName = payload.hasAttachment() ? "Translated: " + payload.getAttachment().getName() : "Translated: " + payload.getType();
+        return translations_save_payload
+            .data("sessionId", sessionId)
+            .data("index", index)
+            .data("defaultName", defaultName)
+            .data("type", payload.getType());
+    }
+
+    @POST
+    @Path("/save-payload")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Blocking
+    public Response savePayload(
+        @RestForm("sessionId") String sessionId,
+        @RestForm("index") int index,
+        @RestForm("name") String name,
+        @RestForm("description") String description) {
+
+        TranslationSession session = uapService.getTranslationSession(sessionId)
+            .orElseThrow(() -> new NotFoundException("Session not found"));
+        if (index < 0 || index >= session.getRawPayloads().size()) {
+            throw new NotFoundException("Payload index out of range");
+        }
+        Payload payload = session.getRawPayloads().get(index);
+        payloadService.savePayload(sessionId, payload, name, description);
+
+        return Response.seeOther(URI.create("/translations/" + sessionId + "/status")).build();
+    }
+
+    public record GeneratedPayloadInfo(int index, String name, String type, Long databaseId) {
     }
 }

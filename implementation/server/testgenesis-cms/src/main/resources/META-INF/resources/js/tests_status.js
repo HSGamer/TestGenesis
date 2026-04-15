@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const render = (s) => {
         const t = el('step-template').content.cloneNode(true);
-        const card = t.querySelector('.card');
+        const card = t.querySelector('article');
         const st = s.status.toLowerCase().replace('step_status_', '');
         
         const badge = t.querySelector('.status-badge');
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
         t.querySelector('.duration').textContent = (s.summary?.totalDuration||0) + 'ms';
         t.querySelector('.metadata').textContent = JSON.stringify(s.summary?.metadata||{}, null, 2);
         
-        t.querySelector('.header').onclick = () => card.querySelector('.details').classList.toggle('d-none');
+        t.querySelector('.step-header').onclick = () => card.querySelector('.details').classList.toggle('d-none');
         return t;
     };
 

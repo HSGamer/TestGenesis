@@ -4,6 +4,7 @@ import lombok.Getter;
 import me.hsgamer.testgenesis.cms.util.StatusUtil;
 import me.hsgamer.testgenesis.uap.v1.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -18,8 +19,9 @@ public class TranslationSession implements Session<TranslationResponse> {
     private final List<Consumer<TranslationStatus>> statusConsumers = new CopyOnWriteArrayList<>();
     private final List<Consumer<TranslationResult>> resultConsumers = new CopyOnWriteArrayList<>();
     @Getter
-    private final List<GeneratedPayload> resultPayloads = new CopyOnWriteArrayList<>();
+    private final List<Payload> rawPayloads = new CopyOnWriteArrayList<>();
     private final List<Runnable> completionListeners = new CopyOnWriteArrayList<>();
+    private final List<Consumer<List<Payload>>> rawPayloadConsumers = new CopyOnWriteArrayList<>();
     private final List<Consumer<List<GeneratedPayload>>> resultPayloadConsumers = new CopyOnWriteArrayList<>();
     @Getter
     private volatile TranslationStatus status;
@@ -51,6 +53,15 @@ public class TranslationSession implements Session<TranslationResponse> {
         if (result.hasStatus()) {
             updateStatus(result.getStatus());
         }
+        dispatchRawPayloads(result.getPayloadsList());
+
+        List<GeneratedPayload> records = new ArrayList<>();
+        for (int i = 0; i < result.getPayloadsCount(); i++) {
+            Payload p = result.getPayloads(i);
+            records.add(new GeneratedPayload(i, p.hasAttachment() ? p.getAttachment().getName() : "unnamed", p.getType()));
+        }
+        resultPayloadConsumers.forEach(c -> c.accept(records));
+
         resultConsumers.forEach(consumer -> consumer.accept(result));
     }
 
@@ -98,10 +109,26 @@ public class TranslationSession implements Session<TranslationResponse> {
         }
     }
 
+    public void addRawPayloadConsumer(Consumer<List<Payload>> consumer) {
+        rawPayloadConsumers.add(consumer);
+        if (!rawPayloads.isEmpty()) {
+            consumer.accept(rawPayloads);
+        }
+    }
+
+    public void removeRawPayloadConsumer(Consumer<List<Payload>> consumer) {
+        rawPayloadConsumers.remove(consumer);
+    }
+
     public void addResultPayloadConsumer(Consumer<List<GeneratedPayload>> consumer) {
         resultPayloadConsumers.add(consumer);
-        if (!resultPayloads.isEmpty()) {
-            consumer.accept(resultPayloads);
+        if (result != null) {
+            List<GeneratedPayload> records = new ArrayList<>();
+            for (int i = 0; i < result.getPayloadsCount(); i++) {
+                Payload p = result.getPayloads(i);
+                records.add(new GeneratedPayload(i, p.hasAttachment() ? p.getAttachment().getName() : "unnamed", p.getType()));
+            }
+            consumer.accept(records);
         }
     }
 
@@ -109,9 +136,9 @@ public class TranslationSession implements Session<TranslationResponse> {
         resultPayloadConsumers.remove(consumer);
     }
 
-    public void dispatchResultPayloads(List<GeneratedPayload> payloads) {
-        this.resultPayloads.addAll(payloads);
-        resultPayloadConsumers.forEach(consumer -> consumer.accept(payloads));
+    public void dispatchRawPayloads(List<Payload> payloads) {
+        this.rawPayloads.addAll(payloads);
+        rawPayloadConsumers.forEach(consumer -> consumer.accept(payloads));
     }
 
     public void onCompletion(Runnable callback) {
@@ -122,8 +149,6 @@ public class TranslationSession implements Session<TranslationResponse> {
         }
     }
 
-    public record GeneratedPayload(Long id) {
+    public record GeneratedPayload(int index, String name, String type) {
     }
 }
-
-
