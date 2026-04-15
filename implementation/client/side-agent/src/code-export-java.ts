@@ -62,12 +62,18 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
         }
 
         let variableCommands: CommandShape[] = [];
+        let binaryPath = process.env.WEBDRIVER_CHROME_BINARY || process.env.CHROME_BINARY;
+        let remoteUrl = process.env.SELENIUM_REMOTE_URL;
+
         const variablePayloads = payloads.filter((p: any) => p.type === "selenium-variable");
         for (const variablePayload of variablePayloads) {
             if (variablePayload.attachment) {
                 try {
                     const variableObject = JSON.parse(new TextDecoder().decode(variablePayload.attachment.data));
                     for (const [key, value] of Object.entries(variableObject)) {
+                        if (key === "binaryPath") binaryPath = String(value);
+                        if (key === "remoteUrl") remoteUrl = String(value);
+
                         variableCommands.push({
                             id: "x-variable-" + variableCommands.length,
                             command: "store",
@@ -110,7 +116,7 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
             message: "Exporting to Java JUnit..."
         }));
 
-        const { filename, body } = await javaExporter.emit.test({
+        let { filename, body } = await javaExporter.emit.test({
             test,
             tests: [test],
             baseUrl: "",
@@ -119,6 +125,9 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
             beforeEachOptions: undefined,
             enableDescriptionAsComment: false
         });
+
+        // Apply transformations with self-detection script
+        body = this.transformSource(body, binaryPath, remoteUrl);
 
         await context.sendResult(create(TranslationResultSchema, {
             status: create(TranslationStatusSchema, {state: TranslationState.COMPLETED}),
@@ -138,5 +147,47 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
             state: TranslationState.COMPLETED,
             message: `Successfully exported to ${filename}`
         }));
+    }
+
+    private transformSource(source: string, binPath: string | undefined, remoteUrl: string | undefined): string {
+        if (remoteUrl) {
+            return source
+                .replace("driver = new ChromeDriver();", 
+                    `org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
+    try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL("${remoteUrl}"), opt); }
+    catch (java.net.MalformedURLException e) { throw new RuntimeException(e); }`)
+                .replace("driver = new FirefoxDriver();", 
+                    `org.openqa.selenium.firefox.FirefoxOptions opt = new org.openqa.selenium.firefox.FirefoxOptions();
+    try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL("${remoteUrl}"), opt); }
+    catch (java.net.MalformedURLException e) { throw new RuntimeException(e); }`);
+        }
+
+        // Self-detecting driver initialization script
+        const chromeDetectSnippet = `org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
+    String bin = System.getProperty("webdriver.chrome.binary", "${binPath || ""}");
+    if (bin.isEmpty()) bin = System.getenv("CHROME_BINARY");
+    if (bin == null || bin.isEmpty()) {
+        for (String c : new String[]{"thorium-browser-avx", "google-chrome-stable", "google-chrome", "chromium"}) {
+            java.io.File f = new java.io.File("/usr/bin/" + c);
+            if (f.canExecute()) { bin = f.getAbsolutePath(); break; }
+        }
+    }
+    if (bin != null && !bin.isEmpty()) opt.setBinary(bin);
+    driver = new org.openqa.selenium.chrome.ChromeDriver(opt);`;
+
+        const firefoxDetectSnippet = `org.openqa.selenium.firefox.FirefoxOptions opt = new org.openqa.selenium.firefox.FirefoxOptions();
+    String bin = System.getProperty("webdriver.gecko.binary");
+    if (bin == null) {
+        for (String c : new String[]{"thorium-browser-avx", "firefox"}) {
+             java.io.File f = new java.io.File("/usr/bin/" + c);
+             if (f.canExecute()) { bin = f.getAbsolutePath(); break; }
+        }
+    }
+    if (bin != null) opt.setBinary(bin);
+    driver = new org.openqa.selenium.firefox.FirefoxDriver(opt);`;
+
+        return source
+            .replace("driver = new ChromeDriver();", chromeDetectSnippet)
+            .replace("driver = new FirefoxDriver();", firefoxDetectSnippet);
     }
 }

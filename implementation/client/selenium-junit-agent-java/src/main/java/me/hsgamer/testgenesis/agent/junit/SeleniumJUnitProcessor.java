@@ -22,8 +22,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 
@@ -51,11 +49,15 @@ public class SeleniumJUnitProcessor implements TestSessionProcessor {
         try {
             // 1. Initialize
             long stepStart = System.currentTimeMillis();
-            Payload payload = context.getInit().getPayloadsList().stream().filter(p -> "selenium-junit".equals(p.getType())).findFirst().orElse(null);
+            Payload payload = context.getInit().getPayloadsList().stream()
+                .filter(p -> "selenium-junit".equals(p.getType()))
+                .findFirst().orElse(null);
+            
             if (payload == null || !payload.hasAttachment()) {
                 fail(sessionId, context, reports, "Initialize", "Missing payload", stepStart, null);
                 return;
             }
+            
             String sourceCode = payload.getAttachment().getData().toStringUtf8();
             String className = payload.getAttachment().getName().replace(".java", "");
             workDir = Files.createTempDirectory("uap-junit-" + sessionId);
@@ -63,15 +65,13 @@ public class SeleniumJUnitProcessor implements TestSessionProcessor {
 
             // 2. Compile
             stepStart = System.currentTimeMillis();
-            String binaryPath = System.getProperty("webdriver.chrome.binary");
-            String remoteUrl = System.getProperty("webdriver.remote.url");
-            sourceCode = transformSource(sourceCode, binaryPath, remoteUrl);
-
             Path javaFile = workDir.resolve(className + ".java");
             Files.writeString(javaFile, sourceCode, StandardCharsets.UTF_8);
 
             ByteArrayOutputStream errOutput = new ByteArrayOutputStream();
-            int res = ToolProvider.getSystemJavaCompiler().run(null, null, errOutput, javaFile.toString(), "-classpath", buildClasspath(), "-d", workDir.toString());
+            int res = ToolProvider.getSystemJavaCompiler().run(null, null, errOutput, 
+                javaFile.toString(), "-classpath", buildClasspath(), "-d", workDir.toString());
+            
             if (res != 0) {
                 fail(sessionId, context, reports, "Compile", errOutput.toString(StandardCharsets.UTF_8), stepStart, null);
                 return;
@@ -82,15 +82,18 @@ public class SeleniumJUnitProcessor implements TestSessionProcessor {
             stepStart = System.currentTimeMillis();
             try (URLClassLoader cl = new URLClassLoader(new URL[]{workDir.toUri().toURL()}, this.getClass().getClassLoader())) {
                 SummaryGeneratingListener listener = new SummaryGeneratingListener();
-                LauncherFactory.create().execute(LauncherDiscoveryRequestBuilder.request().selectors(selectClass(cl.loadClass(className))).build(),
+                LauncherFactory.create().execute(LauncherDiscoveryRequestBuilder.request()
+                    .selectors(selectClass(cl.loadClass(className))).build(),
                     listener, new TelemetryExecutionListener(context));
 
                 var summary = listener.getSummary();
                 boolean success = summary.getTestsFailedCount() == 0 && summary.getTestsAbortedCount() == 0;
                 reports.add(createReport("Run", success ? StepStatus.STEP_STATUS_PASSED : StepStatus.STEP_STATUS_FAILED, stepStart));
 
-                context.sendResult(TestResult.newBuilder().setStatus(TestStatus.newBuilder().setState(success ? TestState.TEST_STATE_COMPLETED : TestState.TEST_STATE_FAILED).build())
-                    .addAllReports(reports).setSummary(Summary.newBuilder().setStartTime(UapUtils.toTimestamp(java.time.Instant.ofEpochMilli(startTime)))
+                context.sendResult(TestResult.newBuilder()
+                    .setStatus(TestStatus.newBuilder().setState(success ? TestState.TEST_STATE_COMPLETED : TestState.TEST_STATE_FAILED).build())
+                    .addAllReports(reports).setSummary(Summary.newBuilder()
+                        .setStartTime(UapUtils.toTimestamp(java.time.Instant.ofEpochMilli(startTime)))
                         .setTotalDuration(UapUtils.msToDuration(System.currentTimeMillis() - startTime)).build()).build());
             }
         } catch (Exception e) {
@@ -98,37 +101,6 @@ public class SeleniumJUnitProcessor implements TestSessionProcessor {
         } finally {
             if (workDir != null) deleteDir(workDir.toFile());
         }
-    }
-
-    private String transformSource(String source, String binPath, String remoteUrl) {
-        if (remoteUrl != null) {
-            return source
-                .replace("driver = new ChromeDriver();", String.format(
-                    """
-                        org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
-                            try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL("%s"), opt); }
-                            catch (java.net.MalformedURLException e) { throw new RuntimeException(e); }""", remoteUrl))
-                .replace("driver = new FirefoxDriver();", String.format(
-                    """
-                        org.openqa.selenium.firefox.FirefoxOptions opt = new org.openqa.selenium.firefox.FirefoxOptions();
-                            try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL("%s"), opt); }
-                            catch (java.net.MalformedURLException e) { throw new RuntimeException(e); }""", remoteUrl));
-        }
-
-        if (binPath != null) {
-            return source
-                .replace("driver = new ChromeDriver();", String.format(
-                    """
-                        org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
-                            opt.setBinary("%s");
-                            driver = new org.openqa.selenium.chrome.ChromeDriver(opt);""", binPath))
-                .replace("driver = new FirefoxDriver();", String.format(
-                    """
-                        org.openqa.selenium.firefox.FirefoxOptions opt = new org.openqa.selenium.firefox.FirefoxOptions();
-                            opt.setBinary("%s");
-                            driver = new org.openqa.selenium.firefox.FirefoxDriver(opt);""", binPath));
-        }
-        return source;
     }
 
     private String buildClasspath() {
