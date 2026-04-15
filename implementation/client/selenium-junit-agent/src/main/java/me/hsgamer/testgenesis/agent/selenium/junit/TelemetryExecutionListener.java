@@ -1,4 +1,4 @@
-package me.hsgamer.testgenesis.agent.junit;
+package me.hsgamer.testgenesis.agent.selenium.junit;
 
 import me.hsgamer.testgenesis.client.context.TestSessionContext;
 import me.hsgamer.testgenesis.uap.v1.Severity;

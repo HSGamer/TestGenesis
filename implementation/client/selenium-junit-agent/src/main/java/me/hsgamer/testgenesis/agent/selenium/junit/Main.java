@@ -1,4 +1,4 @@
-package me.hsgamer.testgenesis.agent.junit;
+package me.hsgamer.testgenesis.agent.selenium.junit;
 
 import me.hsgamer.testgenesis.client.Agent;
 import org.slf4j.Logger;

@@ -36,7 +36,7 @@ run-side:
     cd {{side_agent}} && npm start
 
 run-junit:
-    mvn -f {{junit_agent}} exec:java -Dexec.mainClass="me.hsgamer.testgenesis.agent.junit.Main"
+    mvn -f {{junit_agent}} exec:java -Dexec.mainClass="me.hsgamer.testgenesis.agent.selenium.junit.Main"
 
 # --- Utility ---
 

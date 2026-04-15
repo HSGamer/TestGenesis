@@ -1,4 +1,4 @@
-package me.hsgamer.testgenesis.agent.junit;
+package me.hsgamer.testgenesis.agent.selenium.junit;
 
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
