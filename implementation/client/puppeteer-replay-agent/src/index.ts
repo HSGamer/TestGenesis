@@ -1,6 +1,7 @@
 import {Agent} from "testgenesis-client-node";
 import {parseArgs} from "node:util";
 import {PuppeteerReplayTestProcessor} from "./processor.js";
+import {PuppeteerToSideTranslationProcessor} from "./translation-processor.js";
 
 /**
  * Encapsulates the application configuration from CLI arguments
@@ -30,6 +31,7 @@ async function main() {
 
     // Register Processors
     agent.registerTestProcessor(new PuppeteerReplayTestProcessor());
+    agent.registerTranslationProcessor(new PuppeteerToSideTranslationProcessor());
 
     // Handle Shutdown
     async function shutdown() {
