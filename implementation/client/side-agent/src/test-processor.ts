@@ -82,6 +82,7 @@ class TestSession {
         let capabilities: selenium.Capabilities | undefined;
         let attachments: Attachment[] = [];
         const screenshotMap = new Map<string, string>();
+        let takeScreenshot = false;
 
         try {
             const init = this.context.init;
@@ -118,7 +119,6 @@ class TestSession {
             }
 
             let browser = "chrome";
-            let takeScreenshot = false;
             const configPayload = payloads.find((p: any) => p.type === "selenium-config");
             if (configPayload?.attachment) {
                 try {
@@ -191,6 +191,21 @@ class TestSession {
                 console.error(`[Test ${this.sessionId}] Execution error:`, runErr);
             }
             endTime = new Date();
+
+            // Capture final screenshot
+            if (takeScreenshot && this.driver) {
+                try {
+                    const data = await this.driver.takeScreenshot();
+                    const name = "final-screenshot.png";
+                    attachments.push(create(AttachmentSchema, {
+                        name,
+                        mimeType: "image/png",
+                        data: Buffer.from(data, 'base64')
+                    }));
+                } catch (e) {
+                    console.warn(`[Test ${this.sessionId}] Failed to capture final screenshot:`, e);
+                }
+            }
 
             const report = testRunner.createReport(logger) as TestReport;
             const finalState = report.state === PlaybackStates.FINISHED ? TestState.COMPLETED : TestState.FAILED;
