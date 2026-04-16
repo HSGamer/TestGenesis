@@ -75,6 +75,14 @@ class TestSession {
     }
 
     public async execute() {
+        let logger: TestLogger | undefined;
+        let testRunner: TestRunner | undefined;
+        let startTime: Date = new Date();
+        let endTime: Date | undefined;
+        let capabilities: selenium.Capabilities | undefined;
+        let attachments: Attachment[] = [];
+        const screenshotMap = new Map<string, string>();
+
         try {
             const init = this.context.init;
             const {payloads} = init;
@@ -142,10 +150,8 @@ class TestSession {
             this.driver = await builder.build();
             this.onDriverCreated(this.driver);
 
-            const capabilities = await this.driver.getCapabilities();
+            capabilities = await this.driver.getCapabilities();
 
-            let attachments: Attachment[] = [];
-            const screenshotMap = new Map<string, string>();
             let webDriverExecutorArgs: WebDriverExecutorConstructorArgs = {
                 driver: this.driver,
                 hooks: {
@@ -164,8 +170,8 @@ class TestSession {
                 }
             };
 
-            const logger = new TestLogger();
-            const testRunner = TestRunner.createRunner(test, {
+            logger = new TestLogger();
+            testRunner = TestRunner.createRunner(test, {
                 logger: logger.createConsole(),
                 variables: variables,
                 executor: new WebDriverExecutor(webDriverExecutorArgs)
@@ -178,9 +184,13 @@ class TestSession {
                 message: "Running steps..."
             });
 
-            const startTime = new Date();
-            await testRunner.run();
-            const endTime = new Date();
+            startTime = new Date();
+            try {
+                await testRunner.run();
+            } catch (runErr) {
+                console.error(`[Test ${this.sessionId}] Execution error:`, runErr);
+            }
+            endTime = new Date();
 
             const report = testRunner.createReport(logger) as TestReport;
             const finalState = report.state === PlaybackStates.FINISHED ? TestState.COMPLETED : TestState.FAILED;
@@ -216,17 +226,17 @@ class TestSession {
                     startTime: timestampFromDate(report.timestamp[0]?.timestamp || startTime),
                     totalDuration: msToDuration(
                         report.timestamp.length >= 2
-                            ? (report.timestamp[report.timestamp.length - 1]?.timestamp.getTime() || endTime.getTime()) -
+                            ? (report.timestamp[report.timestamp.length - 1]?.timestamp.getTime() || endTime!.getTime()) -
                             (report.timestamp[0]?.timestamp.getTime() || startTime.getTime())
-                            : endTime.getTime() - startTime.getTime()
+                            : endTime!.getTime() - startTime.getTime()
                     ),
                     metadata: cleanObject({
                         total_steps: report.commands.length,
                         selenium_webdriver_version: seleniumVersion,
-                        browser_name: capabilities.getBrowserName(),
-                        browser_version: capabilities.getBrowserVersion(),
-                        platform_name: capabilities.getPlatform(),
-                        execute_duration: endTime.getTime() - startTime.getTime(),
+                        browser_name: capabilities?.getBrowserName(),
+                        browser_version: capabilities?.getBrowserVersion(),
+                        platform_name: capabilities?.getPlatform(),
+                        execute_duration: (endTime?.getTime() || Date.now()) - startTime.getTime(),
                         os_platform: os.platform(),
                         os_release: os.release(),
                         os_arch: os.arch(),
@@ -240,10 +250,10 @@ class TestSession {
 
             await this.context.sendStatus({state: finalState});
         } catch (err: any) {
-            console.error(`[Test ${this.sessionId}] Error:`, err);
+            console.error(`[Test ${this.sessionId}] Setup Error:`, err);
             await this.context.sendStatus({
                 state: TestState.FAILED,
-                message: `Error: ${err.message}`
+                message: `Setup Error: ${err.message}`
             });
         } finally {
             await this.cleanup();
