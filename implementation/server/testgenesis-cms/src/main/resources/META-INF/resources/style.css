@@ -103,7 +103,7 @@ fieldset { border: 1px solid var(--border-color); border-radius: var(--radius); 
 legend { font-weight: 600; padding: 0 0.5rem; color: var(--text-muted); font-size: 12px; }
 
 /* Status Indicators (Using classes since they are state-based) */
-.status-badge { font-size: 10px; font-weight: 700; padding: 1px 6px; border: 1px solid var(--border-color); border-radius: 10px; text-transform: uppercase; }
+.status-badge { font-size: 10px; font-weight: 700; padding: 1px 6px; border: 1px solid var(--border-color); border-radius: 10px; text-transform: uppercase; margin-right: 0.5rem; display: inline-block; }
 .status-passed, .status-state-completed { color: var(--success-color); border-color: var(--success-color); }
 .status-failed, .status-state-failed { color: var(--error-color); border-color: var(--error-color); }
 .status-warn, .status-state-running { color: var(--warn-color); border-color: var(--warn-color); }
@@ -114,6 +114,12 @@ nav.actions { display: flex; gap: 0.5rem; }
 .text-muted { color: var(--text-muted); }
 .small { font-size: 12px; }
 .d-none { display: none !important; }
+
+/* Progress Bar (Minimal) */
+progress { width: 100%; height: 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--surface-color); overflow: hidden; margin-bottom: 0.5rem; appearance: none; }
+progress::-webkit-progress-bar { background: var(--surface-color); }
+progress::-webkit-progress-value { background: var(--primary-color); }
+progress::-moz-progress-bar { background: var(--primary-color); }
 
 /* Attachment Grid */
 .attachment-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }

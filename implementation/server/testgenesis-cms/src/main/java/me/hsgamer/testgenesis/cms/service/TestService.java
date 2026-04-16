@@ -9,6 +9,8 @@ import me.hsgamer.testgenesis.cms.persistence.TestEntity;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import me.hsgamer.testgenesis.cms.core.TestInfo;
+import jakarta.inject.Inject;
 
 @ApplicationScoped
 @RequiredArgsConstructor
@@ -78,5 +80,17 @@ public class TestService {
             PayloadEntity.findByIdOptional(pid).ifPresent(p -> payloads.add((PayloadEntity) p));
         }
         return payloads;
+    }
+
+    @Transactional
+    public TestInfo getTestInfo(Long testId) {
+        TestEntity test = findById(testId)
+            .orElseThrow(() -> new IllegalArgumentException("Test not found: " + testId));
+
+        List<Long> payloadIds = test.getPayloads().stream()
+            .map(p -> p.id)
+            .toList();
+
+        return new TestInfo(test.getTestType(), payloadIds);
     }
 }

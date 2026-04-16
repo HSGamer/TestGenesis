@@ -9,6 +9,29 @@
     </nav>
 </section>
 
+{#if !batches.isEmpty()}
+<section>
+    <h3>Active Batches</h3>
+    <ul>
+        {#for batch in batches}
+        <li>
+            <div>
+                <strong>{batch.testName}</strong>
+                <code class="text-muted small">Batch: {batch.batchId}</code>
+                <p>
+                    <strong class="status-badge status-state-{batch.status.name().toLowerCase().replace('failed', 'failed')}">
+                        {batch.status}
+                    </strong>
+                    <small class="text-muted">{batch.completedCount} / {batch.totalIterations} complete</small>
+                </p>
+            </div>
+            <a href="/tests/batch/{batch.batchId}/status" class="btn">Monitor</a>
+        </li>
+        {/for}
+    </ul>
+</section>
+{/if}
+
 {#if !sessions.isEmpty()}
 <section>
     <h3>Active Sessions</h3>

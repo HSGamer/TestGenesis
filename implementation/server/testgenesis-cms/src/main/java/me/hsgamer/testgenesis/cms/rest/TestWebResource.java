@@ -20,6 +20,11 @@ import org.jboss.resteasy.reactive.RestForm;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
+import me.hsgamer.testgenesis.cms.util.ProtoUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Path("/tests")
 @Slf4j
@@ -49,13 +54,17 @@ public class TestWebResource {
     @Inject
     Template tests_status;
 
+    @Inject
+    Template tests_batch_status;
+
     @GET
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance list() {
         return tests_list
             .data("tests", testService.listAll())
-            .data("sessions", uapService.getTestSessions());
+            .data("sessions", uapService.getTestSessions())
+            .data("batches", uapService.getBatchSessions());
     }
 
     @GET
@@ -147,7 +156,14 @@ public class TestWebResource {
     public Uni<Response> start(
         @PathParam("id") Long id,
         @RestForm("agentId") String agentId,
-        @RestForm("extraPayloadIds") java.util.List<Long> extraPayloadIds) {
+        @RestForm("extraPayloadIds") java.util.List<Long> extraPayloadIds,
+        @RestForm("iterations") @DefaultValue("1") int iterations,
+        @RestForm("parallel") @DefaultValue("false") boolean parallel) {
+
+        if (iterations > 1) {
+            String batchId = testManager.startBatchTest(id, agentId, extraPayloadIds, iterations, parallel);
+            return Uni.createFrom().item(Response.seeOther(URI.create("/tests/batch/" + batchId + "/status")).build());
+        }
 
         return testManager.startTest(id, agentId, extraPayloadIds)
             .map(result -> {
@@ -173,10 +189,102 @@ public class TestWebResource {
     }
 
     @GET
+    @Path("/batch/{batchId}/status")
+    @Produces(MediaType.TEXT_HTML)
+    @Blocking
+    public TemplateInstance batchStatus(@PathParam("batchId") String batchId) {
+        me.hsgamer.testgenesis.cms.core.TestBatchSession batch = uapService.getBatchSession(batchId)
+            .orElseThrow(() -> new NotFoundException("Batch not found: " + batchId));
+
+        return tests_batch_status.data("batch", batch);
+    }
+
+    @POST
+    @Path("/batch/{batchId}/cancel")
+    @Blocking
+    public Response cancelBatch(@PathParam("batchId") String batchId) {
+        uapService.getBatchSession(batchId).ifPresent(batch -> {
+            batch.setStatus(me.hsgamer.testgenesis.cms.core.BatchStatus.CANCELLED);
+        });
+        return Response.seeOther(URI.create("/tests/batch/" + batchId + "/status")).build();
+    }
+
+    @GET
+    @Path("/{sessionId}/report/json")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Blocking
+    public Response downloadReport(@PathParam("sessionId") String sessionId, @QueryParam("full") @DefaultValue("false") boolean full) {
+        TestSession session = uapService.getTestSession(sessionId)
+            .orElseThrow(() -> new NotFoundException("Test session not found: " + sessionId));
+
+        if (session.getResult() == null) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Result not available").build();
+        }
+
+        var result = session.getResult();
+        if (!full) {
+            var builder = result.toBuilder();
+            for (int i = 0; i < builder.getAttachmentsCount(); i++) {
+                builder.getAttachmentsBuilder(i).clearData();
+            }
+            result = builder.build();
+        }
+
+        String json = ProtoUtil.toJson(result);
+        return Response.ok(json)
+            .header("Content-Disposition", "attachment; filename=\"report-" + (full ? "full-" : "") + sessionId + ".json\"")
+            .build();
+    }
+
+    @GET
+    @Path("/batch/{batchId}/report/json")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Blocking
+    public Response downloadBatchReport(@PathParam("batchId") String batchId, @QueryParam("full") @DefaultValue("false") boolean full) {
+        me.hsgamer.testgenesis.cms.core.TestBatchSession batch = uapService.getBatchSession(batchId)
+            .orElseThrow(() -> new NotFoundException("Batch not found: " + batchId));
+
+        Map<String, Object> report = new HashMap<>();
+        report.put("batchId", batch.getBatchId());
+        report.put("testName", batch.getTestName());
+        report.put("status", batch.getStatus());
+        report.put("iterations", batch.getTotalIterations());
+        report.put("completed", batch.getCompletedCount());
+        
+        List<Map<String, Object>> results = batch.getSessions().stream().map(s -> {
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("sessionId", s.getSessionId());
+            entry.put("status", s.getStatus() != null ? s.getStatus().getState().name() : "PENDING");
+            if (s.getResult() != null) {
+                try {
+                    var sessionResult = s.getResult();
+                    if (!full) {
+                        var builder = sessionResult.toBuilder();
+                        for (int i = 0; i < builder.getAttachmentsCount(); i++) {
+                            builder.getAttachmentsBuilder(i).clearData();
+                        }
+                        sessionResult = builder.build();
+                    }
+                    entry.put("result", new ObjectMapper().readTree(ProtoUtil.toJson(sessionResult)));
+                } catch (Exception e) {
+                    entry.put("result", null);
+                }
+            }
+            return entry;
+        }).collect(Collectors.toList());
+        
+        report.put("sessions", results);
+
+        return Response.ok(report)
+            .header("Content-Disposition", "attachment; filename=\"batch-report-" + (full ? "full-" : "") + batchId + ".json\"")
+            .build();
+    }
+
+    @GET
     @Path("/{sessionId}/attachments/{index}")
     @Blocking
     public Response getAttachment(@PathParam("sessionId") String sessionId, @PathParam("index") int index) {
-        TestSession session = uapService.getTestSession(sessionId)
+        me.hsgamer.testgenesis.cms.core.TestSession session = uapService.getTestSession(sessionId)
             .orElseThrow(() -> new NotFoundException("Test session not found: " + sessionId));
 
         me.hsgamer.testgenesis.uap.v1.TestResult result = session.getResult();

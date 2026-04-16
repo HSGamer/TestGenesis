@@ -73,6 +73,18 @@
         </ul>
     </section>
 
+    <fieldset>
+        <legend>Execution Parameters</legend>
+        <label for="iterations">Iterations</label>
+        <input type="number" id="iterations" name="iterations" value="1" min="1" max="100" required>
+        
+        <p><strong>Execution Mode</strong></p>
+        <div style="display: flex; gap: 1rem;">
+            <label style="cursor: pointer;"><input type="radio" name="parallel" value="false" checked style="width:auto;"> Sequential</label>
+            <label style="cursor: pointer;"><input type="radio" name="parallel" value="true" style="width:auto;"> Parallel</label>
+        </div>
+    </fieldset>
+
     <button type="submit">Launch Execution</button>
 </form>
 {/body}

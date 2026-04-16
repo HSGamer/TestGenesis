@@ -35,6 +35,7 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
     private final Map<String, AgentImpl> agents = new ConcurrentHashMap<>();
     private final Map<String, Consumer<SessionAcceptance>> pendingAcceptances = new ConcurrentHashMap<>();
     private final Map<String, TestSession> testSessions = new ConcurrentHashMap<>();
+    private final Map<String, TestBatchSession> batchSessions = new ConcurrentHashMap<>();
     private final Map<String, TranslationSession> translationSessions = new ConcurrentHashMap<>();
 
     public Collection<Agent> getAgents() {
@@ -55,6 +56,18 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
 
     public Collection<TranslationSession> getTranslationSessions() {
         return Collections.unmodifiableCollection(translationSessions.values());
+    }
+
+    public Optional<TestBatchSession> getBatchSession(String id) {
+        return Optional.ofNullable(batchSessions.get(id));
+    }
+
+    public Collection<TestBatchSession> getBatchSessions() {
+        return Collections.unmodifiableCollection(batchSessions.values());
+    }
+
+    public void addBatchSession(TestBatchSession session) {
+        batchSessions.put(session.getBatchId(), session);
     }
 
     public Uni<TestTicketResult> registerTest(String agentId, TestTicket ticket) {

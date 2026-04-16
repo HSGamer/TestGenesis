@@ -1,0 +1,66 @@
+{#include base.html}
+{#title}Batch Execution - {batch.batchId}{/title}
+
+{#body}
+<section>
+    <h2>Batch Execution</h2>
+    <p>Target: <strong>{batch.testName}</strong> <code>({batch.batchId})</code></p>
+    <nav class="actions">
+        <a href="/tests" class="btn">Back to Tests</a>
+        <a href="/tests/batch/{batch.batchId}/report/json" class="btn" download title="Metadata only">JSON</a>
+        <a href="/tests/batch/{batch.batchId}/report/json?full=true" class="btn" download title="Full report with all iteration attachments">Full JSON</a>
+        {#if batch.status == 'RUNNING' || batch.status == 'PENDING'}
+            <form action="/tests/batch/{batch.batchId}/cancel" method="POST" style="display:inline;">
+                <button type="submit" class="status-failed">Cancel All</button>
+            </form>
+        {/if}
+    </nav>
+</section>
+
+<section>
+    <h3>Progress</h3>
+    <progress id="batch-progress" value="0" max="{batch.totalIterations}"></progress>
+    <div class="flex-between">
+        <p class="small text-muted">Status: <strong id="batch-status-label">{batch.status}</strong></p>
+        <p class="small text-muted"><span id="completed-count">0</span> / {batch.totalIterations} complete</p>
+    </div>
+</section>
+
+<section>
+    <h3>Sessions</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Iteration</th>
+                <th>Session ID</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="sessions-table">
+            {#for session in batch.sessions}
+                <tr data-session-id="{session.sessionId}">
+                    <td>{session_index + 1}</td>
+                    <td><code>{session.sessionId}</code></td>
+                    <td>
+                        <span class="status-badge status-state-pending">PENDING</span>
+                    </td>
+                    <td>
+                        <a href="/tests/{session.sessionId}/status" class="btn small">View</a>
+                    </td>
+                </tr>
+            {#else}
+                <tr id="empty-row">
+                    <td colspan="4" style="text-align: center;"><p class="text-muted">Initializing iterations...</p></td>
+                </tr>
+            {/for}
+        </tbody>
+    </table>
+</section>
+
+<script>
+    window.batchId = "{batch.batchId}";
+</script>
+<script src="/js/tests_batch_status.js"></script>
+{/body}
+{/include}

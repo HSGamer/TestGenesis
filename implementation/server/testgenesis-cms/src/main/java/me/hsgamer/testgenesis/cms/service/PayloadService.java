@@ -88,4 +88,18 @@ public class PayloadService {
             })
             .findFirst();
     }
+
+    @Transactional
+    public List<Payload> preparePayloads(List<Long> payloadIds) {
+        List<Payload> protos = new ArrayList<>();
+        if (payloadIds == null) return protos;
+        
+        for (Long id : payloadIds) {
+            PayloadEntity.findByIdOptional(id)
+                .map(p -> (PayloadEntity) p)
+                .map(PayloadEntity::toProto)
+                .ifPresent(protos::add);
+        }
+        return protos;
+    }
 }

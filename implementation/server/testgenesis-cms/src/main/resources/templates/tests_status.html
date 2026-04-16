@@ -7,6 +7,8 @@
     <p><code>{session.sessionId}</code></p>
     <nav class="actions">
         <strong id="status-badge" class="status-badge status-state-pending">PENDING</strong>
+        <a href="/tests/{session.sessionId}/report/json" class="btn" download title="Minimal report (no attachments)">JSON</a>
+        <a href="/tests/{session.sessionId}/report/json?full=true" class="btn" download title="Full report with attachments">Full JSON</a>
         <a href="/tests" class="btn">Back</a>
     </nav>
 </section>

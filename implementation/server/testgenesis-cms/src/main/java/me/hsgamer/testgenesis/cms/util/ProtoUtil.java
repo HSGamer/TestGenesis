@@ -53,4 +53,14 @@ public class ProtoUtil {
             return Collections.emptyMap();
         }
     }
+
+    public static String toJson(com.google.protobuf.MessageOrBuilder message) {
+        if (message == null) return "{}";
+        try {
+            return JsonFormat.printer().omittingInsignificantWhitespace().print(message);
+        } catch (InvalidProtocolBufferException e) {
+            log.error("Failed to print Message to JSON", e);
+            return "{}";
+        }
+    }
 }
