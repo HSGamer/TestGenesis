@@ -3,11 +3,9 @@ import {
     create,
     PayloadSchema,
     translationCapability,
-    TranslationResultSchema,
     TranslationSessionContext,
     TranslationSessionProcessor,
-    TranslationState,
-    TranslationStatusSchema
+    TranslationState
 } from "testgenesis-client-node";
 
 import type {ProjectShape} from "@seleniumhq/side-model";
@@ -36,26 +34,26 @@ export class TranslationProcessor implements TranslationSessionProcessor {
     public async process(sessionId: string, context: TranslationSessionContext) {
         try {
             const init = context.init;
-            await context.sendStatus(create(TranslationStatusSchema, {
+            await context.sendStatus({
                 state: TranslationState.ACKNOWLEDGED,
                 message: "Starting SIDE project decomposition..."
-            }));
+            });
 
             const sourcePayload = init.payloads[0];
             if (!sourcePayload?.attachment) {
-                await context.sendStatus(create(TranslationStatusSchema, {
+                await context.sendStatus({
                     state: TranslationState.FAILED,
                     message: "No source SIDE project attachment found"
-                }));
+                });
                 return;
             }
 
             const project: ProjectShape = JSON.parse(new TextDecoder().decode(sourcePayload.attachment.data));
             await context.sendTelemetry(`Parsing project: ${project.name}`);
-            await context.sendStatus(create(TranslationStatusSchema, {
+            await context.sendStatus({
                 state: TranslationState.PROCESSING,
                 message: `Extracting ${project.tests.length} tests...`
-            }));
+            });
 
             const results = [];
             for (const test of project.tests) {
@@ -70,20 +68,20 @@ export class TranslationProcessor implements TranslationSessionProcessor {
                 }));
             }
 
-            await context.sendResult(create(TranslationResultSchema, {
-                status: create(TranslationStatusSchema, {state: TranslationState.COMPLETED}),
+            await context.sendResult({
+                status: {state: TranslationState.COMPLETED},
                 payloads: results
-            }));
-            await context.sendStatus(create(TranslationStatusSchema, {
+            });
+            await context.sendStatus({
                 state: TranslationState.COMPLETED,
                 message: `Successfully split into ${results.length} tests.`
-            }));
+            });
         } catch (err: any) {
             console.error(`[Translate ${sessionId}] Error:`, err);
-            await context.sendStatus(create(TranslationStatusSchema, {
+            await context.sendStatus({
                 state: TranslationState.FAILED,
                 message: `Translation Error: ${err.message}`
-            }));
+            });
         }
     }
 }

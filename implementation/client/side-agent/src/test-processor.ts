@@ -8,11 +8,9 @@ import {
     StepStatus,
     SummarySchema,
     testCapability,
-    TestResultSchema,
     TestSessionContext,
     TestSessionProcessor,
     TestState,
-    TestStatusSchema,
     timestampFromDate
 } from "testgenesis-client-node";
 
@@ -83,10 +81,10 @@ class TestSession {
             const payload = payloads.find((p: any) => p.type === "selenium-side");
 
             if (!payload?.attachment) {
-                await this.context.sendStatus(create(TestStatusSchema, {
+                await this.context.sendStatus({
                     state: TestState.INVALID,
                     message: "Missing required test payload or attachment"
-                }));
+                });
                 return;
             }
 
@@ -123,10 +121,10 @@ class TestSession {
                 }
             }
 
-            await this.context.sendStatus(create(TestStatusSchema, {
+            await this.context.sendStatus({
                 state: TestState.ACKNOWLEDGED,
                 message: "Initializing Selenium..."
-            }));
+            });
 
             const test: TestShape = {
                 id: parsedTest.id || this.sessionId,
@@ -175,10 +173,10 @@ class TestSession {
             logger.bind(testRunner);
 
             await this.context.sendTelemetry(`Session started for browser: ${browser}`);
-            await this.context.sendStatus(create(TestStatusSchema, {
+            await this.context.sendStatus({
                 state: TestState.RUNNING,
                 message: "Running steps..."
-            }));
+            });
 
             const startTime = new Date();
             await testRunner.run();
@@ -187,8 +185,8 @@ class TestSession {
             const report = testRunner.createReport(logger) as TestReport;
             const finalState = report.state === PlaybackStates.FINISHED ? TestState.COMPLETED : TestState.FAILED;
 
-            await this.context.sendResult(create(TestResultSchema, {
-                status: create(TestStatusSchema, {state: finalState}),
+            await this.context.sendResult({
+                status: {state: finalState},
                 reports: report.commands.map(cmd => create(StepReportSchema, {
                     name: `${cmd.command.command} ${cmd.command.target || ""}`,
                     status: cmd.state === CommandStates.PASSED ? StepStatus.PASSED : StepStatus.FAILED,
@@ -238,15 +236,15 @@ class TestSession {
                     })
                 }),
                 attachments
-            }));
+            });
 
-            await this.context.sendStatus(create(TestStatusSchema, {state: finalState}));
+            await this.context.sendStatus({state: finalState});
         } catch (err: any) {
             console.error(`[Test ${this.sessionId}] Error:`, err);
-            await this.context.sendStatus(create(TestStatusSchema, {
+            await this.context.sendStatus({
                 state: TestState.FAILED,
                 message: `Error: ${err.message}`
-            }));
+            });
         } finally {
             await this.cleanup();
         }

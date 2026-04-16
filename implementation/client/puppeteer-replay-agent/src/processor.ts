@@ -1,11 +1,9 @@
 import {
     create,
     testCapability,
-    TestResultSchema,
     TestSessionContext,
     TestSessionProcessor,
     TestState,
-    TestStatusSchema,
     timestampNow,
     timestampFromDate,
     msToDuration,
@@ -77,7 +75,8 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
         return testCapability({
             type: "puppeteer-replay",
             payloads: [
-                {type: "chrome-devtools-recorder", isRequired: true, acceptedMimeTypes: ["application/json"]}
+                {type: "chrome-devtools-recorder", isRequired: true, acceptedMimeTypes: ["application/json"]},
+                {type: "puppeteer-config", isRequired: false, acceptedMimeTypes: ["application/json"]}
             ]
         });
     }
@@ -86,10 +85,10 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
         console.log(`[PuppeteerReplay] Processing session: ${sessionId}`);
 
         // 1. Initial Status
-        await context.sendStatus(create(TestStatusSchema, {
+        await context.sendStatus({
             state: TestState.ACKNOWLEDGED,
             message: "Extracting recording..."
-        }));
+        });
 
         const startTime = new Date();
         let browser: puppeteer.Browser | null = null;
@@ -108,16 +107,34 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             const recordingJson = JSON.parse(recordingText);
             const recording = parse(recordingJson);
 
-            await context.sendStatus(create(TestStatusSchema, {
+            await context.sendStatus({
                 state: TestState.RUNNING,
                 message: "Launching browser and starting replay..."
-            }));
-
-            // 3. Execution
-            browser = await puppeteer.launch({
-                headless: true, // Reverting to headless for standard agent behavior
-                args: ["--no-sandbox", "--disable-setuid-sandbox"]
             });
+
+            // 3. Execution Config
+            let launchOptions: any = {
+                headless: true,
+                args: ["--no-sandbox", "--disable-setuid-sandbox"]
+            };
+
+            const configPayload = context.init.payloads.find(p => p.type === "puppeteer-config");
+            if (configPayload?.attachment) {
+                try {
+                    const configText = new TextDecoder().decode(configPayload.attachment.data);
+                    const config = JSON.parse(configText);
+                    
+                    if (config.headless !== undefined) launchOptions.headless = config.headless;
+                    if (config.product) launchOptions.product = config.product;
+                    if (Array.isArray(config.args)) {
+                        launchOptions.args = [...launchOptions.args, ...config.args];
+                    }
+                } catch (e) {
+                    await context.sendTelemetry(`Failed to parse puppeteer-config: ${e}`, Severity.WARN);
+                }
+            }
+
+            browser = await puppeteer.launch(launchOptions);
 
             const page = await browser.newPage();
             const extension = new TestGenesisRunnerExtension(browser, page, context);
@@ -133,21 +150,22 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             const duration = endTime.getTime() - startTime.getTime();
 
             // 4. Send Result
-            await context.sendResult(create(TestResultSchema, {
-                status: create(TestStatusSchema, {
+            await context.sendResult({
+                status: {
                     state: TestState.COMPLETED,
                     message: "Replay finished successfully"
-                }),
+                },
                 reports: extension.reports,
                 summary: create(SummarySchema, {
                     startTime: timestampNow(),
                     totalDuration: msToDuration(duration),
                     metadata: cleanObject({
-                        processor: "PuppeteerReplayTestProcessor",
                         recording_title: recording.title,
                         total_steps: extension.reports.length,
-                        browser_name: "chrome",
+                        browser_name: launchOptions.product || "chrome",
                         browser_version: browserVersion,
+                        headless: launchOptions.headless,
+                        args: launchOptions.args,
                         execute_duration: duration,
                         os_platform: os.platform(),
                         os_release: os.release(),
@@ -157,15 +175,18 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
                         memory_total_gb: Math.round(os.totalmem() / (1024 ** 3))
                     })
                 })
-            }));
-
+            });
+            await context.sendStatus({
+                state: TestState.COMPLETED,
+                message: "Execution cycle finished."
+            });
         } catch (err: any) {
             console.error(`[PuppeteerReplay Error] ${err.message}`);
-            await context.sendResult(create(TestResultSchema, {
-                status: create(TestStatusSchema, {
+            await context.sendResult({
+                status: {
                     state: TestState.FAILED,
                     message: `Replay failed: ${err.message}`
-                }),
+                },
                 summary: create(SummarySchema, {
                     startTime: timestampNow(),
                     metadata: cleanObject({
@@ -173,15 +194,15 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
                         stack: err.stack
                     })
                 })
-            }));
+            });
+            await context.sendStatus({
+                state: TestState.FAILED,
+                message: "Execution cycle failed."
+            });
         } finally {
             if (browser) {
                 await browser.close().catch(e => console.error("[PuppeteerReplay] Error closing browser:", e));
             }
-            await context.sendStatus(create(TestStatusSchema, {
-                state: TestState.COMPLETED,
-                message: "Execution cycle finished."
-            }));
         }
     }
 }

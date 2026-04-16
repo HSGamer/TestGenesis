@@ -6,9 +6,9 @@ import {
     Severity,
     TelemetrySchema,
     TestCapability, TestCapabilitySchema,
-    TestInit, TestResponse, TestResponseSchema, TestResult, TestStatus,
+    TestInit, TestResponse, TestResponseSchema, TestResultSchema, TestStatusSchema,
     TranslationCapability, TranslationCapabilitySchema,
-    TranslationInit, TranslationResponse, TranslationResponseSchema, TranslationResult, TranslationStatus
+    TranslationInit, TranslationResponse, TranslationResponseSchema, TranslationResultSchema, TranslationStatusSchema
 } from "./generated/index.js";
 import {timestampNow} from "./utils.js";
 
@@ -52,10 +52,10 @@ export abstract class SessionContext<TInit, TResponse> {
  * Domain-specific context for Test sessions.
  */
 export class TestSessionContext extends SessionContext<TestInit, TestResponse> {
-    public async sendStatus(status: TestStatus) {
+    public async sendStatus(status: MessageInitShape<typeof TestStatusSchema>) {
         await this.responseIterable.write(create(TestResponseSchema, {
             timestamp: timestampNow(),
-            event: {case: "status", value: status}
+            event: {case: "status", value: create(TestStatusSchema, status)}
         }));
     }
 
@@ -74,10 +74,10 @@ export class TestSessionContext extends SessionContext<TestInit, TestResponse> {
         }));
     }
 
-    public async sendResult(result: TestResult) {
+    public async sendResult(result: MessageInitShape<typeof TestResultSchema>) {
         await this.responseIterable.write(create(TestResponseSchema, {
             timestamp: timestampNow(),
-            event: {case: "result", value: result}
+            event: {case: "result", value: create(TestResultSchema, result)}
         }));
     }
 }
@@ -86,10 +86,10 @@ export class TestSessionContext extends SessionContext<TestInit, TestResponse> {
  * Domain-specific context for Translation sessions.
  */
 export class TranslationSessionContext extends SessionContext<TranslationInit, TranslationResponse> {
-    public async sendStatus(status: TranslationStatus) {
+    public async sendStatus(status: MessageInitShape<typeof TranslationStatusSchema>) {
         await this.responseIterable.write(create(TranslationResponseSchema, {
             timestamp: timestampNow(),
-            event: {case: "status", value: status}
+            event: {case: "status", value: create(TranslationStatusSchema, status)}
         }));
     }
 
@@ -108,10 +108,10 @@ export class TranslationSessionContext extends SessionContext<TranslationInit, T
         }));
     }
 
-    public async sendResult(result: TranslationResult) {
+    public async sendResult(result: MessageInitShape<typeof TranslationResultSchema>) {
         await this.responseIterable.write(create(TranslationResponseSchema, {
             timestamp: timestampNow(),
-            event: {case: "result", value: result}
+            event: {case: "result", value: create(TranslationResultSchema, result)}
         }));
     }
 }
