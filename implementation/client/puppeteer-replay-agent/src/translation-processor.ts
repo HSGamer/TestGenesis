@@ -202,10 +202,14 @@ export class PuppeteerToSideTranslationProcessor implements TranslationSessionPr
 
             case StepType.Scroll:
                 if ("selectors" in step) {
+                    const locator = this.translateSelector((step as any).selectors);
+                    const script = locator.startsWith("xpath=")
+                        ? `document.evaluate("${locator.substring(6)}", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.scrollIntoView()`
+                        : `document.querySelector("${locator.substring(4)}").scrollIntoView()`;
                     return [{
                         id: crypto.randomUUID(),
                         command: "runScript",
-                        target: `document.querySelector('${this.translateSelector((step as any).selectors).replace("css=", "")}').scrollIntoView()`,
+                        target: script,
                         value: ""
                     }];
                 }
@@ -225,14 +229,43 @@ export class PuppeteerToSideTranslationProcessor implements TranslationSessionPr
                 }];
 
             case StepType.KeyDown:
+            case StepType.KeyUp:
                 const keyMap: Record<string, string> = {
                     "Enter": "${KEY_ENTER}",
                     "Tab": "${KEY_TAB}",
                     "Escape": "${KEY_ESC}",
                     "Backspace": "${KEY_BACKSPACE}",
-                    "Delete": "${KEY_DELETE}"
+                    "Delete": "${KEY_DELETE}",
+                    "ArrowUp": "${KEY_UP}",
+                    "ArrowDown": "${KEY_DOWN}",
+                    "ArrowLeft": "${KEY_LEFT}",
+                    "ArrowRight": "${KEY_RIGHT}",
+                    "Home": "${KEY_HOME}",
+                    "End": "${KEY_END}",
+                    "PageUp": "${KEY_PAGE_UP}",
+                    "PageDown": "${KEY_PAGE_DOWN}",
+                    "Insert": "${KEY_INSERT}",
+                    "Shift": "${KEY_SHIFT}",
+                    "Control": "${KEY_CONTROL}",
+                    "Alt": "${KEY_ALT}",
+                    "Meta": "${KEY_META}",
+                    "F1": "${KEY_F1}",
+                    "F2": "${KEY_F2}",
+                    "F3": "${KEY_F3}",
+                    "F4": "${KEY_F4}",
+                    "F5": "${KEY_F5}",
+                    "F6": "${KEY_F6}",
+                    "F7": "${KEY_F7}",
+                    "F8": "${KEY_F8}",
+                    "F9": "${KEY_F9}",
+                    "F10": "${KEY_F10}",
+                    "F11": "${KEY_F11}",
+                    "F12": "${KEY_F12}"
                 };
-                if (keyMap[step.key]) {
+
+                const mappedKey = keyMap[step.key] || (step.key.length === 1 ? step.key : null);
+                
+                if (mappedKey) {
                     const target = ("selectors" in step) 
                         ? this.translateSelector((step as any).selectors) 
                         : "xpath=//body";
@@ -240,7 +273,7 @@ export class PuppeteerToSideTranslationProcessor implements TranslationSessionPr
                         id: crypto.randomUUID(),
                         command: "sendKeys",
                         target,
-                        value: keyMap[step.key]
+                        value: mappedKey
                     }];
                 }
                 return null;
