@@ -1,0 +1,17 @@
+{
+  "name": "testgenesis-cli",
+  "version": "1.0.0",
+  "description": "Scaffolding tool for TestGenesis client agents",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "testgenesis-gen": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "typescript": "^5.8.2"
+  }
+}
