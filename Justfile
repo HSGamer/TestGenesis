@@ -6,6 +6,7 @@ java_client  := "implementation/client/testgenesis-client-java"
 cms          := "implementation/server/testgenesis-cms"
 side_agent   := "implementation/client/side-agent"
 junit_agent  := "implementation/client/selenium-junit-agent"
+gen_cli      := "implementation/client/testgenesis-cli"
 
 # Default: Build everything
 all: build-cms build-side build-junit
@@ -37,6 +38,16 @@ run-side:
 
 run-junit:
     mvn -f {{junit_agent}} exec:java -Dexec.mainClass="me.hsgamer.testgenesis.agent.selenium.junit.Main"
+
+# --- Generator ---
+
+# Generate a new client project
+# Usage: just gen-client <name> [options]
+gen-client name *args: build-gen-cli
+    cd implementation/client && node testgenesis-cli/dist/index.js {{name}} {{args}}
+
+build-gen-cli:
+    cd {{gen_cli}} && npm install && npm run build
 
 # --- Utility ---
 
