@@ -20,6 +20,9 @@ all: refresh-agents build-cms build-sdk build-all-clients
 build-cms:
     mvn -f {{cms}} clean compile
 
+run-cms:
+    mvn -f {{cms}} quarkus:dev
+
 build-node-client:
     cd {{node_client}} && npm install && npm run build
 
