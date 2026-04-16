@@ -1,6 +1,7 @@
 import {
     Attachment,
     AttachmentSchema,
+    cleanObject,
     create,
     msToDuration,
     StepReportSchema,
@@ -198,18 +199,19 @@ class TestSession {
                                 ? (cmd.timestamp[cmd.timestamp.length - 1]?.timestamp.getTime() || 0) - (cmd.timestamp[0]?.timestamp.getTime() || 0)
                                 : 0
                         ),
-                        metadata: {
+                        metadata: cleanObject({
                             timestamp: cmd.timestamp.map(t => ({
                                 timestamp: t.timestamp.toISOString(),
                                 state: String(t.state),
-                                message: t.message || "",
+                                message: t.message,
                                 error: t.error ? {
                                     message: t.error.message,
-                                    stack: t.error.stack || ""
-                                } : null
+                                    stack: t.error.stack
+                                } : undefined
                             })),
-                            screenshot: screenshotMap.get(cmd.id) || ""
-                        }
+                            command: cmd.command,
+                            screenshot: screenshotMap.get(cmd.id)
+                        })
                     })
                 })),
                 summary: create(SummarySchema, {
@@ -220,20 +222,20 @@ class TestSession {
                             (report.timestamp[0]?.timestamp.getTime() || startTime.getTime())
                             : endTime.getTime() - startTime.getTime()
                     ),
-                    metadata: {
+                    metadata: cleanObject({
                         total_steps: report.commands.length,
-                        selenium_webdriver_version: seleniumVersion || "unknown",
-                        browser_name: capabilities.getBrowserName() || "unknown",
-                        browser_version: capabilities.getBrowserVersion() || "unknown",
-                        platform_name: capabilities.getPlatform() || "unknown",
+                        selenium_webdriver_version: seleniumVersion,
+                        browser_name: capabilities.getBrowserName(),
+                        browser_version: capabilities.getBrowserVersion(),
+                        platform_name: capabilities.getPlatform(),
                         execute_duration: endTime.getTime() - startTime.getTime(),
                         os_platform: os.platform(),
                         os_release: os.release(),
                         os_arch: os.arch(),
-                        cpu_model: os.cpus()[0]?.model || "unknown",
+                        cpu_model: os.cpus()[0]?.model,
                         cpu_count: os.cpus().length,
                         memory_total_gb: Math.round(os.totalmem() / (1024 ** 3))
-                    }
+                    })
                 }),
                 attachments
             }));
