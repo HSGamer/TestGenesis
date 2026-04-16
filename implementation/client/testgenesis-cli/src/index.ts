@@ -7,6 +7,7 @@ import {execSync} from "node:child_process";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const TEMPLATE_DIR = path.join(__dirname, "..", "templates");
+const CLIENT_ROOT = path.resolve(__dirname, "../../");
 
 interface FileTask {
     template: string;
@@ -45,21 +46,53 @@ const CONFIGS: Record<string, LangConfig> = {
     }
 };
 
+/**
+ * Discovers agents and generates a Justfile containing shortcuts for them.
+ */
+function refreshAgentsJust() {
+    console.log("[Gen] Refreshing agents.just...");
+    const items = fs.readdirSync(CLIENT_ROOT, {withFileTypes: true});
+    const agents = items
+        .filter(item => item.isDirectory())
+        .map(item => item.name)
+        .filter(name => !name.startsWith("testgenesis-client-") && name !== "testgenesis-cli" && !name.startsWith("."));
+
+    let content = "# Generated Agents Justfile - DO NOT EDIT MANUALLY\n\n";
+    
+    for (const agent of agents) {
+        content += `build-${agent}:\n`;
+        content += `    just build-client ${agent}\n\n`;
+        content += `run-${agent} *args:\n`;
+        content += `    just run-client ${agent} {{args}}\n\n`;
+    }
+
+    const targetPath = path.join(CLIENT_ROOT, "agents.just");
+    fs.writeFileSync(targetPath, content);
+    console.log(`[Gen] Successfully updated ${targetPath} with ${agents.length} agents.`);
+}
+
 async function main() {
     const {values, positionals} = parseArgs({
         options: {
             name: {type: "string", short: "n"},
             lang: {type: "string", short: "l"},
+            refresh: {type: "boolean", short: "r"},
             help: {type: "boolean", short: "h"},
         },
         allowPositionals: true
     });
 
+    if (values.refresh) {
+        refreshAgentsJust();
+        return;
+    }
+
     if (values.help || (positionals.length === 0 && !values.name)) {
-        console.log("Usage: testgenesis-gen <project-name>");
+        console.log("Usage: testgenesis-gen [project-name]");
         console.log("Options:");
         console.log("  -n, --name <name>  Name of the project");
         console.log("  -l, --lang <lang>  Language (ts, java) [default: ts]");
+        console.log("  -r, --refresh      Regenerate agents.just for all clients");
         console.log("  -h, --help         Show this help");
         return;
     }
@@ -119,6 +152,9 @@ async function main() {
     console.log(`\nTo get started:`);
     console.log(`  cd ${projectName}`);
     console.log(`  ${config.startCmd}`);
+
+    // Trigger refresh
+    refreshAgentsJust();
 }
 
 main().catch(console.error);
