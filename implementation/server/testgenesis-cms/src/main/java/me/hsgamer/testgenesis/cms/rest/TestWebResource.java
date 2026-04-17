@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Path("/tests")
 @Slf4j
@@ -219,6 +218,30 @@ public class TestWebResource {
         return Response.seeOther(URI.create("/tests/batch/" + batchId + "/status")).build();
     }
 
+    private Map<String, Object> resultToMap(TestSession session, boolean full) {
+        Map<String, Object> entry = new HashMap<>();
+        entry.put("agentId", session.getAgentId());
+        entry.put("agentName", session.getAgentName());
+        entry.put("sessionId", session.getSessionId());
+        entry.put("status", session.getStatus() != null ? session.getStatus().getState().name() : "PENDING");
+        if (session.getResult() != null) {
+            try {
+                var sessionResult = session.getResult();
+                if (!full) {
+                    var builder = sessionResult.toBuilder();
+                    for (int i = 0; i < builder.getAttachmentsCount(); i++) {
+                        builder.getAttachmentsBuilder(i).clearData();
+                    }
+                    sessionResult = builder.build();
+                }
+                entry.put("result", new ObjectMapper().readTree(ProtoUtil.toJson(sessionResult)));
+            } catch (Exception e) {
+                entry.put("result", null);
+            }
+        }
+        return entry;
+    }
+
     @GET
     @Path("/{sessionId}/report/json")
     @Produces(MediaType.APPLICATION_JSON)
@@ -227,21 +250,8 @@ public class TestWebResource {
         TestSession session = testSessionManager.getTestSession(sessionId)
             .orElseThrow(() -> new NotFoundException("Test session not found: " + sessionId));
 
-        if (session.getResult() == null) {
-            return Response.status(Response.Status.BAD_REQUEST).entity("Result not available").build();
-        }
-
-        var result = session.getResult();
-        if (!full) {
-            var builder = result.toBuilder();
-            for (int i = 0; i < builder.getAttachmentsCount(); i++) {
-                builder.getAttachmentsBuilder(i).clearData();
-            }
-            result = builder.build();
-        }
-
-        String json = ProtoUtil.toJson(result);
-        return Response.ok(json)
+        var report = resultToMap(session, full);
+        return Response.ok(report)
             .header("Content-Disposition", "attachment; filename=\"report-" + (full ? "full-" : "") + sessionId + ".json\"")
             .build();
     }
@@ -261,30 +271,7 @@ public class TestWebResource {
         report.put("iterations", batch.getTotalIterations());
         report.put("completed", batch.getCompletedCount());
 
-        List<Map<String, Object>> results = batch.getSessions().stream().map(s -> {
-            Map<String, Object> entry = new HashMap<>();
-            entry.put("agentId", s.getAgentId());
-            entry.put("agentName", s.getAgentName());
-            entry.put("sessionId", s.getSessionId());
-            entry.put("status", s.getStatus() != null ? s.getStatus().getState().name() : "PENDING");
-            if (s.getResult() != null) {
-                try {
-                    var sessionResult = s.getResult();
-                    if (!full) {
-                        var builder = sessionResult.toBuilder();
-                        for (int i = 0; i < builder.getAttachmentsCount(); i++) {
-                            builder.getAttachmentsBuilder(i).clearData();
-                        }
-                        sessionResult = builder.build();
-                    }
-                    entry.put("result", new ObjectMapper().readTree(ProtoUtil.toJson(sessionResult)));
-                } catch (Exception e) {
-                    entry.put("result", null);
-                }
-            }
-            return entry;
-        }).collect(Collectors.toList());
-
+        var results = batch.getSessions().stream().map(s -> resultToMap(s, full)).toList();
         report.put("sessions", results);
 
         return Response.ok(report)

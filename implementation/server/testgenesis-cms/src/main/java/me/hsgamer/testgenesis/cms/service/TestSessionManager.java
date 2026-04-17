@@ -82,17 +82,23 @@ public class TestSessionManager {
         Optional.ofNullable(pendingAcceptances.get(sessionId)).ifPresent(c -> c.accept(acceptance));
     }
 
-    public Uni<TestTicketResult> startTest(Long testId, String agentId, List<Long> extraPayloadIds) {
-        return Uni.createFrom().item(() -> {
-                TestInfo info = testService.getTestInfo(testId);
-                Set<Long> allIds = new HashSet<>(info.payloadIds());
-                if (extraPayloadIds != null) allIds.addAll(extraPayloadIds);
+    public TestTicket prepareTicket(Long testId, List<Long> extraPayloadIds) {
+        TestInfo info = testService.getTestInfo(testId);
+        Set<Long> allIds = new HashSet<>(info.payloadIds());
+        if (extraPayloadIds != null) allIds.addAll(extraPayloadIds);
 
-                List<Payload> protos = payloadService.preparePayloads(allIds.stream().toList());
-                return new TestTicket(info.testType(), protos);
-            })
+        List<Payload> protos = payloadService.preparePayloads(allIds.stream().toList());
+        return new TestTicket(info.testType(), protos);
+    }
+
+    public Uni<TestTicketResult> startTest(Long testId, String agentId, List<Long> extraPayloadIds) {
+        return Uni.createFrom().item(() -> prepareTicket(testId, extraPayloadIds))
             .runSubscriptionOn(managedExecutor)
             .onItem().transformToUni(ticket -> registerTest(agentId, ticket));
+    }
+
+    public Uni<TestTicketResult> startTest(String agentId, TestTicket ticket) {
+        return registerTest(agentId, ticket);
     }
 
     public void failSession(String sessionId, String reason) {

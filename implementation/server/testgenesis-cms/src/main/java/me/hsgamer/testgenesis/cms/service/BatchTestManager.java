@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import me.hsgamer.testgenesis.cms.core.BatchStatus;
 import me.hsgamer.testgenesis.cms.core.TestBatchSession;
+import me.hsgamer.testgenesis.cms.core.TestTicket;
 import me.hsgamer.testgenesis.cms.persistence.TestEntity;
 
 import java.util.*;
@@ -36,60 +37,50 @@ public class BatchTestManager {
             .orElseThrow(() -> new IllegalArgumentException("Test not found: " + testId));
 
         int totalSessions = agentIds.size() * iterations;
-        TestBatchSession batch = new TestBatchSession(testId, test.getName(), parallel, totalSessions);
+        TestTicket ticket = testSessionManager.prepareTicket(testId, extraPayloadIds);
+        TestBatchSession batch = new TestBatchSession(test.getName(), ticket, totalSessions);
         addBatchSession(batch);
+
+        for (int i = 0; i < iterations; i++) {
+            agentIds.forEach(batch::addAgent);
+        }
+
         batch.setStatus(BatchStatus.RUNNING);
 
         if (parallel) {
-            executeParallel(batch, agentIds, iterations, extraPayloadIds);
+            String agentId;
+            while ((agentId = batch.pollAgent()) != null) {
+                register(batch, agentId);
+            }
         } else {
-            executeSequential(batch, agentIds, iterations, extraPayloadIds, 0, 0);
+            batch.addListener(() -> {
+                if (batch.getStatus() == BatchStatus.RUNNING) {
+                    processNextSequential(batch);
+                }
+            });
+            processNextSequential(batch);
         }
 
         return batch.getBatchId();
     }
 
-    private void executeParallel(TestBatchSession batch, List<String> agentIds, int iterations, List<Long> extraPayloadIds) {
-        for (String agentId : agentIds) {
-            for (int i = 0; i < iterations; i++) {
-                testSessionManager.startTest(batch.getTestId(), agentId, extraPayloadIds).subscribe().with(
-                    res -> {
-                        if (res.accepted()) {
-                            batch.markSessionAccepted(res.session(), null);
-                        } else {
-                            batch.markSessionFailed();
-                        }
-                    },
-                    err -> batch.markSessionFailed()
-                );
-            }
+    private void processNextSequential(TestBatchSession batch) {
+        String agentId = batch.pollAgent();
+        if (agentId != null) {
+            register(batch, agentId);
         }
     }
 
-    private void executeSequential(TestBatchSession batch, List<String> agentIds, int iterations, List<Long> extraPayloadIds, int agentIndex, int iterIndex) {
-        if (batch.getStatus() == BatchStatus.CANCELLED) return;
-
-        if (agentIndex >= agentIds.size()) {
-            return;
-        }
-
-        if (iterIndex >= iterations) {
-            executeSequential(batch, agentIds, iterations, extraPayloadIds, agentIndex + 1, 0);
-            return;
-        }
-
-        String agentId = agentIds.get(agentIndex);
-        testSessionManager.startTest(batch.getTestId(), agentId, extraPayloadIds).subscribe().with(
+    private void register(TestBatchSession batch, String agentId) {
+        testSessionManager.startTest(agentId, batch.getTicket()).subscribe().with(
             res -> {
                 if (res.accepted()) {
-                    batch.markSessionAccepted(res.session(), () ->
-                        executeSequential(batch, agentIds, iterations, extraPayloadIds, agentIndex, iterIndex + 1)
-                    );
+                    batch.addSession(res.session());
                 } else {
-                    batch.markSessionFailed();
+                    batch.markRegistrationFailed();
                 }
             },
-            err -> batch.markSessionFailed()
+            err -> batch.markRegistrationFailed()
         );
     }
 }

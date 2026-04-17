@@ -3,8 +3,8 @@ package me.hsgamer.testgenesis.cms.dto;
 import java.util.List;
 
 public record AgentInfo(
-    String id, 
-    String displayName, 
+    String id,
+    String displayName,
     List<TestTypeInfo> supportedTests,
     List<TranslationTypeInfo> supportedTranslations
 ) {

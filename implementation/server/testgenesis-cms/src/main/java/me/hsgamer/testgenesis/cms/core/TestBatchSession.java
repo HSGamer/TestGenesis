@@ -4,52 +4,58 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static me.hsgamer.testgenesis.cms.util.StatusUtil.isTerminal;
 
 @Getter
 public class TestBatchSession {
     private final String batchId;
-    private final Long testId;
     private final String testName;
-    private final boolean parallel;
+    private final TestTicket ticket;
     private final int totalIterations;
-    private final List<TestSession> sessions = new ArrayList<>();
+    private final List<TestSession> sessions = new CopyOnWriteArrayList<>();
+    private final List<Runnable> listeners = new CopyOnWriteArrayList<>();
+    private final java.util.Queue<String> agentQueue = new LinkedBlockingQueue<>();
+    private final AtomicInteger failedRegistrations = new AtomicInteger(0);
     private final Instant createdAt;
-    private final List<Runnable> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
-    @Setter
-    private BatchStatus status = BatchStatus.PENDING;
 
-    public TestBatchSession(Long testId, String testName, boolean parallel, int totalIterations) {
-        this.batchId = "BCH-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        this.testId = testId;
+    @Setter
+    private volatile BatchStatus status = BatchStatus.PENDING;
+
+    public TestBatchSession(String testName, TestTicket ticket, int totalIterations) {
+        this.batchId = "BCH-" + UUID.randomUUID();
         this.testName = testName;
-        this.parallel = parallel;
+        this.ticket = ticket;
         this.totalIterations = totalIterations;
         this.createdAt = Instant.now();
     }
 
+    public void addAgent(String agentId) {
+        agentQueue.add(agentId);
+    }
+
+    public String pollAgent() {
+        return agentQueue.poll();
+    }
+
+    public boolean isQueueEmpty() {
+        return agentQueue.isEmpty();
+    }
+
     public synchronized void addSession(TestSession session) {
         sessions.add(session);
-        session.addStatusConsumer(s -> notifyListeners());
+        session.onCompletion(this::checkCompletion);
     }
 
-    public synchronized void markSessionAccepted(TestSession session, Runnable onCompletion) {
-        addSession(session);
-        session.onCompletion(() -> {
-            if (onCompletion != null) onCompletion.run();
-            checkCompletion();
-        });
-    }
-
-    public synchronized void markSessionFailed() {
-        if (status != BatchStatus.CANCELLED) {
-            status = BatchStatus.FAILED;
-            notifyListeners();
-        }
+    public void markRegistrationFailed() {
+        failedRegistrations.incrementAndGet();
+        notifyListeners();
+        checkCompletion();
     }
 
     public void addListener(Runnable listener) {
@@ -61,15 +67,23 @@ public class TestBatchSession {
     }
 
     private synchronized void checkCompletion() {
-        if (getCompletedCount() >= totalIterations && status == BatchStatus.RUNNING) {
+        if (status != BatchStatus.RUNNING) return;
+
+        long terminalCount = sessions.stream()
+            .filter(s -> s.getStatus() != null && isTerminal(s.getStatus().getState()))
+            .count();
+
+        if (terminalCount + failedRegistrations.get() >= totalIterations) {
             status = BatchStatus.COMPLETED;
-            notifyListeners();
         }
+
+        // Always notify on completion/terminal state to trigger manager
+        notifyListeners();
     }
 
     public long getCompletedCount() {
         return sessions.stream()
             .filter(s -> s.getStatus() != null && isTerminal(s.getStatus().getState()))
-            .count();
+            .count() + failedRegistrations.get();
     }
 }
