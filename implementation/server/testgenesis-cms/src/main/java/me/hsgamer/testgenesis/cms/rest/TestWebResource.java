@@ -1,5 +1,6 @@
 package me.hsgamer.testgenesis.cms.rest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
 import io.smallrye.common.annotation.Blocking;
@@ -9,22 +10,23 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import me.hsgamer.testgenesis.cms.core.BatchStatus;
+import me.hsgamer.testgenesis.cms.core.TestBatchSession;
 import me.hsgamer.testgenesis.cms.core.TestSession;
 import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
 import me.hsgamer.testgenesis.cms.persistence.TestEntity;
-import me.hsgamer.testgenesis.cms.service.PayloadService;
-import me.hsgamer.testgenesis.cms.service.TestManager;
-import me.hsgamer.testgenesis.cms.service.TestService;
-import me.hsgamer.testgenesis.cms.service.UAPService;
+import me.hsgamer.testgenesis.cms.service.*;
+import me.hsgamer.testgenesis.cms.util.ProtoUtil;
+import me.hsgamer.testgenesis.uap.v1.Attachment;
+import me.hsgamer.testgenesis.uap.v1.TestResult;
 import org.jboss.resteasy.reactive.RestForm;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.Set;
 import java.util.stream.Collectors;
-import me.hsgamer.testgenesis.cms.util.ProtoUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Path("/tests")
 @Slf4j
@@ -37,10 +39,13 @@ public class TestWebResource {
     PayloadService payloadService;
 
     @Inject
-    UAPService uapService;
+    AgentManager agentManager;
 
     @Inject
-    TestManager testManager;
+    TestSessionManager testSessionManager;
+
+    @Inject
+    BatchTestManager batchTestManager;
 
     @Inject
     Template tests_list;
@@ -63,8 +68,8 @@ public class TestWebResource {
     public TemplateInstance list() {
         return tests_list
             .data("tests", testService.listAll())
-            .data("sessions", uapService.getTestSessions())
-            .data("batches", uapService.getBatchSessions());
+            .data("sessions", testSessionManager.getTestSessions())
+            .data("batches", batchTestManager.getBatchSessions());
     }
 
     @GET
@@ -73,7 +78,7 @@ public class TestWebResource {
     public TemplateInstance createForm() {
         return tests_edit.data("test", new TestEntity())
             .data("allPayloads", payloadService.listAll())
-            .data("agents", uapService.getAgentGuidedInfos());
+            .data("agents", agentManager.getAgentInfos());
     }
 
 
@@ -85,7 +90,7 @@ public class TestWebResource {
             .orElseThrow(() -> new NotFoundException("Test not found: " + id));
         return tests_edit.data("test", entity)
             .data("allPayloads", payloadService.listAll())
-            .data("agents", uapService.getAgentGuidedInfos());
+            .data("agents", agentManager.getAgentInfos());
     }
 
 
@@ -135,17 +140,17 @@ public class TestWebResource {
         TestEntity test = testService.findById(id)
             .orElseThrow(() -> new NotFoundException("Test not found: " + id));
 
-        java.util.Set<Long> linkedIds = test.getPayloads().stream()
+        Set<Long> linkedIds = test.getPayloads().stream()
             .map(p -> p.id)
             .collect(java.util.stream.Collectors.toSet());
 
-        java.util.List<PayloadEntity> extraPayloads = payloadService.listAll().stream()
+        List<PayloadEntity> extraPayloads = payloadService.listAll().stream()
             .filter(p -> !linkedIds.contains(p.id))
             .toList();
 
         return tests_run
             .data("test", test)
-            .data("agents", uapService.getAgentGuidedInfos())
+            .data("agents", agentManager.getAgentInfos())
             .data("extraPayloads", extraPayloads);
     }
 
@@ -165,12 +170,12 @@ public class TestWebResource {
         }
 
         if (iterations > 1 || agentIds.size() > 1) {
-            String batchId = testManager.startBatchTest(id, agentIds, extraPayloadIds, iterations, parallel);
+            String batchId = batchTestManager.startBatchTest(id, agentIds, extraPayloadIds, iterations, parallel);
             return Uni.createFrom().item(Response.seeOther(URI.create("/tests/batch/" + batchId + "/status")).build());
         }
 
         String agentId = agentIds.get(0);
-        return testManager.startTest(id, agentId, extraPayloadIds)
+        return testSessionManager.startTest(id, agentId, extraPayloadIds)
             .map(result -> {
                 if (result.accepted()) {
                     return Response.seeOther(URI.create("/tests/" + result.session().getSessionId() + "/status")).build();
@@ -187,7 +192,7 @@ public class TestWebResource {
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance status(@PathParam("sessionId") String sessionId) {
-        TestSession session = uapService.getTestSession(sessionId)
+        TestSession session = testSessionManager.getTestSession(sessionId)
             .orElseThrow(() -> new NotFoundException("Test session not found: " + sessionId));
 
         return tests_status.data("session", session);
@@ -198,7 +203,7 @@ public class TestWebResource {
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance batchStatus(@PathParam("batchId") String batchId) {
-        me.hsgamer.testgenesis.cms.core.TestBatchSession batch = uapService.getBatchSession(batchId)
+        TestBatchSession batch = batchTestManager.getBatchSession(batchId)
             .orElseThrow(() -> new NotFoundException("Batch not found: " + batchId));
 
         return tests_batch_status.data("batch", batch);
@@ -208,8 +213,8 @@ public class TestWebResource {
     @Path("/batch/{batchId}/cancel")
     @Blocking
     public Response cancelBatch(@PathParam("batchId") String batchId) {
-        uapService.getBatchSession(batchId).ifPresent(batch -> {
-            batch.setStatus(me.hsgamer.testgenesis.cms.core.BatchStatus.CANCELLED);
+        batchTestManager.getBatchSession(batchId).ifPresent(batch -> {
+            batch.setStatus(BatchStatus.CANCELLED);
         });
         return Response.seeOther(URI.create("/tests/batch/" + batchId + "/status")).build();
     }
@@ -219,7 +224,7 @@ public class TestWebResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Blocking
     public Response downloadReport(@PathParam("sessionId") String sessionId, @QueryParam("full") @DefaultValue("false") boolean full) {
-        TestSession session = uapService.getTestSession(sessionId)
+        TestSession session = testSessionManager.getTestSession(sessionId)
             .orElseThrow(() -> new NotFoundException("Test session not found: " + sessionId));
 
         if (session.getResult() == null) {
@@ -246,7 +251,7 @@ public class TestWebResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Blocking
     public Response downloadBatchReport(@PathParam("batchId") String batchId, @QueryParam("full") @DefaultValue("false") boolean full) {
-        me.hsgamer.testgenesis.cms.core.TestBatchSession batch = uapService.getBatchSession(batchId)
+        TestBatchSession batch = batchTestManager.getBatchSession(batchId)
             .orElseThrow(() -> new NotFoundException("Batch not found: " + batchId));
 
         Map<String, Object> report = new HashMap<>();
@@ -255,9 +260,11 @@ public class TestWebResource {
         report.put("status", batch.getStatus());
         report.put("iterations", batch.getTotalIterations());
         report.put("completed", batch.getCompletedCount());
-        
+
         List<Map<String, Object>> results = batch.getSessions().stream().map(s -> {
             Map<String, Object> entry = new HashMap<>();
+            entry.put("agentId", s.getAgentId());
+            entry.put("agentName", s.getAgentName());
             entry.put("sessionId", s.getSessionId());
             entry.put("status", s.getStatus() != null ? s.getStatus().getState().name() : "PENDING");
             if (s.getResult() != null) {
@@ -277,7 +284,7 @@ public class TestWebResource {
             }
             return entry;
         }).collect(Collectors.toList());
-        
+
         report.put("sessions", results);
 
         return Response.ok(report)
@@ -289,15 +296,15 @@ public class TestWebResource {
     @Path("/{sessionId}/attachments/{index}")
     @Blocking
     public Response getAttachment(@PathParam("sessionId") String sessionId, @PathParam("index") int index) {
-        me.hsgamer.testgenesis.cms.core.TestSession session = uapService.getTestSession(sessionId)
+        TestSession session = testSessionManager.getTestSession(sessionId)
             .orElseThrow(() -> new NotFoundException("Test session not found: " + sessionId));
 
-        me.hsgamer.testgenesis.uap.v1.TestResult result = session.getResult();
+        TestResult result = session.getResult();
         if (result == null || index < 0 || index >= result.getAttachmentsCount()) {
             throw new NotFoundException("Attachment not found");
         }
 
-        me.hsgamer.testgenesis.uap.v1.Attachment attachment = result.getAttachments(index);
+        Attachment attachment = result.getAttachments(index);
         return Response.ok(attachment.getData().toByteArray())
             .type(attachment.getMimeType())
             .header("Content-Disposition", "attachment; filename=\"" + attachment.getName() + "\"")

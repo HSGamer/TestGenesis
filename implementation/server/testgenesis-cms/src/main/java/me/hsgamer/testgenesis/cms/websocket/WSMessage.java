@@ -32,7 +32,8 @@ public class WSMessage {
         }
     }
 
-    public record BatchUpdateMsg(String type, String batchId, String status, long completed, int total, java.util.List<SessionStatusDTO> sessions) {
+    public record BatchUpdateMsg(String type, String batchId, String status, long completed, int total,
+                                 java.util.List<SessionStatusDTO> sessions) {
         public static BatchUpdateMsg from(me.hsgamer.testgenesis.cms.core.TestBatchSession batch) {
             return new BatchUpdateMsg("BATCH_UPDATE", batch.getBatchId(), batch.getStatus().name(),
                 batch.getCompletedCount(), batch.getTotalIterations(),
@@ -46,5 +47,6 @@ public class WSMessage {
         }
     }
 
-    public record SessionStatusDTO(String sessionId, String state, String message, String agentId, String agentName) {}
+    public record SessionStatusDTO(String sessionId, String state, String message, String agentId, String agentName) {
+    }
 }

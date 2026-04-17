@@ -8,8 +8,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
+import me.hsgamer.testgenesis.cms.service.AgentManager;
 import me.hsgamer.testgenesis.cms.service.PayloadService;
-import me.hsgamer.testgenesis.cms.service.UAPService;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -28,7 +28,7 @@ public class PayloadWebResource {
     PayloadService payloadService;
 
     @Inject
-    UAPService uapService;
+    AgentManager agentManager;
 
 
     @Inject
@@ -48,8 +48,8 @@ public class PayloadWebResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance createForm() {
         return payloads_edit.data("payload", new PayloadEntity())
-            .data("availableTypes", uapService.getAvailablePayloadTypes())
-            .data("mimeTypeMapping", uapService.getPayloadMimeTypeMapping());
+            .data("availableTypes", agentManager.getAvailablePayloadTypes())
+            .data("mimeTypeMapping", agentManager.getPayloadMimeTypeMapping());
     }
 
 
@@ -60,8 +60,8 @@ public class PayloadWebResource {
         PayloadEntity entity = payloadService.findById(id)
             .orElseThrow(() -> new NotFoundException("Payload not found: " + id));
         return payloads_edit.data("payload", entity)
-            .data("availableTypes", uapService.getAvailablePayloadTypes())
-            .data("mimeTypeMapping", uapService.getPayloadMimeTypeMapping());
+            .data("availableTypes", agentManager.getAvailablePayloadTypes())
+            .data("mimeTypeMapping", agentManager.getPayloadMimeTypeMapping());
     }
 
 
@@ -84,7 +84,7 @@ public class PayloadWebResource {
 
         if (attachment != null && attachment.size() > 0) {
             String mimeType = attachment.contentType();
-            Map<String, Set<String>> mapping = uapService.getPayloadMimeTypeMapping();
+            Map<String, Set<String>> mapping = agentManager.getPayloadMimeTypeMapping();
             if (mapping.containsKey(type) && !mapping.get(type).isEmpty()) {
                 if (!mapping.get(type).contains(mimeType)) {
                     log.warn("MIME type '{}' is not supported for payload type '{}' by any registered agents", mimeType, type);

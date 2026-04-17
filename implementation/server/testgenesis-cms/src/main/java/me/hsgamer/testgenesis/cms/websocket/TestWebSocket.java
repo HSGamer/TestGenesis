@@ -4,11 +4,13 @@ import com.google.protobuf.util.Durations;
 import io.quarkus.websockets.next.*;
 import jakarta.inject.Inject;
 import me.hsgamer.testgenesis.cms.core.TestSession;
-import me.hsgamer.testgenesis.cms.service.UAPService;
+import me.hsgamer.testgenesis.cms.service.TestSessionManager;
 import me.hsgamer.testgenesis.cms.util.ProtoUtil;
 import me.hsgamer.testgenesis.uap.v1.TestResult;
 import me.hsgamer.testgenesis.uap.v1.TestStatus;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -16,11 +18,11 @@ import java.util.function.Consumer;
 @WebSocket(path = "/telemetry/test/{sessionId}")
 public class TestWebSocket extends BaseWebSocket<TestSession> {
     @Inject
-    UAPService uapService;
+    TestSessionManager testSessionManager;
 
     @Override
     protected Optional<TestSession> getSession(String id) {
-        return uapService.getTestSession(id);
+        return testSessionManager.getTestSession(id);
     }
 
     @OnOpen
@@ -58,17 +60,16 @@ public class TestWebSocket extends BaseWebSocket<TestSession> {
     }
 
 
-    public record ResultDTO(java.util.List<StepReportDTO> reports, java.util.List<AttachmentDTO> attachments,
-                            ResultSummaryDTO summary) {
+    public record ResultDTO(List<StepReportDTO> reports, List<AttachmentDTO> attachments, ResultSummaryDTO summary) {
     }
 
     public record StepReportDTO(String status, String name, StepSummaryDTO summary) {
     }
 
-    public record StepSummaryDTO(long totalDuration, java.util.Map<String, Object> metadata) {
+    public record StepSummaryDTO(long totalDuration, Map<String, Object> metadata) {
     }
 
-    public record ResultSummaryDTO(long totalDuration, java.util.Map<String, Object> metadata) {
+    public record ResultSummaryDTO(long totalDuration, Map<String, Object> metadata) {
     }
 
     public record AttachmentDTO(String mimeType, String name, String url) {

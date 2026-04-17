@@ -3,7 +3,7 @@ package me.hsgamer.testgenesis.cms.websocket;
 import io.quarkus.websockets.next.*;
 import jakarta.inject.Inject;
 import me.hsgamer.testgenesis.cms.core.TranslationSession;
-import me.hsgamer.testgenesis.cms.service.UAPService;
+import me.hsgamer.testgenesis.cms.service.TranslationManager;
 import me.hsgamer.testgenesis.uap.v1.TranslationStatus;
 
 import java.util.List;
@@ -13,11 +13,11 @@ import java.util.function.Consumer;
 @WebSocket(path = "/telemetry/translation/{sessionId}")
 public class TranslationWebSocket extends BaseWebSocket<TranslationSession> {
     @Inject
-    UAPService uapService;
+    TranslationManager translationManager;
 
     @Override
     protected Optional<TranslationSession> getSession(String id) {
-        return uapService.getTranslationSession(id);
+        return translationManager.getTranslationSession(id);
     }
 
     @OnOpen

@@ -3,19 +3,17 @@ package me.hsgamer.testgenesis.cms.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import me.hsgamer.testgenesis.cms.core.TestInfo;
 import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
 import me.hsgamer.testgenesis.cms.persistence.TestEntity;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import me.hsgamer.testgenesis.cms.core.TestInfo;
-import jakarta.inject.Inject;
 
 @ApplicationScoped
 @RequiredArgsConstructor
 public class TestService {
-
     public List<TestEntity> listAll() {
         return TestEntity.listAll();
     }

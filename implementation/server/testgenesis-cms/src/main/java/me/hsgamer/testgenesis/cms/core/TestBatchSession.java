@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static me.hsgamer.testgenesis.cms.util.StatusUtil.isTerminal;
+
 @Getter
 public class TestBatchSession {
     private final String batchId;
@@ -17,7 +19,7 @@ public class TestBatchSession {
     private final int totalIterations;
     private final List<TestSession> sessions = new ArrayList<>();
     private final Instant createdAt;
-    
+    private final List<Runnable> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
     @Setter
     private BatchStatus status = BatchStatus.PENDING;
 
@@ -30,13 +32,26 @@ public class TestBatchSession {
         this.createdAt = Instant.now();
     }
 
-    private final List<Runnable> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
-
     public synchronized void addSession(TestSession session) {
         sessions.add(session);
         session.addStatusConsumer(s -> notifyListeners());
     }
-    
+
+    public synchronized void markSessionAccepted(TestSession session, Runnable onCompletion) {
+        addSession(session);
+        session.onCompletion(() -> {
+            if (onCompletion != null) onCompletion.run();
+            checkCompletion();
+        });
+    }
+
+    public synchronized void markSessionFailed() {
+        if (status != BatchStatus.CANCELLED) {
+            status = BatchStatus.FAILED;
+            notifyListeners();
+        }
+    }
+
     public void addListener(Runnable listener) {
         listeners.add(listener);
     }
@@ -44,10 +59,17 @@ public class TestBatchSession {
     private void notifyListeners() {
         listeners.forEach(Runnable::run);
     }
-    
+
+    private synchronized void checkCompletion() {
+        if (getCompletedCount() >= totalIterations && status == BatchStatus.RUNNING) {
+            status = BatchStatus.COMPLETED;
+            notifyListeners();
+        }
+    }
+
     public long getCompletedCount() {
         return sessions.stream()
-            .filter(s -> s.getStatus() != null && me.hsgamer.testgenesis.cms.util.StatusUtil.isTerminal(s.getStatus().getState()))
+            .filter(s -> s.getStatus() != null && isTerminal(s.getStatus().getState()))
             .count();
     }
 }

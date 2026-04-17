@@ -12,9 +12,9 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.core.TranslationSession;
 import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
+import me.hsgamer.testgenesis.cms.service.AgentManager;
 import me.hsgamer.testgenesis.cms.service.PayloadService;
 import me.hsgamer.testgenesis.cms.service.TranslationManager;
-import me.hsgamer.testgenesis.cms.service.UAPService;
 import me.hsgamer.testgenesis.uap.v1.Payload;
 import org.jboss.resteasy.reactive.RestForm;
 
@@ -28,7 +28,7 @@ import java.util.List;
 public class TranslationWebResource {
 
     @Inject
-    UAPService uapService;
+    AgentManager agentManager;
 
     @Inject
     PayloadService payloadService;
@@ -52,7 +52,7 @@ public class TranslationWebResource {
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance list() {
-        return translations_index.data("sessions", uapService.getTranslationSessions());
+        return translations_index.data("sessions", translationManager.getTranslationSessions());
     }
 
     @GET
@@ -61,7 +61,7 @@ public class TranslationWebResource {
     @Blocking
     public TemplateInstance createForm() {
         return translations_new
-            .data("agents", uapService.getAgentTranslationInfos())
+            .data("agents", agentManager.getAgentInfos())
             .data("allPayloads", payloadService.listAll());
     }
 
@@ -102,7 +102,7 @@ public class TranslationWebResource {
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance status(@PathParam("sessionId") String sessionId) {
-        TranslationSession session = uapService.getTranslationSession(sessionId)
+        TranslationSession session = translationManager.getTranslationSession(sessionId)
             .orElseThrow(() -> new NotFoundException("Translation session not found: " + sessionId));
 
         List<GeneratedPayloadInfo> generatedItems = new ArrayList<>();
@@ -123,7 +123,7 @@ public class TranslationWebResource {
     @Path("/{sessionId}/payloads/{index}/download")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public Response download(@PathParam("sessionId") String sessionId, @PathParam("index") int index) {
-        TranslationSession session = uapService.getTranslationSession(sessionId)
+        TranslationSession session = translationManager.getTranslationSession(sessionId)
             .orElseThrow(() -> new NotFoundException("Session not found"));
         if (index < 0 || index >= session.getRawPayloads().size()) {
             throw new NotFoundException("Payload index out of range");
@@ -141,7 +141,7 @@ public class TranslationWebResource {
     @Produces(MediaType.TEXT_HTML)
     @Blocking
     public TemplateInstance saveForm(@PathParam("sessionId") String sessionId, @PathParam("index") int index) {
-        TranslationSession session = uapService.getTranslationSession(sessionId)
+        TranslationSession session = translationManager.getTranslationSession(sessionId)
             .orElseThrow(() -> new NotFoundException("Session not found"));
         if (index < 0 || index >= session.getRawPayloads().size()) {
             throw new NotFoundException("Payload index out of range");
@@ -165,7 +165,7 @@ public class TranslationWebResource {
         @RestForm("name") String name,
         @RestForm("description") String description) {
 
-        TranslationSession session = uapService.getTranslationSession(sessionId)
+        TranslationSession session = translationManager.getTranslationSession(sessionId)
             .orElseThrow(() -> new NotFoundException("Session not found"));
         if (index < 0 || index >= session.getRawPayloads().size()) {
             throw new NotFoundException("Payload index out of range");

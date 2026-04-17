@@ -1,27 +1,29 @@
 package me.hsgamer.testgenesis.cms.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.quarkus.websockets.next.*;
+import io.quarkus.websockets.next.OnOpen;
+import io.quarkus.websockets.next.PathParam;
+import io.quarkus.websockets.next.WebSocket;
+import io.quarkus.websockets.next.WebSocketConnection;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.core.TestBatchSession;
-import me.hsgamer.testgenesis.cms.service.UAPService;
+import me.hsgamer.testgenesis.cms.service.BatchTestManager;
 
-import java.util.Optional;
 import java.util.Map;
 
 @WebSocket(path = "/telemetry/test/batch/{batchId}")
 @Slf4j
 public class BatchWebSocket {
     @Inject
-    UAPService uapService;
+    BatchTestManager batchTestManager;
 
     @Inject
     ObjectMapper mapper;
 
     @OnOpen
     public void onOpen(WebSocketConnection conn, @PathParam("batchId") String id) {
-        TestBatchSession b = uapService.getBatchSession(id).orElse(null);
+        TestBatchSession b = batchTestManager.getBatchSession(id).orElse(null);
         if (b == null) {
             send(conn, Map.of("type", "ERROR", "message", "Batch not found"));
             conn.close();
@@ -35,7 +37,8 @@ public class BatchWebSocket {
 
     private void send(WebSocketConnection conn, Object msg) {
         try {
-            conn.sendText(mapper.writeValueAsString(msg)).subscribe().with(v -> {}, e -> log.error("Batch WS send failed", e));
+            conn.sendText(mapper.writeValueAsString(msg)).subscribe().with(v -> {
+            }, e -> log.error("Batch WS send failed", e));
         } catch (Exception e) {
             log.error("Batch WS serialization failed", e);
         }

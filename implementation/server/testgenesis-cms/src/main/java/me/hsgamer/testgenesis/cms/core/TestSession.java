@@ -2,16 +2,17 @@ package me.hsgamer.testgenesis.cms.core;
 
 import lombok.Getter;
 import me.hsgamer.testgenesis.cms.util.StatusUtil;
-import me.hsgamer.testgenesis.uap.v1.*;
+import me.hsgamer.testgenesis.uap.v1.TestResponse;
+import me.hsgamer.testgenesis.uap.v1.TestResult;
+import me.hsgamer.testgenesis.uap.v1.TestState;
+import me.hsgamer.testgenesis.uap.v1.TestStatus;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class TestSession implements Session<TestResponse> {
+public class TestSession extends AbstractSession<TestResponse> {
 
-    @Getter
-    private final String sessionId;
     @Getter
     private final TestTicket ticket;
     @Getter
@@ -19,13 +20,8 @@ public class TestSession implements Session<TestResponse> {
     @Getter
     private final String agentName;
 
-    private final List<Consumer<Telemetry>> telemetryConsumers = new CopyOnWriteArrayList<>();
-    private final List<Telemetry> telemetryHistory = new CopyOnWriteArrayList<>();
     private final List<Consumer<TestStatus>> statusConsumers = new CopyOnWriteArrayList<>();
-
     private final List<Consumer<TestResult>> resultConsumers = new CopyOnWriteArrayList<>();
-    private final List<Runnable> completionListeners = new CopyOnWriteArrayList<>();
-
 
     @Getter
     private volatile TestStatus status;
@@ -33,7 +29,7 @@ public class TestSession implements Session<TestResponse> {
     private volatile TestResult result;
 
     public TestSession(String sessionId, TestTicket ticket, String agentId, String agentName) {
-        this.sessionId = sessionId;
+        super(sessionId);
         this.ticket = ticket;
         this.agentId = agentId;
         this.agentName = agentName;
@@ -44,16 +40,9 @@ public class TestSession implements Session<TestResponse> {
         statusConsumers.forEach(consumer -> consumer.accept(status));
 
         if (StatusUtil.isTerminal(status.getState())) {
-            completionListeners.forEach(Runnable::run);
-            completionListeners.clear();
+            triggerCompletion();
         }
     }
-
-    public void dispatchTelemetry(Telemetry telemetry) {
-        telemetryHistory.add(telemetry);
-        telemetryConsumers.forEach(consumer -> consumer.accept(telemetry));
-    }
-
 
     public void completeWithResult(TestResult result) {
         this.result = result;
@@ -80,15 +69,6 @@ public class TestSession implements Session<TestResponse> {
             .build());
     }
 
-    public void addTelemetryConsumer(Consumer<Telemetry> consumer) {
-        telemetryConsumers.add(consumer);
-        telemetryHistory.forEach(consumer);
-    }
-
-    public void removeTelemetryConsumer(Consumer<Telemetry> consumer) {
-        telemetryConsumers.remove(consumer);
-    }
-
     public void addStatusConsumer(Consumer<TestStatus> consumer) {
         statusConsumers.add(consumer);
         if (status != null) {
@@ -111,12 +91,12 @@ public class TestSession implements Session<TestResponse> {
         resultConsumers.remove(consumer);
     }
 
+    @Override
     public void onCompletion(Runnable callback) {
         if (status != null && StatusUtil.isTerminal(status.getState())) {
             callback.run();
         } else {
-            completionListeners.add(callback);
+            super.onCompletion(callback);
         }
     }
 }
-

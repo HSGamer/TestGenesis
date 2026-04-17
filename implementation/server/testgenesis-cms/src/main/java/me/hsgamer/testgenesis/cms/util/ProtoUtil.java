@@ -3,6 +3,7 @@ package me.hsgamer.testgenesis.cms.util;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.Struct;
 import com.google.protobuf.util.JsonFormat;
 import lombok.experimental.UtilityClass;
@@ -46,7 +47,7 @@ public class ProtoUtil {
     public static Map<String, Object> structToMap(Struct struct) {
         String json = structToJson(struct);
         try {
-            return OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
+            return OBJECT_MAPPER.readValue(json, new TypeReference<>() {
             });
         } catch (Exception e) {
             log.error("Failed to parse Struct JSON to Map: {}", json, e);
@@ -54,7 +55,7 @@ public class ProtoUtil {
         }
     }
 
-    public static String toJson(com.google.protobuf.MessageOrBuilder message) {
+    public static String toJson(MessageOrBuilder message) {
         if (message == null) return "{}";
         try {
             return JsonFormat.printer().omittingInsignificantWhitespace().print(message);

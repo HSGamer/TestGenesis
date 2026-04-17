@@ -9,18 +9,13 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class TranslationSession implements Session<TranslationResponse> {
-    @Getter
-    private final String sessionId;
+public class TranslationSession extends AbstractSession<TranslationResponse> {
     @Getter
     private final TranslationTicket ticket;
-    private final List<Consumer<Telemetry>> telemetryConsumers = new CopyOnWriteArrayList<>();
-    private final List<Telemetry> telemetryHistory = new CopyOnWriteArrayList<>();
     private final List<Consumer<TranslationStatus>> statusConsumers = new CopyOnWriteArrayList<>();
     private final List<Consumer<TranslationResult>> resultConsumers = new CopyOnWriteArrayList<>();
     @Getter
     private final List<Payload> rawPayloads = new CopyOnWriteArrayList<>();
-    private final List<Runnable> completionListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<List<Payload>>> rawPayloadConsumers = new CopyOnWriteArrayList<>();
     private final List<Consumer<List<GeneratedPayload>>> resultPayloadConsumers = new CopyOnWriteArrayList<>();
     @Getter
@@ -29,7 +24,7 @@ public class TranslationSession implements Session<TranslationResponse> {
     private volatile TranslationResult result;
 
     public TranslationSession(String sessionId, TranslationTicket ticket) {
-        this.sessionId = sessionId;
+        super(sessionId);
         this.ticket = ticket;
     }
 
@@ -38,14 +33,8 @@ public class TranslationSession implements Session<TranslationResponse> {
         statusConsumers.forEach(consumer -> consumer.accept(status));
 
         if (StatusUtil.isTerminal(status.getState())) {
-            completionListeners.forEach(Runnable::run);
-            completionListeners.clear();
+            triggerCompletion();
         }
-    }
-
-    public void dispatchTelemetry(Telemetry telemetry) {
-        telemetryHistory.add(telemetry);
-        telemetryConsumers.forEach(consumer -> consumer.accept(telemetry));
     }
 
     public void completeWithResult(TranslationResult result) {
@@ -80,15 +69,6 @@ public class TranslationSession implements Session<TranslationResponse> {
             .setState(TranslationState.TRANSLATION_STATE_FAILED)
             .setMessage(reason)
             .build());
-    }
-
-    public void addTelemetryConsumer(Consumer<Telemetry> consumer) {
-        telemetryConsumers.add(consumer);
-        telemetryHistory.forEach(consumer);
-    }
-
-    public void removeTelemetryConsumer(Consumer<Telemetry> consumer) {
-        telemetryConsumers.remove(consumer);
     }
 
     public void addStatusConsumer(Consumer<TranslationStatus> consumer) {
@@ -141,11 +121,12 @@ public class TranslationSession implements Session<TranslationResponse> {
         rawPayloadConsumers.forEach(consumer -> consumer.accept(payloads));
     }
 
+    @Override
     public void onCompletion(Runnable callback) {
         if (status != null && StatusUtil.isTerminal(status.getState())) {
             callback.run();
         } else {
-            completionListeners.add(callback);
+            super.onCompletion(callback);
         }
     }
 

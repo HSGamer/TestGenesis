@@ -4,22 +4,20 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import me.hsgamer.testgenesis.cms.core.TranslationSession;
 import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
 import me.hsgamer.testgenesis.uap.v1.Payload;
-import me.hsgamer.testgenesis.uap.v1.TranslationResult;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import java.util.Optional;
+
+import static com.google.protobuf.Value.newBuilder;
+import static me.hsgamer.testgenesis.cms.util.ProtoUtil.*;
 
 @ApplicationScoped
 @RequiredArgsConstructor
 @Slf4j
 public class PayloadService {
-
-
     public List<PayloadEntity> listAll() {
         return PayloadEntity.listAll();
     }
@@ -68,11 +66,11 @@ public class PayloadService {
 
         // Add origin metadata
         com.google.protobuf.Struct.Builder metadataBuilder = proto.getMetadata().toBuilder();
-        metadataBuilder.putFields("_originSessionId", com.google.protobuf.Value.newBuilder().setStringValue(sessionId).build());
+        metadataBuilder.putFields("_originSessionId", newBuilder().setStringValue(sessionId).build());
         if (proto.hasAttachment()) {
-            metadataBuilder.putFields("_originName", com.google.protobuf.Value.newBuilder().setStringValue(proto.getAttachment().getName()).build());
+            metadataBuilder.putFields("_originName", newBuilder().setStringValue(proto.getAttachment().getName()).build());
         }
-        entity.setMetadata(me.hsgamer.testgenesis.cms.util.ProtoUtil.structToJson(metadataBuilder.build()));
+        entity.setMetadata(structToJson(metadataBuilder.build()));
 
         entity.persist();
         return entity;
@@ -83,7 +81,7 @@ public class PayloadService {
                 "%" + sessionId + "%", "%" + name + "%")
             .stream()
             .filter(e -> {
-                java.util.Map<String, Object> map = me.hsgamer.testgenesis.cms.util.ProtoUtil.structToMap(me.hsgamer.testgenesis.cms.util.ProtoUtil.jsonToStruct(e.getMetadata()));
+                java.util.Map<String, Object> map = structToMap(jsonToStruct(e.getMetadata()));
                 return sessionId.equals(map.get("_originSessionId")) && name.equals(map.get("_originName"));
             })
             .findFirst();
@@ -93,7 +91,7 @@ public class PayloadService {
     public List<Payload> preparePayloads(List<Long> payloadIds) {
         List<Payload> protos = new ArrayList<>();
         if (payloadIds == null) return protos;
-        
+
         for (Long id : payloadIds) {
             PayloadEntity.findByIdOptional(id)
                 .map(p -> (PayloadEntity) p)

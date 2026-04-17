@@ -5,5 +5,5 @@ public interface TicketResult {
 
     String reason();
 
-    Session session();
+    Session<?> session();
 }
