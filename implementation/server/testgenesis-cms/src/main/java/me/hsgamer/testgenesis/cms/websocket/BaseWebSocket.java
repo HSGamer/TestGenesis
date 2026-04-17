@@ -33,8 +33,10 @@ public abstract class BaseWebSocket<S extends Session<?>> {
     }
 
     protected void onOpenBase(WebSocketConnection conn, String id, Consumer<S> extra) {
+        log.info("Opening WS for session {}", id);
         S s = getSession(id).orElse(null);
         if (s == null) {
+            log.warn("Session {} not found for WS", id);
             send(conn, Map.of("type", "ERROR", "message", "Session not found"));
             conn.close();
             return;

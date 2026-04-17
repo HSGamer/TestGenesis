@@ -15,25 +15,25 @@
     <input type="hidden" name="sessionId" value="{sessionId}">
     <input type="hidden" name="index" value="{index}">
 
-    <section>
-        <h3>Repository Entity</h3>
-        <p>
+    <fieldset>
+        <legend>Repository Entity</legend>
+        <div class="field">
             <label>Entity Name</label><br>
             <input type="text" name="name" value="{defaultName}" required autofocus>
-        </p>
-        <p>
+        </div>
+        <div class="field">
             <label>Description</label><br>
             <textarea name="description" rows="3">Translated {type} from session {sessionId}</textarea>
-        </p>
-    </section>
+        </div>
+    </fieldset>
 
-    <section>
-        <h3>Metadata</h3>
-        <p>
+    <fieldset>
+        <legend>Metadata</legend>
+        <div class="field">
             <label>Payload Type</label><br>
             <input type="text" value="{type}" readonly style="border-color: transparent; padding-left: 0;">
-        </p>
-    </section>
+        </div>
+    </fieldset>
 
     <button type="submit" class="btn btn-primary">Save to Database</button>
 </form>

@@ -1,27 +1,30 @@
 {#include base.html}
-{#title}Edit Payload - TestGenesis{/title}
+{#title}{#if payload.id}Edit{#else}New{/if} Payload - TestGenesis{/title}
 
 {#body}
-<section>
-    <header style="border:none; margin:0; padding:0;">
-        <h2>{#if payload.id}Edit{:else}New{/if} Payload</h2>
+<section class="clearfix">
+    <div class="title-area">
+        <h2>{#if payload.id}Edit{#else}New{/if} Payload</h2>
+    </div>
+    <div class="action-area">
         <a href="/payloads" class="btn">Back</a>
-    </header>
+    </div>
 </section>
 
 <form action="/payloads/save" method="POST" enctype="multipart/form-data">
     {#if payload.id}<input type="hidden" name="id" value="{payload.id}">{/if}
     
-    <section>
-        <p>
+    <fieldset>
+        <legend>General Information</legend>
+        <div class="field">
             <label>Name</label><br>
             <input type="text" name="name" value="{payload.name}" required placeholder="Payload Name">
-        </p>
-        <p>
+        </div>
+        <div class="field">
             <label>Description</label><br>
             <textarea name="description" placeholder="Metadata description...">{payload.description}</textarea>
-        </p>
-        <p>
+        </div>
+        <div class="field">
             <label>Type</label><br>
             <input type="text" name="type" value="{payload.type}" list="payload-types" required placeholder="e.g. selenium-script">
             <datalist id="payload-types">
@@ -29,22 +32,24 @@
                     <option value="{type}"></option>
                 {/for}
             </datalist>
-        </p>
-        <p>
+        </div>
+        <div class="field">
             <label>Metadata (JSON)</label><br>
             <textarea name="metadata" style="font-family:monospace; font-size:0.85rem;" rows="5">{payload.metadata}</textarea>
-        </p>
-    </section>
+        </div>
+    </fieldset>
 
-    <section>
-        <h3>Attachment</h3>
+    <fieldset>
+        <legend>Attachment</legend>
         {#if payload.attachmentName}
-            <p class="muted small">Current: <strong>{payload.attachmentName}</strong></p>
+            <div class="field">
+                <span class="muted small">Current: <strong>{payload.attachmentName}</strong></span>
+            </div>
         {/if}
         <input type="file" name="attachmentFile">
-    </section>
+    </fieldset>
 
-    <button type="submit" class="btn">Save Payload</button>
+    <button type="submit" class="btn btn-primary">Save Payload</button>
 </form>
 {/body}
 {/include}

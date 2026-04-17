@@ -13,8 +13,8 @@
 </section>
 
 <form action="/tests/{test.id}/start" method="POST">
-    <section>
-        <h3>Execution Agents</h3>
+    <fieldset>
+        <legend>Execution Agents</legend>
         <ul>
             {#for agent in agents}
                 {#if agent.supportsTestType(test.testType)}
@@ -37,27 +37,27 @@
                 <li class="muted">No agents found for <code>{test.testType}</code>.</li>
             {/for}
         </ul>
-    </section>
+    </fieldset>
 
-    <section>
-        <h3>Parameters</h3>
-        <p>
+    <fieldset>
+        <legend>Parameters</legend>
+        <div class="field">
             <label>Iterations</label><br>
             <input type="number" name="iterations" value="1" min="1" max="100" required style="width:100px;">
-        </p>
-        <p>
+        </div>
+        <div class="field">
             <strong>Execution Mode</strong><br>
-            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; margin-right:2rem; margin-top:0.5rem;">
-                <input type="radio" name="parallel" value="false" checked style="width:auto;"> Sequential
+            <label style="display:inline-block; vertical-align:middle; cursor:pointer; margin-right:2rem; margin-top:0.5rem;">
+                <input type="radio" name="parallel" value="false" checked style="width:auto; vertical-align:middle;"> <span style="vertical-align:middle;">Sequential</span>
             </label>
-            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer;">
-                <input type="radio" name="parallel" value="true" style="width:auto;"> Parallel
+            <label style="display:inline-block; vertical-align:middle; cursor:pointer; margin-top:0.5rem;">
+                <input type="radio" name="parallel" value="true" style="width:auto; vertical-align:middle;"> <span style="vertical-align:middle;">Parallel</span>
             </label>
-        </p>
-    </section>
+        </div>
+    </fieldset>
 
-    <section>
-        <h3>Primary Payloads</h3>
+    <fieldset>
+        <legend>Primary Payloads</legend>
         <ul>
             {#for payload in test.payloads}
                 <li>
@@ -68,10 +68,10 @@
                 <li class="muted small">No primary payloads.</li>
             {/for}
         </ul>
-    </section>
+    </fieldset>
 
-    <section>
-        <h3>Extra Payloads</h3>
+    <fieldset>
+        <legend>Extra Payloads</legend>
         <ul>
             {#for payload in extraPayloads}
                 <li class="clearfix">
@@ -87,9 +87,9 @@
                 <li class="muted small">No extra payloads.</li>
             {/for}
         </ul>
-    </section>
+    </fieldset>
 
-    <button type="submit" class="btn-primary">Launch Execution</button>
+    <button type="submit" class="btn btn-primary">Launch Execution</button>
 </form>
 {/body}
 {/include}

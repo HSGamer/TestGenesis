@@ -1,10 +1,10 @@
 {#include base.html}
-{#title}Edit Config - TestGenesis{/title}
+{#title}{#if test.id}Edit{#else}New{/if} Config - TestGenesis{/title}
 
 {#body}
 <section class="clearfix">
     <div class="title-area">
-        <h2>{#if test.id}Edit{:else}New{/if} Configuration</h2>
+        <h2>{#if test.id}Edit{#else}New{/if} Configuration</h2>
     </div>
     <div class="action-area">
         <a href="/tests" class="btn">Back</a>
@@ -14,16 +14,17 @@
 <form action="/tests/save" method="POST">
     {#if test.id}<input type="hidden" name="id" value="{test.id}">{/if}
     
-    <section>
-        <p>
+    <fieldset>
+        <legend>General Information</legend>
+        <div class="field">
             <label>Name</label><br>
             <input type="text" name="name" value="{test.name}" required placeholder="Test Name">
-        </p>
-        <p>
+        </div>
+        <div class="field">
             <label>Description</label><br>
             <textarea name="description" placeholder="Brief overview...">{test.description}</textarea>
-        </p>
-        <p>
+        </div>
+        <div class="field">
             <label>Test Type</label><br>
             <input type="text" name="testType" value="{test.testType}" list="test-types" required placeholder="e.g. selenium-side">
             <datalist id="test-types">
@@ -31,11 +32,11 @@
                     <option value="{type}"></option>
                 {/for}
             </datalist>
-        </p>
-    </section>
+        </div>
+    </fieldset>
 
-    <section>
-        <h3>Linked Payloads</h3>
+    <fieldset>
+        <legend>Linked Payloads</legend>
         <ul id="payload-list">
             {#for payload in allPayloads}
                 <li data-type="{payload.type}" class="clearfix">
@@ -54,7 +55,7 @@
                 <li class="muted">No payloads available. <a href="/payloads/new">Create one first.</a></li>
             {/for}
         </ul>
-    </section>
+    </fieldset>
 
     <button type="submit" class="btn btn-primary">Save Configuration</button>
 </form>

@@ -27,7 +27,7 @@
 </section>
 
 {#if session.result}
-    <section>
+    <section id="results-section">
         <h3>Payloads Result</h3>
         <ul>
             {#for payload in session.result.payloadsList}
@@ -38,7 +38,7 @@
                     </div>
                     <div class="action-area">
                         <div class="actions">
-                            <a href="/translations/{session.sessionId}/payloads/{payload_index}/download" class="btn small">Download</a>
+                            <a href="/translations/{session.sessionId}/payloads/{payload_index}/download" class="btn">Download</a>
                             <a href="/translations/{session.sessionId}/payloads/{payload_index}/save-form" class="btn">Save as CMS Payload</a>
                         </div>
                     </div>
@@ -50,16 +50,11 @@
 
 <section>
     <h3>Console Output</h3>
-    <pre style="font-size: 0.8rem; background: transparent; border: 1px solid var(--border); padding: 1rem; color: var(--muted); height: 300px; overflow-y: auto; white-space: pre-wrap;" id="telemetry-console"></pre>
+    <pre class="console" id="telemetry-console"></pre>
 </section>
 
 <script>
     window.sessionId = "{session.sessionId}";
-    
-    // Auto-refresh if pending
-    if (!"{session.result}") {
-        setTimeout(() => window.location.reload(), 2000);
-    }
 </script>
 <script src="/js/translations_status.js"></script>
 {/body}

@@ -34,12 +34,10 @@
                     {/if}
                 </td>
                 <td style="text-align: right;">
-                    <div class="actions">
-                        <a href="/payloads/{payload.id}/edit" class="btn">Edit</a>
-                        <form action="/payloads/{payload.id}/delete" method="POST" onsubmit="return confirm('Are you sure?');">
-                            <button type="submit" class="btn-error">Delete</button>
-                        </form>
-                    </div>
+                    <a href="/payloads/{payload.id}/edit" class="btn">Edit</a>
+                    <form action="/payloads/{payload.id}/delete" method="POST" onsubmit="return confirm('Are you sure?');">
+                        <button type="submit" class="btn-error">Delete</button>
+                    </form>
                 </td>
             </tr>
             {#else}

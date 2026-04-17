@@ -12,9 +12,9 @@
 </section>
 
 <form action="/translations/start" method="POST">
-    <section>
-        <h3>Configuration</h3>
-        <p>
+    <fieldset>
+        <legend>Configuration</legend>
+        <div class="field">
             <label>Agent</label><br>
             <select name="agentId" id="agent-select" required autofocus>
                 <option value="">-- Select Agent --</option>
@@ -24,32 +24,34 @@
                     <option disabled>No agents available</option>
                 {/for}
             </select>
-        </p>
+        </div>
 
-        <p>
+        <div class="field">
             <label>Translation Type</label><br>
             <select name="type" id="type-select" required disabled>
                 <option value="">-- Select Agent First --</option>
             </select>
-        </p>
-    </section>
+        </div>
+    </fieldset>
 
-    <section>
-        <h3>Source Payloads</h3>
+    <fieldset>
+        <legend>Source Payloads</legend>
         <ul id="payload-list" style="max-height: 400px; overflow-y: auto;">
             {#for p in allPayloads}
-                <li data-type="{p.type}">
+                <li data-type="{p.type}" class="clearfix">
                     <label style="display:block; width:100%; cursor:pointer;">
-                        <input type="checkbox" name="payloadIds" value="{p.id}" style="width:auto; margin:0; vertical-align: middle;">
-                        <span style="margin-left: 0.5rem; vertical-align: middle;">{p.name}</span> 
-                        <code class="muted small" style="vertical-align: middle;">{p.type}</code>
+                        <div class="title-area">
+                            <input type="checkbox" name="payloadIds" value="{p.id}" style="width:auto; margin:0; vertical-align: middle;">
+                            <span style="margin-left: 0.5rem; vertical-align: middle;">{p.name}</span> 
+                            <code class="muted small" style="vertical-align: middle;">{p.type}</code>
+                        </div>
                     </label>
                 </li>
             {#else}
                 <li class="muted">No payloads found.</li>
             {/for}
         </ul>
-    </section>
+    </fieldset>
 
     <button type="submit" id="start-btn" class="btn btn-primary" disabled>Start Task</button>
 </form>

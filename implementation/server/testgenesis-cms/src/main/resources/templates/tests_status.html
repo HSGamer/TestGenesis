@@ -35,11 +35,16 @@
     <div id="attachments-container" class="grid" style="margin-top: 1rem;"></div>
 </section>
 
+<section>
+    <h3>Console Output</h3>
+    <pre class="console" id="telemetry-console"></pre>
+</section>
+
 <template id="attachment-template">
-    <div class="card" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+    <div class="card">
         <p class="attachment-name small truncate" style="margin-bottom: 0.5rem;"></p>
         <img class="attachment-img d-none" style="width: 100%; height: auto; border-radius: 4px; cursor: pointer; margin-bottom: 0.5rem;">
-        <a class="download-link btn small" style="display: block; text-align: center; margin-right: 0; margin-bottom: 0;">Download</a>
+        <a class="download-link btn small" style="display: block; text-align: center;">Download</a>
     </div>
 </template>
 
@@ -63,10 +68,6 @@
         </div>
     </article>
 </template>
-
-<style>
-    .d-none { display: none !important; }
-</style>
 
 <script>
     window.sessionId = "{session.sessionId}";
