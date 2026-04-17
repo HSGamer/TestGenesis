@@ -32,6 +32,7 @@
         <thead>
             <tr>
                 <th>Iteration</th>
+                <th>Agent</th>
                 <th>Session ID</th>
                 <th>Status</th>
                 <th>Action</th>
@@ -41,6 +42,7 @@
             {#for session in batch.sessions}
                 <tr data-session-id="{session.sessionId}">
                     <td>{session_index + 1}</td>
+                    <td><strong>{session.agentName}</strong><br><small>{session.agentId}</small></td>
                     <td><code>{session.sessionId}</code></td>
                     <td>
                         <span class="status-badge status-state-pending">PENDING</span>
@@ -51,12 +53,31 @@
                 </tr>
             {#else}
                 <tr id="empty-row">
-                    <td colspan="4" style="text-align: center;"><p class="text-muted">Initializing iterations...</p></td>
+                    <td colspan="5" style="text-align: center;"><p class="text-muted">Initializing iterations...</p></td>
                 </tr>
             {/for}
         </tbody>
     </table>
 </section>
+
+<template id="session-row-template">
+    <tr>
+        <td class="col-index"></td>
+        <td class="col-agent">
+            <strong class="agent-name"></strong><br>
+            <small class="agent-id"></small>
+        </td>
+        <td class="col-session">
+            <code class="session-id"></code>
+        </td>
+        <td class="col-status">
+            <span class="status-badge"></span>
+        </td>
+        <td class="col-action">
+            <a href="#" class="btn small view-btn">View</a>
+        </td>
+    </tr>
+</template>
 
 <script>
     window.batchId = "{batch.batchId}";

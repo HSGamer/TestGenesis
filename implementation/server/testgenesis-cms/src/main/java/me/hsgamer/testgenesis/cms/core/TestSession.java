@@ -14,6 +14,11 @@ public class TestSession implements Session<TestResponse> {
     private final String sessionId;
     @Getter
     private final TestTicket ticket;
+    @Getter
+    private final String agentId;
+    @Getter
+    private final String agentName;
+
     private final List<Consumer<Telemetry>> telemetryConsumers = new CopyOnWriteArrayList<>();
     private final List<Telemetry> telemetryHistory = new CopyOnWriteArrayList<>();
     private final List<Consumer<TestStatus>> statusConsumers = new CopyOnWriteArrayList<>();
@@ -27,9 +32,11 @@ public class TestSession implements Session<TestResponse> {
     @Getter
     private volatile TestResult result;
 
-    public TestSession(String sessionId, TestTicket ticket) {
+    public TestSession(String sessionId, TestTicket ticket, String agentId, String agentName) {
         this.sessionId = sessionId;
         this.ticket = ticket;
+        this.agentId = agentId;
+        this.agentName = agentName;
     }
 
     public void updateStatus(TestStatus status) {

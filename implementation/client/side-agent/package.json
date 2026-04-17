@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.11.0",
-    "@hsgamer/side-engine": "^0.2.4",
+    "@hsgamer/side-engine": "^0.2.5",
     "@seleniumhq/code-export-java-junit": "^4.0.13",
     "@seleniumhq/side-code-export": "^4.0.0-alpha.3",
     "@seleniumhq/side-model": "^4.0.13",

@@ -271,16 +271,16 @@ class TestSession {
                 message: `Setup Error: ${err.message}`
             });
         } finally {
-            await this.cleanup();
-        }
-    }
-
-    private async cleanup() {
-        if (this.driver) {
-            this.onDriverDestroyed(this.driver);
-            await this.driver.quit().catch(() => {
-            });
-            this.driver = null;
+            if (testRunner) {
+                await testRunner.cleanup().catch(() => {
+                });
+            }
+            if (this.driver) {
+                this.onDriverDestroyed(this.driver);
+                await this.driver.quit().catch(() => {
+                });
+                this.driver = null;
+            }
         }
     }
 }

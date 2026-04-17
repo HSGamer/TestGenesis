@@ -71,11 +71,13 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
     }
 
     public Uni<TestTicketResult> registerTest(String agentId, TestTicket ticket) {
+        Agent agent = agents.get(agentId);
+        String agentName = agent != null ? agent.displayName() : "Unknown";
         return registerSession(agentId, "JOB-",
             p -> p.setTest(TestProposalDetails.newBuilder().setType(ticket.testType()).build()),
             (id, ok) -> {
                 if (!ok) return new TestTicketResult(false, "Rejected by agent", null);
-                TestSession s = new TestSession(id, ticket);
+                TestSession s = new TestSession(id, ticket, agentId, agentName);
                 testSessions.put(id, s);
                 return new TestTicketResult(true, "Accepted", s);
             });

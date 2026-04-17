@@ -39,10 +39,12 @@ public class WSMessage {
                 batch.getSessions().stream().map(s -> new SessionStatusDTO(
                     s.getSessionId(),
                     s.getStatus() != null ? s.getStatus().getState().name() : "PENDING",
-                    s.getStatus() != null ? s.getStatus().getMessage() : "Waiting..."
+                    s.getStatus() != null ? s.getStatus().getMessage() : "Waiting...",
+                    s.getAgentId(),
+                    s.getAgentName()
                 )).toList());
         }
     }
 
-    public record SessionStatusDTO(String sessionId, String state, String message) {}
+    public record SessionStatusDTO(String sessionId, String state, String message, String agentId, String agentName) {}
 }

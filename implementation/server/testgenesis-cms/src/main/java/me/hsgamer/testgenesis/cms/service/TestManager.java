@@ -51,49 +51,59 @@ public class TestManager {
         .onItem().transformToUni(ticket -> uapService.registerTest(agentId, ticket));
     }
 
-    public String startBatchTest(Long testId, String agentId, List<Long> extraPayloadIds, int iterations, boolean parallel) {
+    public String startBatchTest(Long testId, List<String> agentIds, List<Long> extraPayloadIds, int iterations, boolean parallel) {
         TestEntity test = testService.findById(testId)
             .orElseThrow(() -> new IllegalArgumentException("Test not found: " + testId));
         
-        TestBatchSession batch = new TestBatchSession(testId, test.getName(), parallel, iterations);
+        int totalSessions = agentIds.size() * iterations;
+        TestBatchSession batch = new TestBatchSession(testId, test.getName(), parallel, totalSessions);
         uapService.addBatchSession(batch);
         batch.setStatus(BatchStatus.RUNNING);
 
         if (parallel) {
-            for (int i = 0; i < iterations; i++) {
-                startTest(testId, agentId, extraPayloadIds).subscribe().with(res -> {
-                    if (res.accepted()) {
-                        TestSession session = res.session();
-                        batch.addSession(session);
-                        session.onCompletion(() -> checkBatchCompletion(batch));
-                    } else if (batch.getStatus() != BatchStatus.CANCELLED) {
-                        batch.setStatus(BatchStatus.FAILED);
-                    }
-                }, err -> {
-                    if (batch.getStatus() != BatchStatus.CANCELLED) {
-                        batch.setStatus(BatchStatus.FAILED);
-                    }
-                });
+            for (String agentId : agentIds) {
+                for (int i = 0; i < iterations; i++) {
+                    startTest(testId, agentId, extraPayloadIds).subscribe().with(res -> {
+                        if (res.accepted()) {
+                            TestSession session = res.session();
+                            batch.addSession(session);
+                            session.onCompletion(() -> checkBatchCompletion(batch));
+                        } else if (batch.getStatus() != BatchStatus.CANCELLED) {
+                            batch.setStatus(BatchStatus.FAILED);
+                        }
+                    }, err -> {
+                        if (batch.getStatus() != BatchStatus.CANCELLED) {
+                            batch.setStatus(BatchStatus.FAILED);
+                        }
+                    });
+                }
             }
         } else {
-            startNextIteration(batch, testId, agentId, extraPayloadIds, 0);
+            startNextAgentIteration(batch, testId, agentIds, extraPayloadIds, iterations, 0, 0);
         }
         
         return batch.getBatchId();
     }
 
-    private void startNextIteration(TestBatchSession batch, Long testId, String agentId, List<Long> extraPayloadIds, int index) {
+    private void startNextAgentIteration(TestBatchSession batch, Long testId, List<String> agentIds, List<Long> extraPayloadIds, int iterations, int agentIndex, int iterIndex) {
         if (batch.getStatus() == BatchStatus.CANCELLED) return;
-        if (index >= batch.getTotalIterations()) {
+        
+        if (agentIndex >= agentIds.size()) {
             checkBatchCompletion(batch);
             return;
         }
+
+        if (iterIndex >= iterations) {
+            startNextAgentIteration(batch, testId, agentIds, extraPayloadIds, iterations, agentIndex + 1, 0);
+            return;
+        }
         
+        String agentId = agentIds.get(agentIndex);
         startTest(testId, agentId, extraPayloadIds).subscribe().with(res -> {
             if (res.accepted()) {
                 TestSession session = res.session();
                 batch.addSession(session);
-                session.onCompletion(() -> startNextIteration(batch, testId, agentId, extraPayloadIds, index + 1));
+                session.onCompletion(() -> startNextAgentIteration(batch, testId, agentIds, extraPayloadIds, iterations, agentIndex, iterIndex + 1));
             } else if (batch.getStatus() != BatchStatus.CANCELLED) {
                 batch.setStatus(BatchStatus.FAILED);
             }

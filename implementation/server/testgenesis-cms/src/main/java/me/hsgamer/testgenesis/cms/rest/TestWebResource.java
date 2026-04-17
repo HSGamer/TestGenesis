@@ -155,16 +155,21 @@ public class TestWebResource {
     @Blocking
     public Uni<Response> start(
         @PathParam("id") Long id,
-        @RestForm("agentId") String agentId,
+        @RestForm("agentIds") List<String> agentIds,
         @RestForm("extraPayloadIds") java.util.List<Long> extraPayloadIds,
         @RestForm("iterations") @DefaultValue("1") int iterations,
         @RestForm("parallel") @DefaultValue("false") boolean parallel) {
 
-        if (iterations > 1) {
-            String batchId = testManager.startBatchTest(id, agentId, extraPayloadIds, iterations, parallel);
+        if (agentIds == null || agentIds.isEmpty()) {
+            return Uni.createFrom().item(Response.status(Response.Status.BAD_REQUEST).entity("No agents selected").build());
+        }
+
+        if (iterations > 1 || agentIds.size() > 1) {
+            String batchId = testManager.startBatchTest(id, agentIds, extraPayloadIds, iterations, parallel);
             return Uni.createFrom().item(Response.seeOther(URI.create("/tests/batch/" + batchId + "/status")).build());
         }
 
+        String agentId = agentIds.get(0);
         return testManager.startTest(id, agentId, extraPayloadIds)
             .map(result -> {
                 if (result.accepted()) {

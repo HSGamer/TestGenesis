@@ -23,34 +23,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 d.sessions.forEach((s, i) => {
                     let row = table.querySelector('[data-session-id="' + s.sessionId + '"]');
                     if (!row) {
-                        row = document.createElement('tr');
+                        const template = el('session-row-template');
+                        const clone = template.content.cloneNode(true);
+                        row = clone.querySelector('tr');
                         row.dataset.sessionId = s.sessionId;
                         
-                        const tdIdx = document.createElement('td');
-                        tdIdx.textContent = i + 1;
-                        row.appendChild(tdIdx);
-
-                        const tdSid = document.createElement('td');
-                        const codeSid = document.createElement('code');
-                        codeSid.textContent = s.sessionId;
-                        tdSid.appendChild(codeSid);
-                        row.appendChild(tdSid);
-
-                        const tdStatus = document.createElement('td');
-                        const badge = document.createElement('span');
-                        badge.className = 'status-badge';
-                        tdStatus.appendChild(badge);
-                        row.appendChild(tdStatus);
-
-                        const tdAction = document.createElement('td');
-                        const viewLink = document.createElement('a');
-                        viewLink.href = `/tests/${s.sessionId}/status`;
-                        viewLink.className = 'btn small';
-                        viewLink.textContent = 'View';
-                        tdAction.appendChild(viewLink);
-                        row.appendChild(tdAction);
-
-                        table.appendChild(row);
+                        row.querySelector('.col-index').textContent = i + 1;
+                        row.querySelector('.agent-name').textContent = s.agentName;
+                        row.querySelector('.agent-id').textContent = s.agentId;
+                        row.querySelector('.session-id').textContent = s.sessionId;
+                        row.querySelector('.view-btn').href = `/tests/${s.sessionId}/status`;
+                        
+                        table.appendChild(clone);
                     }
                     
                     const badge = row.querySelector('.status-badge');
