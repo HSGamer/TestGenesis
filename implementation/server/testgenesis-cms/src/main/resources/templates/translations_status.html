@@ -1,73 +1,65 @@
 {#include base.html}
-{#title}Translation Status{/title}
+{#title}Translation Task - TestGenesis{/title}
 
 {#body}
-<section>
-    <h2>Translation Status</h2>
-    <p><code>{session.sessionId}</code></p>
-    <nav class="actions">
-        <a href="/translations" class="btn">Back</a>
-    </nav>
-</section>
-
-<section>
-    <h3>Current Status</h3>
-    <div>
-        {#if session.status}
-            <strong id="status-badge" class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
-                {session.status.state.name().replace('TRANSLATION_STATE_', '')}
-            </strong>
-            <p><small id="status-message" class="text-muted">{session.status.message}</small></p>
-        {#else}
-            <strong id="status-badge" class="status-badge status-state-pending">PENDING</strong>
-            <p id="status-message"><small class="text-muted">Waiting for agent...</small></p>
-        {/if}
+<section class="clearfix">
+    <div class="title-area">
+        <h2>Translation Status</h2>
+        <p class="muted">Session: <code>{session.sessionId}</code> | Format: <code>{session.ticket.targetFormat}</code></p>
+    </div>
+    <div class="action-area">
+        <a href="/translations" class="btn">All Tasks</a>
     </div>
 </section>
 
-<template id="payload-template">
-    <li>
-        <div>
-            <strong class="payload-name"></strong>
-            <br><code class="payload-type text-muted small"></code>
-        </div>
-        <nav class="actions">
-            <a class="download-link btn">Download</a>
-            <a class="save-link btn btn-primary">Save to DB</a>
-            <a class="edit-link btn" style="display: none;">Edit</a>
-        </nav>
-    </li>
-</template>
-
-<section id="results-section" class="{#if generatedItems.isEmpty()}d-none{/if}">
-    <h3>Output</h3>
-    <ul id="payloads-list">
-        {#for p in generatedItems}
-            <li data-payload-index="{p.index}">
-                <div>
-                    <strong>{p.name}</strong>
-                    <br><code class="text-muted small">{p.type}</code>
-                </div>
-                <nav class="actions">
-                    <a href="/translations/{session.sessionId}/payloads/{p.index}/download" class="btn">Download</a>
-                    {#if p.databaseId}
-                        <a href="/payloads/{p.databaseId}/edit" class="btn">Edit</a>
-                    {#else}
-                        <a href="/translations/{session.sessionId}/payloads/{p.index}/save-form" class="btn btn-primary">Save to DB</a>
-                    {/if}
-                </nav>
-            </li>
-        {/for}
-    </ul>
+<section>
+    <h3>Status</h3>
+    {#if session.status}
+        <p>
+            <span class="status status-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
+                {session.status.state.name().replace('TRANSLATION_STATE_', '')}
+            </span>
+            <span class="muted" style="margin-left:1rem;">{session.status.message}</span>
+        </p>
+    {#else}
+        <p class="status">PENDING</p>
+    {/if}
 </section>
 
+{#if session.result}
+    <section>
+        <h3>Payloads Result</h3>
+        <ul>
+            {#for payload in session.result.payloadsList}
+                <li class="clearfix">
+                    <div class="title-area">
+                        <strong>{payload.attachment.name ?: payload.type}</strong>
+                        <code>{payload.type}</code>
+                    </div>
+                    <div class="action-area">
+                        <div class="actions">
+                            <a href="/translations/{session.sessionId}/payloads/{payload_index}/download" class="btn small">Download</a>
+                            <a href="/translations/{session.sessionId}/payloads/{payload_index}/save-form" class="btn">Save as CMS Payload</a>
+                        </div>
+                    </div>
+                </li>
+            {/for}
+        </ul>
+    </section>
+{/if}
+
 <section>
-    <h3>Console</h3>
-    <div id="telemetry-console"></div>
+    <h3>Console Output</h3>
+    <pre style="font-size: 0.8rem; background: transparent; border: 1px solid var(--border); padding: 1rem; color: var(--muted); height: 300px; overflow-y: auto; white-space: pre-wrap;" id="telemetry-console"></pre>
 </section>
 
 <script>
     window.sessionId = "{session.sessionId}";
+    
+    // Auto-refresh if pending
+    if (!"{session.result}") {
+        setTimeout(() => window.location.reload(), 2000);
+    }
 </script>
 <script src="/js/translations_status.js"></script>
 {/body}

@@ -1,87 +1,75 @@
 {#include base.html}
-{#title}Batch Execution - {batch.batchId}{/title}
+{#title}Batch Status - TestGenesis{/title}
 
 {#body}
-<section>
-    <h2>Batch Execution</h2>
-    <p>Target: <strong>{batch.testName}</strong> <code>({batch.batchId})</code></p>
-    <nav class="actions">
-        <a href="/tests" class="btn">Back to Tests</a>
-        <a href="/tests/batch/{batch.batchId}/report/json" class="btn" download title="Metadata only">JSON</a>
-        <a href="/tests/batch/{batch.batchId}/report/json?full=true" class="btn" download title="Full report with all iteration attachments">Full JSON</a>
-        {#if batch.status == 'RUNNING' || batch.status == 'PENDING'}
-            <form action="/tests/batch/{batch.batchId}/cancel" method="POST" style="display:inline;">
-                <button type="submit" class="status-failed">Cancel All</button>
-            </form>
-        {/if}
-    </nav>
-</section>
-
-<section>
-    <h3>Progress</h3>
-    <progress id="batch-progress" value="0" max="{batch.totalIterations}"></progress>
-    <div class="flex-between">
-        <p class="small text-muted">Status: <strong id="batch-status-label">{batch.status}</strong></p>
-        <p class="small text-muted"><span id="completed-count">0</span> / {batch.totalIterations} complete</p>
+<section class="clearfix">
+    <div class="title-area">
+        <h2>Batch Execution</h2>
+        <p class="muted">Test: <strong>{batch.testName}</strong> | ID: <code>{batch.batchId}</code></p>
+    </div>
+    <div class="action-area">
+        <a href="/tests/batch/{batch.batchId}/report/json" class="btn">JSON</a>
+        <a href="/tests/batch/{batch.batchId}/report/json?full=true" class="btn">Full JSON</a>
+        <form action="/tests/batch/{batch.batchId}/cancel" method="POST">
+            <button type="submit" class="btn-error">Cancel</button>
+        </form>
+        <a href="/tests" class="btn">Back</a>
     </div>
 </section>
 
 <section>
-    <h3>Sessions</h3>
+    <h3>Progress</h3>
+    <div class="clearfix" style="margin-bottom: 0.5rem;">
+        <strong class="title-area">{batch.status}</strong> 
+        <span class="muted small action-area">{batch.completedCount} / {batch.totalIterations} complete</span>
+    </div>
+    <div style="width:100%; height:4px; background:var(--border); border-radius: 2px; overflow: hidden; clear: both;">
+        <div style="width:{(batch.completedCount * 100 / batch.totalIterations)}%; height:100%; background:var(--accent); transition: width 0.3s;"></div>
+    </div>
+</section>
+
+<section>
+    <h3>Individual Tasks</h3>
     <table>
         <thead>
             <tr>
-                <th>Iteration</th>
                 <th>Agent</th>
-                <th>Session ID</th>
+                <th>Session</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th style="text-align: right;">Action</th>
             </tr>
         </thead>
-        <tbody id="sessions-table">
+        <tbody>
             {#for session in batch.sessions}
-                <tr data-session-id="{session.sessionId}">
-                    <td>{session_index + 1}</td>
-                    <td><strong>{session.agentName}</strong><br><small>{session.agentId}</small></td>
+                <tr>
+                    <td><strong>{session.agentName}</strong></td>
                     <td><code>{session.sessionId}</code></td>
                     <td>
-                        <span class="status-badge status-state-pending">PENDING</span>
+                        {#if session.status}
+                            <span class="status status-{session.status.state.name().toLowerCase().replace('test_state_', '')}">
+                                {session.status.state.name().replace('TEST_STATE_', '')}
+                            </span>
+                        {#else}
+                            <span class="status">PENDING</span>
+                        {/if}
                     </td>
-                    <td>
+                    <td style="text-align: right;">
                         <a href="/tests/{session.sessionId}/status" class="btn small">View</a>
                     </td>
                 </tr>
             {#else}
-                <tr id="empty-row">
-                    <td colspan="5" style="text-align: center;"><p class="text-muted">Initializing iterations...</p></td>
+                <tr>
+                    <td colspan="4" class="muted small">Waiting for sessions...</td>
                 </tr>
             {/for}
         </tbody>
     </table>
 </section>
 
-<template id="session-row-template">
-    <tr>
-        <td class="col-index"></td>
-        <td class="col-agent">
-            <strong class="agent-name"></strong><br>
-            <small class="agent-id"></small>
-        </td>
-        <td class="col-session">
-            <code class="session-id"></code>
-        </td>
-        <td class="col-status">
-            <span class="status-badge"></span>
-        </td>
-        <td class="col-action">
-            <a href="#" class="btn small view-btn">View</a>
-        </td>
-    </tr>
-</template>
-
 <script>
-    window.batchId = "{batch.batchId}";
+    if ("{batch.status}" === "RUNNING") {
+        setTimeout(() => window.location.reload(), 2000);
+    }
 </script>
-<script src="/js/tests_batch_status.js"></script>
 {/body}
 {/include}

@@ -1,57 +1,62 @@
 {#include base.html}
-{#title}New Task{/title}
+{#title}New Task - TestGenesis{/title}
 
 {#body}
-<section>
-    <h2>New Task</h2>
-    <nav class="actions">
+<section class="clearfix">
+    <div class="title-area">
+        <h2>New Translation Task</h2>
+    </div>
+    <div class="action-area">
         <a href="/translations" class="btn">Cancel</a>
-    </nav>
+    </div>
 </section>
 
 <form action="/translations/start" method="POST">
-    <fieldset>
-        <legend>Configuration</legend>
-        <label for="agent-select">Agent</label>
-        <select id="agent-select" name="agentId" required autofocus>
-            <option value="">-- Select Agent --</option>
-            {#for agent in agents}
-                <option value="{agent.id}">{agent.displayName}</option>
-            {#else}
-                <option disabled>No agents available</option>
-            {/for}
-        </select>
+    <section>
+        <h3>Configuration</h3>
+        <p>
+            <label>Agent</label><br>
+            <select name="agentId" id="agent-select" required autofocus>
+                <option value="">-- Select Agent --</option>
+                {#for agent in agents}
+                    <option value="{agent.id}">{agent.displayName}</option>
+                {#else}
+                    <option disabled>No agents available</option>
+                {/for}
+            </select>
+        </p>
 
-        <label for="type-select">Translation Type</label>
-        <select id="type-select" name="type" required disabled>
-            <option value="">-- Select Agent First --</option>
-        </select>
-        <strong id="type-info" class="status-badge status-warn d-none"></strong>
-    </fieldset>
-
-    <template id="option-template">
-        <option value=""></option>
-    </template>
+        <p>
+            <label>Translation Type</label><br>
+            <select name="type" id="type-select" required disabled>
+                <option value="">-- Select Agent First --</option>
+            </select>
+        </p>
+    </section>
 
     <section>
         <h3>Source Payloads</h3>
         <ul id="payload-list" style="max-height: 400px; overflow-y: auto;">
             {#for p in allPayloads}
                 <li data-type="{p.type}">
-                    <label style="cursor: pointer; width: 100%; display: flex; align-items: center; gap: 0.5rem;">
-                        <input type="checkbox" name="payloadIds" value="{p.id}" style="width: auto; margin: 0;">
-                        <strong>{p.name}</strong> 
-                        <code class="text-muted small">({p.type})</code>
+                    <label style="display:block; width:100%; cursor:pointer;">
+                        <input type="checkbox" name="payloadIds" value="{p.id}" style="width:auto; margin:0; vertical-align: middle;">
+                        <span style="margin-left: 0.5rem; vertical-align: middle;">{p.name}</span> 
+                        <code class="muted small" style="vertical-align: middle;">{p.type}</code>
                     </label>
                 </li>
             {#else}
-                <li><p class="text-muted">No payloads found.</p></li>
+                <li class="muted">No payloads found.</li>
             {/for}
         </ul>
     </section>
 
-    <button type="submit" id="start-btn" disabled>Start Task</button>
+    <button type="submit" id="start-btn" class="btn btn-primary" disabled>Start Task</button>
 </form>
+
+<template id="option-template">
+    <option value=""></option>
+</template>
 
 <script>
     window.agents = [

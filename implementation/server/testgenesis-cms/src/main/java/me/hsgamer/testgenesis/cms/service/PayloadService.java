@@ -5,6 +5,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.hsgamer.testgenesis.cms.persistence.PayloadEntity;
+import me.hsgamer.testgenesis.cms.persistence.TestEntity;
 import me.hsgamer.testgenesis.uap.v1.Payload;
 
 import java.util.ArrayList;

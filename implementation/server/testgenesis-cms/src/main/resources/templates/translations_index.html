@@ -1,48 +1,59 @@
 {#include base.html}
-{#title}Translations{/title}
+{#title}Translations - TestGenesis{/title}
 
 {#body}
-<section>
-    <h2>Translations</h2>
-    <nav class="actions">
-        <a href="/translations/new" class="btn btn-primary">New Task</a>
-    </nav>
+<section class="clearfix">
+    <div class="title-area">
+        <h2>Translation Tasks</h2>
+    </div>
+    <div class="action-area">
+        <a href="/translations/new" class="btn btn-primary">Start New Task</a>
+    </div>
 </section>
 
-<table>
-    <thead>
-        <tr>
-            <th>Session ID</th>
-            <th>Format</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {#for session in sessions}
-        <tr>
-            <td><code>{session.sessionId}</code></td>
-            <td><code>{session.ticket.targetFormat}</code></td>
-            <td>
-                {#if session.status}
-                    <strong class="status-badge status-state-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
-                        {session.status.state.name().replace('TRANSLATION_STATE_', '')}
-                    </strong>
-                    <br><small class="text-muted">{session.status.message}</small>
-                {#else}
-                    <strong class="status-badge status-state-pending">PENDING</strong>
-                {/if}
-            </td>
-            <td>
-                <a href="/translations/{session.sessionId}/status" class="btn">View Status</a>
-            </td>
-        </tr>
-        {#else}
-        <tr>
-            <td colspan="4"><p class="text-muted">No active tasks found.</p></td>
-        </tr>
-        {/for}
-    </tbody>
-</table>
+<section>
+    <table>
+        <thead>
+            <tr>
+                <th>Session ID</th>
+                <th>Target Format</th>
+                <th>Status</th>
+                <th style="text-align: right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {#for session in sessions}
+            <tr>
+                <td><code>{session.sessionId}</code></td>
+                <td><code>{session.ticket.targetFormat}</code></td>
+                <td>
+                    {#if session.status}
+                        <span class="status status-{session.status.state.name().toLowerCase().replace('translation_state_', '')}">
+                            {session.status.state.name().replace('TRANSLATION_STATE_', '')}
+                        </span>
+                        {#if session.status.message}
+                            <br><small class="muted">{session.status.message}</small>
+                        {/if}
+                    {#else}
+                        <span class="status">PENDING</span>
+                    {/if}
+                </td>
+                <td style="text-align: right;">
+                    <div class="actions">
+                        <a href="/translations/{session.sessionId}/status" class="btn">Monitor</a>
+                    </div>
+                </td>
+            </tr>
+            {#else}
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 3rem;">
+                    <p class="muted">No translation tasks found.</p>
+                    <a href="/translations/new" class="btn">Start a translation</a>
+                </td>
+            </tr>
+            {/for}
+        </tbody>
+    </table>
+</section>
 {/body}
 {/include}

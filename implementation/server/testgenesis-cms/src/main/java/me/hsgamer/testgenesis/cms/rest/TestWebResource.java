@@ -77,7 +77,8 @@ public class TestWebResource {
     public TemplateInstance createForm() {
         return tests_edit.data("test", new TestEntity())
             .data("allPayloads", payloadService.listAll())
-            .data("agents", agentManager.getAgentInfos());
+            .data("agents", agentManager.getAgentInfos())
+            .data("testTypes", agentManager.getAvailableTestTypes());
     }
 
 
@@ -89,7 +90,8 @@ public class TestWebResource {
             .orElseThrow(() -> new NotFoundException("Test not found: " + id));
         return tests_edit.data("test", entity)
             .data("allPayloads", payloadService.listAll())
-            .data("agents", agentManager.getAgentInfos());
+            .data("agents", agentManager.getAgentInfos())
+            .data("testTypes", agentManager.getAvailableTestTypes());
     }
 
 

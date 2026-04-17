@@ -1,35 +1,41 @@
 {#include base.html}
-{#title}Save Payload{/title}
+{#title}Save Payload - TestGenesis{/title}
 
 {#body}
-<section>
-    <h2>Save Payload</h2>
-    <nav class="actions">
+<section class="clearfix">
+    <div class="title-area">
+        <h2>Save Translated Payload</h2>
+    </div>
+    <div class="action-area">
         <a href="/translations/{sessionId}/status" class="btn">Cancel</a>
-    </nav>
+    </div>
 </section>
 
 <form action="/translations/save-payload" method="POST">
     <input type="hidden" name="sessionId" value="{sessionId}">
     <input type="hidden" name="index" value="{index}">
 
-    <fieldset>
-        <legend>Repository Entity</legend>
-        <label for="name">Entity Name</label>
-        <input type="text" id="name" name="name" value="{defaultName}" required autofocus>
-        <p><small class="text-muted">Identification in the repository.</small></p>
+    <section>
+        <h3>Repository Entity</h3>
+        <p>
+            <label>Entity Name</label><br>
+            <input type="text" name="name" value="{defaultName}" required autofocus>
+        </p>
+        <p>
+            <label>Description</label><br>
+            <textarea name="description" rows="3">Translated {type} from session {sessionId}</textarea>
+        </p>
+    </section>
 
-        <label for="description">Description</label>
-        <textarea id="description" name="description" rows="3">Translated {type} from session {sessionId}</textarea>
-    </fieldset>
+    <section>
+        <h3>Metadata</h3>
+        <p>
+            <label>Payload Type</label><br>
+            <input type="text" value="{type}" readonly style="border-color: transparent; padding-left: 0;">
+        </p>
+    </section>
 
-    <fieldset>
-        <legend>Source Metadata</legend>
-        <label for="type-preview">Payload Type</label>
-        <input type="text" id="type-preview" value="{type}" readonly>
-    </fieldset>
-
-    <button type="submit">Save to Database</button>
+    <button type="submit" class="btn btn-primary">Save to Database</button>
 </form>
 {/body}
 {/include}

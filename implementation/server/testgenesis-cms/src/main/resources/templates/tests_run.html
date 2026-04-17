@@ -1,105 +1,95 @@
 {#include base.html}
-{#title}Launch Test{/title}
+{#title}Launch Test - TestGenesis{/title}
 
 {#body}
-<section>
-    <h2>Launch Test</h2>
-    <p class="text-muted">Target: <strong>{test.name}</strong> <code>({test.testType})</code></p>
-    <nav class="actions">
+<section class="clearfix">
+    <div class="title-area">
+        <h2>Launch Test</h2>
+        <p class="muted">Target: <strong>{test.name}</strong> <code>({test.testType})</code></p>
+    </div>
+    <div class="action-area">
         <a href="/tests" class="btn">Back</a>
-    </nav>
+    </div>
 </section>
 
 <form action="/tests/{test.id}/start" method="POST">
     <section>
-        <h3>Available Agents</h3>
-        <div style="margin-bottom: 0.5rem;">
-            <label style="cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem;">
-                <input type="checkbox" id="selectAllAgents" style="width: auto;">
-                <strong>Select All Agents</strong>
-            </label>
-        </div>
+        <h3>Execution Agents</h3>
         <ul>
             {#for agent in agents}
                 {#if agent.supportsTestType(test.testType)}
-                    <li>
-                        <label style="cursor: pointer; width: 100%; display: flex; align-items: flex-start; gap: 0.75rem;">
-                            <input type="checkbox" name="agentIds" value="{agent.id}" class="agent-checkbox" style="width: auto; margin-top: 0.25rem;">
-                            <div style="flex: 1;">
-                                <div class="flex-between">
-                                    <strong>{agent.displayName}</strong>
-                                    <strong class="status-badge status-passed">Online</strong>
-                                </div>
-                                <code>{agent.id}</code>
+                    <li class="clearfix">
+                        <label style="display:block; width:100%; cursor:pointer;">
+                            <div class="title-area">
+                                <input type="checkbox" name="agentIds" value="{agent.id}" style="width:auto; margin:0; vertical-align: middle;">
+                                <strong style="margin-left: 0.5rem; vertical-align: middle;">{agent.displayName}</strong>
+                                <code class="muted" style="vertical-align: middle;">{agent.id}</code>
+                            </div>
+                            <div class="action-area">
+                                <span class="status status-completed">Online</span>
                             </div>
                         </label>
                     </li>
+                {#else}
+                    <li class="muted small">Agent <code>{agent.displayName}</code> incompatible.</li>
                 {/if}
             {#else}
-                <li><p class="text-muted">No agents available for <strong>{test.testType}</strong>.</p></li>
+                <li class="muted">No agents found for <code>{test.testType}</code>.</li>
             {/for}
         </ul>
     </section>
 
-    <script>
-        document.getElementById('selectAllAgents')?.addEventListener('change', function(e) {
-            document.querySelectorAll('.agent-checkbox').forEach(cb => {
-                cb.checked = e.target.checked;
-            });
-        });
-    </script>
+    <section>
+        <h3>Parameters</h3>
+        <p>
+            <label>Iterations</label><br>
+            <input type="number" name="iterations" value="1" min="1" max="100" required style="width:100px;">
+        </p>
+        <p>
+            <strong>Execution Mode</strong><br>
+            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer; margin-right:2rem; margin-top:0.5rem;">
+                <input type="radio" name="parallel" value="false" checked style="width:auto;"> Sequential
+            </label>
+            <label style="display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                <input type="radio" name="parallel" value="true" style="width:auto;"> Parallel
+            </label>
+        </p>
+    </section>
 
     <section>
         <h3>Primary Payloads</h3>
-        <p><small class="text-muted">Linked to the test definition.</small></p>
         <ul>
             {#for payload in test.payloads}
                 <li>
-                    <strong>{payload.name}</strong>
-                    <code class="status-badge">{payload.type}</code>
+                    <span>{payload.name}</span>
+                    <code>{payload.type}</code>
                 </li>
             {#else}
-                <li><p class="text-muted">No linked payloads.</p></li>
+                <li class="muted small">No primary payloads.</li>
             {/for}
         </ul>
     </section>
 
     <section>
-        <h3>Additional Payloads</h3>
-        <p><small class="text-muted">Select extra payloads for this run.</small></p>
+        <h3>Extra Payloads</h3>
         <ul>
             {#for payload in extraPayloads}
-                <li>
-                    <label style="cursor: pointer; width: 100%; display: flex; align-items: flex-start; gap: 0.75rem;">
-                        <input type="checkbox" name="extraPayloadIds" value="{payload.id}" style="width: auto; margin-top: 0.25rem;">
-                        <div style="flex: 1;">
-                            <div class="flex-between">
-                                <strong>{payload.name}</strong>
-                                <code class="status-badge">{payload.type}</code>
-                            </div>
-                            <p class="small text-muted">{payload.description}</p>
+                <li class="clearfix">
+                    <label style="display:block; width:100%; cursor:pointer;">
+                        <div class="title-area">
+                            <input type="checkbox" name="extraPayloadIds" value="{payload.id}" style="width:auto; margin:0; vertical-align: middle;">
+                            <span style="margin-left: 0.5rem; vertical-align: middle;">{payload.name}</span>
+                            <code style="vertical-align: middle;">{payload.type}</code>
                         </div>
                     </label>
                 </li>
             {#else}
-                <li><p class="text-muted">No additional payloads available.</p></li>
+                <li class="muted small">No extra payloads.</li>
             {/for}
         </ul>
     </section>
 
-    <fieldset>
-        <legend>Execution Parameters</legend>
-        <label for="iterations">Iterations</label>
-        <input type="number" id="iterations" name="iterations" value="1" min="1" max="100" required>
-        
-        <p><strong>Execution Mode</strong></p>
-        <div style="display: flex; gap: 1rem;">
-            <label style="cursor: pointer;"><input type="radio" name="parallel" value="false" checked style="width:auto;"> Sequential</label>
-            <label style="cursor: pointer;"><input type="radio" name="parallel" value="true" style="width:auto;"> Parallel</label>
-        </div>
-    </fieldset>
-
-    <button type="submit">Launch Execution</button>
+    <button type="submit" class="btn-primary">Launch Execution</button>
 </form>
 {/body}
 {/include}

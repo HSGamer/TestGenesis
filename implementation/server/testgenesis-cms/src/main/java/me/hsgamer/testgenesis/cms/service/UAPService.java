@@ -103,6 +103,12 @@ public class UAPService extends MutinyAgentHubGrpc.AgentHubImplBase {
         });
     }
 
+    @jakarta.annotation.PreDestroy
+    void stop() {
+        log.info("Stopping UAPService...");
+        agentManager.shutdown();
+    }
+
     @GlobalInterceptor
     @Singleton
     public static class IdInterceptor implements ServerInterceptor {

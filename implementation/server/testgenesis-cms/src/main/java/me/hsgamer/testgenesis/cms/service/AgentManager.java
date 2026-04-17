@@ -44,6 +44,11 @@ public class AgentManager {
         return agents.remove(id);
     }
 
+    public void shutdown() {
+        agents.values().forEach(a -> a.setDispatcher(null));
+        agents.clear();
+    }
+
     public List<AgentInfo> getAgentInfos() {
         return agents.values().stream().filter(Agent::isReady).map(a -> {
             List<TestTypeInfo> tests = a.capabilities().stream()
@@ -62,6 +67,13 @@ public class AgentManager {
                 }).toList();
             return new AgentInfo(a.id(), a.displayName(), tests, trans);
         }).toList();
+    }
+
+    public Set<String> getAvailableTestTypes() {
+        return agents.values().stream().filter(Agent::isReady).flatMap(a -> a.capabilities.stream())
+            .filter(Capability::hasTest)
+            .map(c -> c.getTest().getType())
+            .collect(Collectors.toCollection(TreeSet::new));
     }
 
     public Set<String> getAvailablePayloadTypes() {

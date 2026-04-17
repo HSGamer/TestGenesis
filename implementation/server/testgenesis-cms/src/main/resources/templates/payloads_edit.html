@@ -1,67 +1,50 @@
 {#include base.html}
-{#title}{#if payload.id}Edit {payload.name}{#else}New Payload{/if}{/title}
-
-{#head}
-<link href="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.10.2/jsoneditor.min.css" rel="stylesheet" type="text/css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsoneditor/9.10.2/jsoneditor.min.js"></script>
-{/head}
+{#title}Edit Payload - TestGenesis{/title}
 
 {#body}
 <section>
-    <h2>{#if payload.id}Edit Payload{#else}New Payload{/if}</h2>
-    <nav class="actions">
-        <a href="/payloads" class="btn">Cancel</a>
-    </nav>
+    <header style="border:none; margin:0; padding:0;">
+        <h2>{#if payload.id}Edit{:else}New{/if} Payload</h2>
+        <a href="/payloads" class="btn">Back</a>
+    </header>
 </section>
 
 <form action="/payloads/save" method="POST" enctype="multipart/form-data">
-    {#if payload.id}
-        <input type="hidden" name="id" value="{payload.id}">
-    {/if}
+    {#if payload.id}<input type="hidden" name="id" value="{payload.id}">{/if}
+    
+    <section>
+        <p>
+            <label>Name</label><br>
+            <input type="text" name="name" value="{payload.name}" required placeholder="Payload Name">
+        </p>
+        <p>
+            <label>Description</label><br>
+            <textarea name="description" placeholder="Metadata description...">{payload.description}</textarea>
+        </p>
+        <p>
+            <label>Type</label><br>
+            <input type="text" name="type" value="{payload.type}" list="payload-types" required placeholder="e.g. selenium-script">
+            <datalist id="payload-types">
+                {#for type in availableTypes}
+                    <option value="{type}"></option>
+                {/for}
+            </datalist>
+        </p>
+        <p>
+            <label>Metadata (JSON)</label><br>
+            <textarea name="metadata" style="font-family:monospace; font-size:0.85rem;" rows="5">{payload.metadata}</textarea>
+        </p>
+    </section>
 
-    <fieldset>
-        <legend>Information</legend>
-        
-        <label for="display-name">Display Name</label>
-        <input type="text" id="display-name" name="name" value="{payload.name}" required>
-
-        <label for="description">Description</label>
-        <textarea id="description" name="description" rows="3">{payload.description}</textarea>
-
-        <label for="payload-type">Type</label>
-        <input type="text" id="payload-type" name="type" value="{payload.type}" required list="available-payload-types">
-        <datalist id="available-payload-types">
-            {#for type in availableTypes}
-                <option value="{type}"></option>
-            {/for}
-        </datalist>
-    </fieldset>
-
-    <fieldset>
-        <legend>Attachment</legend>
-        <input type="file" id="payload-file" name="attachment" {#if !payload.id}required{/if}>
-        <div id="mime-error" class="status-badge status-failed d-none"></div>
-        {#if payload.id && payload.attachmentName}
-            <p><small class="text-muted">Current: <code>{payload.attachmentName}</code></small></p>
+    <section>
+        <h3>Attachment</h3>
+        {#if payload.attachmentName}
+            <p class="muted small">Current: <strong>{payload.attachmentName}</strong></p>
         {/if}
-    </fieldset>
+        <input type="file" name="attachmentFile">
+    </section>
 
-    <fieldset>
-        <legend>Metadata</legend>
-        <div id="json-editor" style="height: 480px; margin-bottom: 1rem;"></div>
-        <input type="hidden" id="metadata-input" name="metadata" value="{payload.metadata ?: '{}'}">
-    </fieldset>
-
-    <button type="submit">Save Payload</button>
+    <button type="submit" class="btn">Save Payload</button>
 </form>
-
-<script>
-    window.mimeTypeMapping = {
-        {#for entry in mimeTypeMapping.entrySet()}
-            "{entry.key}": [{#for mime in entry.value}"{mime}"{#if mime_hasNext},{/if}{/for}]{#if entry_hasNext},{/if}
-        {/for}
-    };
-</script>
-<script src="/js/payloads_edit.js"></script>
 {/body}
 {/include}

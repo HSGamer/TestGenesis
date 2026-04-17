@@ -1,63 +1,72 @@
 {#include base.html}
-{#title}Execution Status{/title}
+{#title}Execution Status - TestGenesis{/title}
 
 {#body}
-<section>
-    <h2>Test Status</h2>
-    <p><code>{session.sessionId}</code></p>
-    <nav class="actions">
-        <strong id="status-badge" class="status-badge status-state-pending">PENDING</strong>
-        <a href="/tests/{session.sessionId}/report/json" class="btn" download title="Minimal report (no attachments)">JSON</a>
-        <a href="/tests/{session.sessionId}/report/json?full=true" class="btn" download title="Full report with attachments">Full JSON</a>
+<section class="clearfix">
+    <div class="title-area">
+        <h2>Test Status</h2>
+        <p class="muted">Session: <code>{session.sessionId}</code></p>
+    </div>
+    <div class="action-area">
+        <a href="/tests/{session.sessionId}/report/json" class="btn">JSON</a>
+        <a href="/tests/{session.sessionId}/report/json?full=true" class="btn">Full JSON</a>
         <a href="/tests" class="btn">Back</a>
-    </nav>
+    </div>
 </section>
 
 <section>
-    <h3>Progress</h3>
+    <div class="clearfix" style="margin-bottom: 0.5rem;">
+        <h3 class="title-area">Execution Progress</h3>
+        <span id="status-badge" class="status-badge status action-area">PENDING</span>
+    </div>
     <div id="steps-container">
-        <p id="status-message" class="text-muted">Waiting for agent...</p>
+        <p id="status-message" class="muted">Waiting for agent...</p>
     </div>
 </section>
 
 <section id="summary-section" class="d-none">
     <h3>Summary</h3>
-    <p>Total Duration: <strong id="summary-duration"></strong></p>
-    <pre id="summary-json"></pre>
+    <p class="small">Duration: <strong id="summary-duration"></strong></p>
+    <pre style="font-size: 0.8rem; border: 1px solid var(--border); padding: 1rem; background: #010409; border-radius: 6px;" id="summary-json"></pre>
 </section>
-
-<template id="step-template">
-    <article style="border: 1px solid var(--border-color); padding: 0.75rem; margin-bottom: 0.5rem; border-radius: var(--radius);">
-        <nav class="flex-between step-header" style="cursor:pointer;">
-            <strong>
-                <span class="status-badge"></span>
-                <span class="step-name"></span>
-            </strong>
-            <code class="duration"></code>
-        </nav>
-        <section class="details d-none" style="margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
-            <pre class="metadata"></pre>
-        </section>
-    </article>
-</template>
-
-<template id="attachment-template">
-    <figure>
-        <img class="attachment-img d-none">
-        <figcaption class="attachment-name"></figcaption>
-        <a class="download-link btn small" target="_blank">Download</a>
-    </figure>
-</template>
 
 <section id="attachments-section" class="d-none">
     <h3>Attachments</h3>
-    <div id="attachments-container" class="attachment-grid"></div>
+    <div id="attachments-container" class="grid" style="margin-top: 1rem;"></div>
 </section>
 
-<section>
-    <h3>Console</h3>
-    <div id="telemetry-console"></div>
-</section>
+<template id="attachment-template">
+    <div class="card" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+        <p class="attachment-name small truncate" style="margin-bottom: 0.5rem;"></p>
+        <img class="attachment-img d-none" style="width: 100%; height: auto; border-radius: 4px; cursor: pointer; margin-bottom: 0.5rem;">
+        <a class="download-link btn small" style="display: block; text-align: center; margin-right: 0; margin-bottom: 0;">Download</a>
+    </div>
+</template>
+
+<template id="step-template">
+    <article style="border-bottom: 1px solid var(--border); padding: 0.75rem 0;">
+        <div style="cursor:pointer;" class="step-header clearfix">
+            <div class="title-area">
+                <strong>
+                    <span class="status-badge status" style="margin-right:0.5rem; vertical-align: middle;"></span>
+                    <span class="step-name"></span>
+                </strong>
+            </div>
+            <div class="action-area">
+                <code class="duration muted small"></code>
+            </div>
+        </div>
+        <div class="details d-none" style="margin-top:0.75rem; clear: both;">
+            <p class="muted small message"></p>
+            <pre class="metadata" style="font-size:0.75rem; color:var(--muted);"></pre>
+            <div class="attachments"></div>
+        </div>
+    </article>
+</template>
+
+<style>
+    .d-none { display: none !important; }
+</style>
 
 <script>
     window.sessionId = "{session.sessionId}";

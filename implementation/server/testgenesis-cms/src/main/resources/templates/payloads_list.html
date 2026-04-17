@@ -1,50 +1,57 @@
 {#include base.html}
-{#title}Payloads{/title}
+{#title}Payloads - TestGenesis{/title}
 
 {#body}
-<section>
-    <h2>Payloads</h2>
-    <nav class="actions">
+<section class="clearfix">
+    <div class="title-area">
+        <h2>Payload Management</h2>
+    </div>
+    <div class="action-area">
         <a href="/payloads/new" class="btn btn-primary">New Payload</a>
-    </nav>
+    </div>
 </section>
 
-<table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>File</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {#for payload in payloads}
-        <tr>
-            <td><strong>{payload.name}</strong></td>
-            <td><code>{payload.type}</code></td>
-            <td>
-                {#if payload.attachmentName}
-                    <a href="/payloads/{payload.id}/attachment">{payload.attachmentName}</a>
-                {#else}
-                    <small class="text-muted">No file</small>
-                {/if}
-            </td>
-            <td>
-                <nav class="actions">
-                    <a href="/payloads/{payload.id}/edit" class="btn">Edit</a>
-                    <form action="/payloads/{payload.id}/delete" method="POST" onsubmit="return confirm('Are you sure?');" style="display: inline;">
-                        <button type="submit" class="status-failed">Del</button>
-                    </form>
-                </nav>
-            </td>
-        </tr>
-        {#else}
-        <tr>
-            <td colspan="4"><p class="text-muted">No payloads found.</p></td>
-        </tr>
-        {/for}
-    </tbody>
-</table>
+<section>
+    <table>
+        <thead>
+            <tr>
+                <th>Payload Name</th>
+                <th>Type</th>
+                <th>Attachment</th>
+                <th style="text-align: right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {#for payload in payloads}
+            <tr>
+                <td><strong>{payload.name}</strong></td>
+                <td><code>{payload.type}</code></td>
+                <td>
+                    {#if payload.attachmentName}
+                        <a href="/payloads/{payload.id}/attachment" class="small">{payload.attachmentName}</a>
+                    {#else}
+                        <span class="muted small">No file</span>
+                    {/if}
+                </td>
+                <td style="text-align: right;">
+                    <div class="actions">
+                        <a href="/payloads/{payload.id}/edit" class="btn">Edit</a>
+                        <form action="/payloads/{payload.id}/delete" method="POST" onsubmit="return confirm('Are you sure?');">
+                            <button type="submit" class="btn-error">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {#else}
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 3rem;">
+                    <p class="muted">No payloads found.</p>
+                    <a href="/payloads/new" class="btn">Create your first payload</a>
+                </td>
+            </tr>
+            {/for}
+        </tbody>
+    </table>
+</section>
 {/body}
 {/include}

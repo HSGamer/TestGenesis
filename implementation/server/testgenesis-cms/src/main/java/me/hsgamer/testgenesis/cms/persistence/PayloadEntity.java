@@ -2,9 +2,11 @@ package me.hsgamer.testgenesis.cms.persistence;
 
 import com.google.protobuf.ByteString;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.PreRemove;
 import jakarta.persistence.Lob;
+import jakarta.persistence.Column;
 import lombok.Getter;
 import lombok.Setter;
 import me.hsgamer.testgenesis.cms.util.ProtoUtil;
@@ -30,6 +32,17 @@ public class PayloadEntity extends PanacheEntity {
     @Lob
     @Column(columnDefinition = "TEXT")
     public String metadata;
+
+    @ManyToMany(mappedBy = "payloads")
+    public java.util.List<TestEntity> tests = new java.util.ArrayList<>();
+
+    @PreRemove
+    void unlinkTests() {
+        for (TestEntity test : tests) {
+            test.getPayloads().remove(this);
+        }
+    }
+
 
     public Payload toProto() {
         return Payload.newBuilder()

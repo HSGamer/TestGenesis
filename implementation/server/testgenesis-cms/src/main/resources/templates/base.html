@@ -8,24 +8,27 @@
     {#insert head}{/insert}
 </head>
 <body>
-    <aside>
-        <nav>
-            <ul>
-                <li><a href="/">Dashboard</a></li>
-                <li><a href="/payloads">Payloads</a></li>
-                <li><a href="/tests">Tests</a></li>
-                <li><a href="/translations">Translations</a></li>
-            </ul>
-        </nav>
-    </aside>
+    <header>
+        <div class="container">
+            <h1>TestGenesis</h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Dashboard</a></li>
+                    <li><a href="/payloads">Payloads</a></li>
+                    <li><a href="/tests">Tests</a></li>
+                    <li><a href="/translations">Translations</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
 
-    <main>
+    <main class="container">
         {#insert body}{/insert}
     </main>
 
     <script src="/js/common.js"></script>
     <script>
-        document.querySelectorAll('aside nav a').forEach(link => {
+        document.querySelectorAll('header nav a').forEach(link => {
             const path = window.location.pathname;
             const href = link.getAttribute('href');
             if (path === href || (href !== '/' && path.startsWith(href))) {
