@@ -97,3 +97,33 @@ clean:
         fi; \
     done
     rm -rf {{node_client}}/{dist,node_modules,src/generated}
+    rm -rf .docker/
+
+# --- Deployment ---
+
+# Deploy to a VPS via SSH
+# Usage: just deploy <user@host> [remote_path]
+deploy host path="~/TestGenesis":
+    @echo "[Deploy] Syncing files to {{host}}:{{path}}..."
+    rsync -avz --delete --exclude-from='.dockerignore' ./ {{host}}:{{path}}
+    @echo "[Deploy] Building and starting services on remote..."
+    ssh {{host}} "cd {{path}} && docker compose up --build -d"
+
+# Configure a remote Docker context (Alternative method)
+# Usage: just setup-remote-context <name> <ssh-url>
+setup-remote-context name url:
+    docker context create {{name}} --docker "host={{url}}"
+    @echo "Success! Use 'docker --context {{name}} compose up --build -d' to deploy."
+
+# Create a versioned deployment bundle (ZIP)
+bundle:
+    bash bundle.sh
+
+# Deploy via ZIP bundle (Upload -> Unzip -> Build)
+# Usage: just deploy-zip <user@host> [remote_path]
+deploy-zip host path="~/TestGenesis": bundle
+    @echo "[Deploy] Uploading bundle to {{host}}..."
+    @BUNDLE=$$(ls testgenesis-*.zip | sort -V | tail -n 1); \
+    scp $$BUNDLE {{host}}:{{path}}.zip; \
+    @echo "[Deploy] Extracting and starting on remote..."
+    ssh {{host}} "mkdir -p {{path}} && unzip -o {{path}}.zip -d {{path}} && cd {{path}} && docker compose up --build -d"

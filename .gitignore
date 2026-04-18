@@ -1,5 +1,36 @@
-documentation/
+# Build Artifacts
+**/target/
+**/node_modules/
+**/dist/
+**/build/
+**/out/
+
+# IDE & Configs
+.idea/
+.vscode/
+.docker/
+*.iml
+*.iws
+*.ipr
 .agents/
 skills-lock.json
-.idea/
-*.iml
+
+# Documentation
+documentation/
+
+# Logs & Temp
+*.log
+tmp/
+.DS_Store
+
+# OS specific
+Thumbs.db
+desktop.ini
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# TestGenesis Bundles
+testgenesis-v*.zip

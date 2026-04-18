@@ -1,0 +1,27 @@
+# Build Artifacts
+**/target/
+**/node_modules/
+**/dist/
+**/build/
+**/out/
+
+# IDE & Configs
+**/.idea/
+**/.vscode/
+**/.git/
+**/.docker/
+**/.gitignore
+**/.editorconfig
+**/Justfile
+**/SKILLS.md
+**/documentation/
+
+# Logs & Temp
+**/*.log
+**/tmp/
+**/.DS_Store
+
+# Java specific
+**/.mvn/
+**/mvnw
+**/mvnw.cmd
