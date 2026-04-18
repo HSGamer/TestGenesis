@@ -9,6 +9,9 @@
 .idea/
 .vscode/
 .docker/
+pass_file.txt
+host_file.txt
+*.secret
 *.iml
 *.iws
 *.ipr

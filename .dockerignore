@@ -11,6 +11,9 @@
 **/.git/
 **/.docker/
 **/.gitignore
+pass_file.txt
+host_file.txt
+*.secret
 **/.editorconfig
 **/Justfile
 **/SKILLS.md

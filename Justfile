@@ -99,15 +99,24 @@ clean:
     rm -rf {{node_client}}/{dist,node_modules,src/generated}
     rm -rf .docker/
 
-# --- Deployment ---
+# --- Deployment Configuration ---
+
+HOST_FILE := "host_file.txt"
+PASS_FILE := "pass_file.txt"
+SSH_HOST := `if [ -f {{HOST_FILE}} ]; then cat {{HOST_FILE}}; else echo "host@ip"; fi`
+SSH := `if [ -f {{PASS_FILE}} ]; then echo "sshpass -f {{PASS_FILE}} ssh"; else echo "ssh"; fi`
+SCP := `if [ -f {{PASS_FILE}} ]; then echo "sshpass -f {{PASS_FILE}} scp"; else echo "scp"; fi`
+RSYNC := `if [ -f {{PASS_FILE}} ]; then echo "rsync -avz --delete -e 'sshpass -f {{PASS_FILE}} ssh'"; else echo "rsync -avz --delete"; fi`
+
+# --- Deployment Recipes ---
 
 # Deploy to a VPS via SSH
-# Usage: just deploy <user@host> [remote_path]
-deploy host path="~/TestGenesis":
+# Usage: just deploy [user@host] [remote_path]
+deploy host=SSH_HOST path="~/TestGenesis":
     @echo "[Deploy] Syncing files to {{host}}:{{path}}..."
-    rsync -avz --delete --exclude-from='.dockerignore' ./ {{host}}:{{path}}
+    {{RSYNC}} --exclude-from='.dockerignore' ./ {{host}}:{{path}}
     @echo "[Deploy] Building and starting services on remote..."
-    ssh {{host}} "cd {{path}} && docker compose up --build -d"
+    {{SSH}} {{host}} "cd {{path}} && docker compose up --build -d"
 
 # Configure a remote Docker context (Alternative method)
 # Usage: just setup-remote-context <name> <ssh-url>
@@ -120,10 +129,10 @@ bundle:
     bash bundle.sh
 
 # Deploy via ZIP bundle (Upload -> Unzip -> Build)
-# Usage: just deploy-zip <user@host> [remote_path]
-deploy-zip host path="~/TestGenesis": bundle
+# Usage: just deploy-zip [user@host] [remote_path]
+deploy-zip host=SSH_HOST path="~/TestGenesis": bundle
     @echo "[Deploy] Uploading bundle to {{host}}..."
     @BUNDLE=$$(ls testgenesis-*.zip | sort -V | tail -n 1); \
-    scp $$BUNDLE {{host}}:{{path}}.zip; \
+    {{SCP}} $$BUNDLE {{host}}:{{path}}.zip; \
     @echo "[Deploy] Extracting and starting on remote..."
-    ssh {{host}} "mkdir -p {{path}} && unzip -o {{path}}.zip -d {{path}} && cd {{path}} && docker compose up --build -d"
+    {{SSH}} {{host}} "mkdir -p {{path}} && unzip -o {{path}}.zip -d {{path}} && cd {{path}} && docker compose up --build -d"
