@@ -1,5 +1,11 @@
 # Generated Agents Justfile - DO NOT EDIT MANUALLY
 
+build-manual-java-agent:
+    just build-client manual-java-agent
+
+run-manual-java-agent *args:
+    just run-client manual-java-agent {{args}}
+
 build-puppeteer-replay-agent:
     just build-client puppeteer-replay-agent
 
