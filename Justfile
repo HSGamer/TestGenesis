@@ -102,45 +102,69 @@ clean:
 # --- Deployment Configuration ---
 
 VPS_FILE := ".vps"
-# Line 1: user@host | Line 2: password
-SSH_HOST := `[ -f {{VPS_FILE}} ] && head -n 1 {{VPS_FILE}} || echo "host@ip"`
 
 # --- Deployment Recipes ---
 
 # Deploy to a VPS via SSH (Sync & Build)
-# Usage: just deploy [user@host] [remote_path]
-deploy host=SSH_HOST path="~/TestGenesis":
-    @echo "[Deploy] Syncing files to {{host}}:{{path}}..."
-    @if [ -f {{VPS_FILE}} ]; then \
-        export SSHPASS=$$(tail -n 1 {{VPS_FILE}}); \
-        rsync -avz --delete -e "sshpass -e ssh" --exclude-from='.dockerignore' ./ {{host}}:{{path}}; \
-        @echo "[Deploy] Building and starting services on remote..."; \
-        sshpass -e ssh {{host}} "cd {{path}} && docker compose up --build -d"; \
-    else \
-        rsync -avz --delete --exclude-from='.dockerignore' ./ {{host}}:{{path}}; \
-        @echo "[Deploy] Building and starting services on remote..."; \
-        ssh {{host}} "cd {{path}} && docker compose up --build -d"; \
-    fi
-
+# Usage: just deploy [remote_path] [user@host]
 # Create a versioned deployment bundle (ZIP)
 bundle:
-    bash bundle.sh
+    #!/usr/bin/env bash
+    VERSION=$(grep -m1 '<version>' implementation/server/testgenesis-cms/pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+    OUTPUT_FILE="testgenesis-v${VERSION}.zip"
+    echo "[Bundle] Creating v${VERSION} into ${OUTPUT_FILE}..."
+    rm -f testgenesis-v*.zip
+    git ls-files --cached --others --exclude-standard | zip "$OUTPUT_FILE" -@
+    echo "[Bundle] Done! Created ${OUTPUT_FILE}"
+
+# Deploy to a VPS via SSH (Sync & Build)
+# Usage: just deploy [remote_path] [user@host]
+deploy path="~/TestGenesis" host="":
+    #!/usr/bin/env bash
+    VPS_FILE=".vps"
+    REMOTE_PATH="{{path}}"
+    HOST="{{host}}"
+    if [ -z "$HOST" ] && [ -f "$VPS_FILE" ]; then HOST=$(head -n 1 "$VPS_FILE"); fi
+    if [ -z "$HOST" ]; then HOST="host@ip"; fi
+    
+    SSH_CMD="ssh"
+    RSYNC_OPTS="-avz --delete"
+    if [ -f "$VPS_FILE" ]; then
+        export SSHPASS=$(tail -n 1 "$VPS_FILE")
+        SSH_CMD="sshpass -e ssh"
+        RSYNC_OPTS="$RSYNC_OPTS -e 'sshpass -e ssh'"
+    fi
+
+    echo "[Deploy] Syncing files to $HOST:$REMOTE_PATH..."
+    eval "rsync $RSYNC_OPTS --exclude-from='.dockerignore' ./ \"$HOST:$REMOTE_PATH\""
+    echo "[Deploy] Building and starting services on remote..."
+    $SSH_CMD "$HOST" "cd $REMOTE_PATH && docker compose up --build -d"
 
 # Deploy via ZIP bundle (Upload -> Unzip -> Build)
-# Usage: just deploy-zip [user@host] [remote_path]
-deploy-zip host=SSH_HOST path="~/TestGenesis": bundle
-    @echo "[Deploy] Uploading bundle to {{host}}..."
-    @BUNDLE=$$(ls testgenesis-*.zip | sort -V | tail -n 1); \
-    if [ -f {{VPS_FILE}} ]; then \
-        export SSHPASS=$$(tail -n 1 {{VPS_FILE}}); \
-        sshpass -e scp $$BUNDLE {{host}}:{{path}}.zip; \
-        @echo "[Deploy] Extracting and starting on remote..."; \
-        sshpass -e ssh {{host}} "mkdir -p {{path}} && unzip -o {{path}}.zip -d {{path}} && cd {{path}} && docker compose up --build -d"; \
-    else \
-        scp $$BUNDLE {{host}}:{{path}}.zip; \
-        @echo "[Deploy] Extracting and starting on remote..."; \
-        ssh {{host}} "mkdir -p {{path}} && unzip -o {{path}}.zip -d {{path}} && cd {{path}} && docker compose up --build -d"; \
+# Usage: just deploy-zip [remote_path] [user@host]
+deploy-zip path="~/TestGenesis" host="": bundle
+    #!/usr/bin/env bash
+    VPS_FILE=".vps"
+    REMOTE_PATH="{{path}}"
+    HOST="{{host}}"
+    if [ -z "$HOST" ] && [ -f "$VPS_FILE" ]; then HOST=$(head -n 1 "$VPS_FILE"); fi
+    if [ -z "$HOST" ]; then HOST="host@ip"; fi
+
+    SSH_CMD="ssh"
+    SCP_CMD="scp"
+    if [ -f "$VPS_FILE" ]; then
+        export SSHPASS=$(tail -n 1 "$VPS_FILE")
+        SSH_CMD="sshpass -e ssh"
+        SCP_CMD="sshpass -e scp"
     fi
+
+    BUNDLE=$(ls testgenesis-*.zip 2>/dev/null | sort -V | tail -n 1)
+    if [ -z "$BUNDLE" ]; then echo "Error: No bundle found."; exit 1; fi
+
+    echo "[Deploy] Uploading bundle $BUNDLE to $HOST..."
+    $SCP_CMD "$BUNDLE" "$HOST:$REMOTE_PATH.zip"
+    echo "[Deploy] Extracting and starting on remote..."
+    $SSH_CMD "$HOST" "mkdir -p $REMOTE_PATH && unzip -o $REMOTE_PATH.zip -d $REMOTE_PATH && cd $REMOTE_PATH && docker compose up --build -d"
 
 # Configure a remote Docker context (Alternative method)
 # Usage: just setup-remote-context <name> <ssh-url>
