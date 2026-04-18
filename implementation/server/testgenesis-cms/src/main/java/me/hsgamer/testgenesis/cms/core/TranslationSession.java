@@ -65,9 +65,12 @@ public class TranslationSession extends AbstractSession<TranslationResponse> {
 
     @Override
     public void fail(String reason) {
-        updateStatus(TranslationStatus.newBuilder()
+        TranslationStatus status = TranslationStatus.newBuilder()
             .setState(TranslationState.TRANSLATION_STATE_FAILED)
             .setMessage(reason)
+            .build();
+        completeWithResult(TranslationResult.newBuilder()
+            .setStatus(status)
             .build());
     }
 

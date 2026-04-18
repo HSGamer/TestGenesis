@@ -89,9 +89,6 @@ public class TranslationManager {
     }
 
     public void failSession(String sessionId, String reason) {
-        Optional.ofNullable(translationSessions.remove(sessionId)).ifPresent(s -> s.updateStatus(TranslationStatus.newBuilder()
-            .setState(TranslationState.TRANSLATION_STATE_FAILED)
-            .setMessage(reason)
-            .build()));
+        Optional.ofNullable(translationSessions.remove(sessionId)).ifPresent(s -> s.fail(reason));
     }
 }

@@ -102,9 +102,6 @@ public class TestSessionManager {
     }
 
     public void failSession(String sessionId, String reason) {
-        Optional.ofNullable(testSessions.remove(sessionId)).ifPresent(s -> s.updateStatus(TestStatus.newBuilder()
-            .setState(TestState.TEST_STATE_FAILED)
-            .setMessage(reason)
-            .build()));
+        Optional.ofNullable(testSessions.remove(sessionId)).ifPresent(s -> s.fail(reason));
     }
 }

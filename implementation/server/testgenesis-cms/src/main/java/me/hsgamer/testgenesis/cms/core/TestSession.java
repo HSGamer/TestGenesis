@@ -63,9 +63,12 @@ public class TestSession extends AbstractSession<TestResponse> {
 
     @Override
     public void fail(String reason) {
-        updateStatus(TestStatus.newBuilder()
+        TestStatus status = TestStatus.newBuilder()
             .setState(TestState.TEST_STATE_FAILED)
             .setMessage(reason)
+            .build();
+        completeWithResult(TestResult.newBuilder()
+            .setStatus(status)
             .build());
     }
 
