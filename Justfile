@@ -101,28 +101,26 @@ clean:
 
 # --- Deployment Configuration ---
 
-HOST_FILE := "host_file.txt"
-PASS_FILE := "pass_file.txt"
-SSH_HOST := `if [ -f {{HOST_FILE}} ]; then cat {{HOST_FILE}}; else echo "host@ip"; fi`
-SSH := `if [ -f {{PASS_FILE}} ]; then echo "sshpass -f {{PASS_FILE}} ssh"; else echo "ssh"; fi`
-SCP := `if [ -f {{PASS_FILE}} ]; then echo "sshpass -f {{PASS_FILE}} scp"; else echo "scp"; fi`
-RSYNC := `if [ -f {{PASS_FILE}} ]; then echo "rsync -avz --delete -e 'sshpass -f {{PASS_FILE}} ssh'"; else echo "rsync -avz --delete"; fi`
+VPS_FILE := ".vps"
+# Line 1: user@host | Line 2: password
+SSH_HOST := `[ -f {{VPS_FILE}} ] && head -n 1 {{VPS_FILE}} || echo "host@ip"`
 
 # --- Deployment Recipes ---
 
-# Deploy to a VPS via SSH
+# Deploy to a VPS via SSH (Sync & Build)
 # Usage: just deploy [user@host] [remote_path]
 deploy host=SSH_HOST path="~/TestGenesis":
     @echo "[Deploy] Syncing files to {{host}}:{{path}}..."
-    {{RSYNC}} --exclude-from='.dockerignore' ./ {{host}}:{{path}}
-    @echo "[Deploy] Building and starting services on remote..."
-    {{SSH}} {{host}} "cd {{path}} && docker compose up --build -d"
-
-# Configure a remote Docker context (Alternative method)
-# Usage: just setup-remote-context <name> <ssh-url>
-setup-remote-context name url:
-    docker context create {{name}} --docker "host={{url}}"
-    @echo "Success! Use 'docker --context {{name}} compose up --build -d' to deploy."
+    @if [ -f {{VPS_FILE}} ]; then \
+        export SSHPASS=$$(tail -n 1 {{VPS_FILE}}); \
+        rsync -avz --delete -e "sshpass -e ssh" --exclude-from='.dockerignore' ./ {{host}}:{{path}}; \
+        @echo "[Deploy] Building and starting services on remote..."; \
+        sshpass -e ssh {{host}} "cd {{path}} && docker compose up --build -d"; \
+    else \
+        rsync -avz --delete --exclude-from='.dockerignore' ./ {{host}}:{{path}}; \
+        @echo "[Deploy] Building and starting services on remote..."; \
+        ssh {{host}} "cd {{path}} && docker compose up --build -d"; \
+    fi
 
 # Create a versioned deployment bundle (ZIP)
 bundle:
@@ -133,6 +131,19 @@ bundle:
 deploy-zip host=SSH_HOST path="~/TestGenesis": bundle
     @echo "[Deploy] Uploading bundle to {{host}}..."
     @BUNDLE=$$(ls testgenesis-*.zip | sort -V | tail -n 1); \
-    {{SCP}} $$BUNDLE {{host}}:{{path}}.zip; \
-    @echo "[Deploy] Extracting and starting on remote..."
-    {{SSH}} {{host}} "mkdir -p {{path}} && unzip -o {{path}}.zip -d {{path}} && cd {{path}} && docker compose up --build -d"
+    if [ -f {{VPS_FILE}} ]; then \
+        export SSHPASS=$$(tail -n 1 {{VPS_FILE}}); \
+        sshpass -e scp $$BUNDLE {{host}}:{{path}}.zip; \
+        @echo "[Deploy] Extracting and starting on remote..."; \
+        sshpass -e ssh {{host}} "mkdir -p {{path}} && unzip -o {{path}}.zip -d {{path}} && cd {{path}} && docker compose up --build -d"; \
+    else \
+        scp $$BUNDLE {{host}}:{{path}}.zip; \
+        @echo "[Deploy] Extracting and starting on remote..."; \
+        ssh {{host}} "mkdir -p {{path}} && unzip -o {{path}}.zip -d {{path}} && cd {{path}} && docker compose up --build -d"; \
+    fi
+
+# Configure a remote Docker context (Alternative method)
+# Usage: just setup-remote-context <name> <ssh-url>
+setup-remote-context name url:
+    docker context create {{name}} --docker "host={{url}}"
+    @echo "Success! Use 'docker --context {{name}} compose up --build -d' to deploy."

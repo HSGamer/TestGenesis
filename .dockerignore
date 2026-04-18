@@ -11,6 +11,7 @@
 **/.git/
 **/.docker/
 **/.gitignore
+.vps
 pass_file.txt
 host_file.txt
 *.secret
