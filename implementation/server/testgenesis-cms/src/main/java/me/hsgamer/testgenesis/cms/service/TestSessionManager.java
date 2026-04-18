@@ -102,6 +102,6 @@ public class TestSessionManager {
     }
 
     public void failSession(String sessionId, String reason) {
-        Optional.ofNullable(testSessions.remove(sessionId)).ifPresent(s -> s.fail(reason));
+        Optional.ofNullable(testSessions.get(sessionId)).ifPresent(s -> s.fail(reason));
     }
 }

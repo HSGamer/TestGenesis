@@ -89,6 +89,6 @@ public class TranslationManager {
     }
 
     public void failSession(String sessionId, String reason) {
-        Optional.ofNullable(translationSessions.remove(sessionId)).ifPresent(s -> s.fail(reason));
+        Optional.ofNullable(translationSessions.get(sessionId)).ifPresent(s -> s.fail(reason));
     }
 }
