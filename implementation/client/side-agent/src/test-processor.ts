@@ -18,7 +18,7 @@ import {TestLogger, TestRunner} from "@hsgamer/side-engine";
 import * as selenium from "selenium-webdriver";
 import {Builder, WebDriver} from "selenium-webdriver";
 import * as os from "os";
-import {CommandStates, PlaybackStates, Variables, WebDriverExecutor,} from "@seleniumhq/side-runtime";
+import {CommandStates, PlaybackStates, Variables, WebDriverExecutor} from "@seleniumhq/side-runtime";
 import type {TestShape} from "@seleniumhq/side-model";
 
 const seleniumVersion = (selenium as any).version as string | undefined;

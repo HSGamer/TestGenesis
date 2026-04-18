@@ -2,7 +2,6 @@
   "name": "node-side-agent",
   "version": "1.0.0",
   "description": "UAP-compliant Selenium IDE (.side) Execution Agent",
-  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "start": "tsx src/index.ts",

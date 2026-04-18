@@ -1,4 +1,4 @@
-import {TranslationProcessor} from "./translation-processor.js";
+import {TranslationProcessor} from "./translation-processor";
 import {
     AttachmentSchema,
     Capability,

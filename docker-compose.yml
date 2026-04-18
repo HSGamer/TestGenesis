@@ -1,0 +1,69 @@
+services:
+  cms:
+    build:
+      context: .
+      dockerfile: implementation/server/testgenesis-cms/Dockerfile
+    ports:
+      - "8080:8080" # UI & REST API
+      - "9000:9000" # gRPC Agent Hub
+    environment:
+      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:h2:file:/app/data/testgenesis;DB_CLOSE_DELAY=-1
+    volumes:
+      - cms_data:/app/data
+
+  side-agent:
+    build:
+      context: .
+      dockerfile: implementation/client/side-agent/Dockerfile
+    environment:
+      - HUB_URL=http://cms:9000
+      - CLIENT_NAME=SideAgent-Docker
+      - SELENIUM_REMOTE_URL=http://selenium-hub:4444/wd/hub
+    depends_on:
+      - cms
+      - selenium-hub
+
+  puppeteer-agent:
+    build:
+      context: .
+      dockerfile: implementation/client/puppeteer-replay-agent/Dockerfile
+    environment:
+      - HUB_URL=http://cms:9000
+      - CLIENT_NAME=PuppeteerAgent-Docker
+    shm_size: 2gb
+    depends_on:
+      - cms
+
+  selenium-junit-agent:
+    build:
+      context: .
+      dockerfile: implementation/client/selenium-junit-agent/Dockerfile
+    environment:
+      - HUB_URL=http://cms:9000
+      - CLIENT_NAME=SeleniumJUnitAgent-Docker
+      - SELENIUM_REMOTE_URL=http://selenium-hub:4444/wd/hub
+    depends_on:
+      - cms
+      - selenium-hub
+
+  # Selenium Grid for SideAgent
+  selenium-hub:
+    image: selenium/hub:latest
+    container_name: selenium-hub
+    ports:
+      - "4442:4442"
+      - "4443:4443"
+      - "4444:4444"
+
+  chrome:
+    image: selenium/node-chrome:latest
+    shm_size: 2gb
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+
+volumes:
+  cms_data:

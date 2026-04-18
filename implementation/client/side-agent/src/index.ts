@@ -1,9 +1,8 @@
-import {Agent} from "testgenesis-client-node";
-import {WebDriver} from "selenium-webdriver";
+import type {WebDriver} from "selenium-webdriver";
 import {parseArgs} from "node:util";
-import {TestProcessor} from "./test-processor.js";
-import {TranslationProcessor} from "./translation-processor.js";
-import JavaCodeExportProcessor from "./code-export-java.js";
+import {TestProcessor} from "./test-processor";
+import {TranslationProcessor} from "./translation-processor";
+import JavaCodeExportProcessor from "./code-export-java";
 
 /**
  * Encapsulates the application configuration from CLI arguments
@@ -35,6 +34,7 @@ let isShuttingDown = false;
 
 async function main() {
 
+    const {Agent} = await import("testgenesis-client-node");
     const agent = new Agent({
         hubUrl: CONFIG.HUB_URL,
         displayName: CONFIG.CLIENT_NAME,

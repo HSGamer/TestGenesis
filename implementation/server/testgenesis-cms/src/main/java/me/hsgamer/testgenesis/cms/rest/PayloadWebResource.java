@@ -74,7 +74,7 @@ public class PayloadWebResource {
         @RestForm("description") String description,
         @RestForm("type") String type,
         @RestForm("metadata") String metadata,
-        @RestForm("attachment") FileUpload attachment) {
+        @RestForm("attachmentFile") FileUpload attachment) {
 
         PayloadEntity entity = new PayloadEntity();
         entity.setName(name);

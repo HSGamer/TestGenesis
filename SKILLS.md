@@ -110,3 +110,34 @@ Used for live agent logs.
 - `.truncate`: Ellipsis for long text in cards.
 - `.muted`: Small, grayed-out text (`#8b949e`).
 - `.grid`: Responsive grid for cards (`auto-fill, minmax(220px, 1fr)`).
+- `.truncate`: Ellipsis for long text in cards.
+
+---
+
+## Containerization & Orchestration
+
+TestGenesis is fully containerized for production-grade reliability and performance.
+
+### 1. Dockerfile Standards
+All modules use multi-stage Dockerfiles optimized for speed and security:
+- **Build Stage**: Leverages layered caching by copying dependency manifests (`pom.xml`, `package.json`) and running `mvn dependency:go-offline` or `npm install` before copying source code.
+- **Runtime Stage**: Uses minimal base images (Alpine-based) to reduce attack surface and image size.
+- **Agent Runtimes**: 
+  - **Node.js**: Uses `node:22-slim`.
+  - **Java**: Uses `eclipse-temurin:21-jdk-alpine`. Note: Agents that perform dynamic compilation require a full **JDK** instead of a JRE.
+
+### 2. Browser Agent Optimization
+Special considerations for agents that use headless browsers (Puppeteer, Selenium):
+- **Shared Memory**: Always set `shm_size: 2gb` in `docker-compose.yml` for services using Chromium to prevent rendering crashes.
+- **System Chromium**: Prefer installing the system `chromium` package via `apt` in the Dockerfile rather than using Puppeteer's internal downloader. Set `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium`.
+
+### 3. Java Execution Strategy
+Instead of fat JARs (Shading), we use a classpath-based model:
+- **`maven-dependency-plugin`**: Used to export all dependencies to a `lib/` folder.
+- **`maven-jar-plugin`**: Configures the JAR manifest with `addClasspath: true` and `classpathPrefix: lib/`.
+- **Execution**: Run via `java -jar agent.jar`, which automatically finds dependencies in the `lib/` directory.
+
+### 4. Orchestration (`docker-compose.yml`)
+- **Central CMS Hub**: The main endpoint for all agents (`http://cms:9000`).
+- **Selenium Grid**: Integrated Hub and Chrome nodes for cross-agent browser automation.
+- **Persistent Storage**: Uses Docker volumes for CMS data persistence.

@@ -30,6 +30,7 @@ const CONFIGS: Record<string, LangConfig> = {
             {template: "template-gitignore", target: ".gitignore"},
             {template: "template-index.ts", target: "src/index.ts"},
             {template: "template-processor.ts", target: "src/processor.ts"},
+            {template: "template-dockerfile", target: "Dockerfile"},
         ],
         installCmd: "npm install",
         startCmd: "npm run start"
@@ -41,6 +42,7 @@ const CONFIGS: Record<string, LangConfig> = {
             {template: "template-java-gitignore", target: ".gitignore"},
             {template: "template-java-app.java", target: "src/main/java/me/hsgamer/testgenesis/agent/AgentApp.java"},
             {template: "template-java-processor.java", target: "src/main/java/me/hsgamer/testgenesis/agent/ExampleProcessor.java"},
+            {template: "template-java-dockerfile", target: "Dockerfile"},
         ],
         startCmd: "mvn exec:java"
     }

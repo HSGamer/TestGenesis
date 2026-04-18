@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
-    static void main(String[] args) {
+    public static void main(String[] args) {
         String hubUrl = Optional.ofNullable(System.getenv("HUB_URL")).orElse("http://localhost:9000");
         String agentName = Optional.ofNullable(System.getenv("AGENT_NAME")).orElse("SeleniumJUnitAgent-" + (int) (Math.random() * 1000));
         String browserType = Optional.ofNullable(System.getenv("BROWSER_TYPE")).orElse("chrome");

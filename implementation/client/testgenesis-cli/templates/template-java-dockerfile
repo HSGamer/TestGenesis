@@ -1,0 +1,41 @@
+# Stage 1: Build
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /workspace
+
+# 1. Copy specification for proto generation
+COPY specification /specification
+
+# 2. Pre-cache testgenesis-client-java dependencies
+COPY implementation/client/testgenesis-client-java/pom.xml /workspace/testgenesis-client-java/
+WORKDIR /workspace/testgenesis-client-java
+RUN mvn dependency:go-offline -B || true
+
+# 3. Build testgenesis-client-java library
+COPY implementation/client/testgenesis-client-java/src /workspace/testgenesis-client-java/src
+RUN mvn install -DskipTests
+
+# 4. Pre-cache agent dependencies
+WORKDIR /workspace/agent
+COPY . /workspace/agent/pom.xml
+RUN mvn dependency:go-offline -B || true
+
+# 5. Build agent
+COPY . /workspace/agent
+RUN mvn package -DskipTests
+
+# Stage 2: Runtime
+# Using JDK instead of JRE as agents often require compilation capabilities
+FROM eclipse-temurin:21-jdk-alpine
+WORKDIR /app
+
+# Copy the main jar and the dependency libraries
+# Assumes the pom.xml uses maven-dependency-plugin and maven-jar-plugin
+COPY --from=build /workspace/agent/target/*.jar /app/agent.jar
+COPY --from=build /workspace/agent/target/lib /app/lib
+
+# Default environment variables
+ENV HUB_URL=http://cms:9000
+ENV CLIENT_NAME=JavaAgent-Docker
+
+# Run the agent using its pre-configured manifest classpath
+CMD ["java", "-jar", "agent.jar"]
