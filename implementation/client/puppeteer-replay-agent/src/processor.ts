@@ -12,7 +12,9 @@ import {
     StepReport,
     StepReportSchema,
     StepStatus,
-    SummarySchema
+    SummarySchema,
+    Attachment,
+    AttachmentSchema
 } from "testgenesis-client-node";
 
 import puppeteer from "puppeteer";
@@ -21,10 +23,21 @@ import {createRunner, parse, PuppeteerRunnerExtension, Step, UserFlow} from "@pu
 
 class TestGenesisRunnerExtension extends PuppeteerRunnerExtension {
     public reports: StepReport[] = [];
+    public attachments: Attachment[] = [];
     private stepStartTime: number = 0;
 
-    constructor(browser: puppeteer.Browser, page: puppeteer.Page, private context: TestSessionContext) {
-        super(browser, page);
+    constructor(
+        private browserObj: puppeteer.Browser,
+        private pageObj: puppeteer.Page,
+        private context: TestSessionContext,
+        private takeScreenshot: boolean = false,
+        private screenshotOptions: puppeteer.ScreenshotOptions = {
+            type: "jpeg",
+            quality: 80,
+            optimizeForSpeed: true
+        }
+    ) {
+        super(browserObj, pageObj);
     }
 
     private getStepDetail(step: Step): string {
@@ -45,10 +58,35 @@ class TestGenesisRunnerExtension extends PuppeteerRunnerExtension {
         await this.context.sendTelemetry(`[Step Start] ${detail}`, Severity.INFO);
     }
 
+    public getMimeType(type?: string): string {
+        switch (type) {
+            case "jpeg": return "image/jpeg";
+            case "webp": return "image/webp";
+            case "png": return "image/png";
+            default: return "image/png";
+        }
+    }
+
     async afterEachStep(step: Step, flow: UserFlow) {
         if (super.afterEachStep) await super.afterEachStep(step, flow);
         const duration = Date.now() - this.stepStartTime;
         const detail = this.getStepDetail(step);
+
+        let screenshotName: string | undefined;
+        if (this.takeScreenshot) {
+            try {
+                const screenshotData = await this.pageObj.screenshot(this.screenshotOptions);
+                const ext = this.screenshotOptions.type || "png";
+                screenshotName = `screenshot-${this.reports.length + 1}.${ext}`;
+                this.attachments.push(create(AttachmentSchema, {
+                    name: screenshotName,
+                    mimeType: this.getMimeType(this.screenshotOptions.type),
+                    data: screenshotData as Uint8Array
+                }));
+            } catch (e) {
+                await this.context.sendTelemetry(`Failed to take step screenshot: ${e}`, Severity.WARN);
+            }
+        }
 
         const report = create(StepReportSchema, {
             name: detail,
@@ -57,10 +95,8 @@ class TestGenesisRunnerExtension extends PuppeteerRunnerExtension {
                 startTime: timestampFromDate(new Date(this.stepStartTime)),
                 totalDuration: msToDuration(duration),
                 metadata: cleanObject({
-                    type: step.type,
-                    selector: "selector" in step ? step.selector : undefined,
-                    value: "value" in step ? step.value : undefined,
-                    url: "url" in step ? step.url : undefined
+                    step: step,
+                    screenshot: screenshotName
                 })
             })
         });
@@ -117,6 +153,12 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
                 headless: true,
                 args: ["--no-sandbox", "--disable-setuid-sandbox"]
             };
+            let takeScreenshot = false;
+            let screenshotOptions: puppeteer.ScreenshotOptions = {
+                type: "jpeg",
+                quality: 80,
+                optimizeForSpeed: true
+            };
 
             const configPayload = context.init.payloads.find(p => p.type === "puppeteer-config");
             if (configPayload?.attachment) {
@@ -129,6 +171,12 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
                     if (Array.isArray(config.args)) {
                         launchOptions.args = [...launchOptions.args, ...config.args];
                     }
+                    if (config.takeScreenshot !== undefined) {
+                        takeScreenshot = config.takeScreenshot;
+                    }
+                    if (config.screenshotConfig) {
+                        screenshotOptions = { ...screenshotOptions, ...config.screenshotConfig };
+                    }
                 } catch (e) {
                     await context.sendTelemetry(`Failed to parse puppeteer-config: ${e}`, Severity.WARN);
                 }
@@ -137,7 +185,7 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             browser = await puppeteer.launch(launchOptions);
 
             const page = await browser.newPage();
-            const extension = new TestGenesisRunnerExtension(browser, page, context);
+            const extension = new TestGenesisRunnerExtension(browser, page, context, takeScreenshot, screenshotOptions);
             const runner = await createRunner(recording, extension);
 
             const browserVersion = await browser.version();
@@ -145,6 +193,21 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             await context.sendTelemetry(`Started Puppeteer Replay runner on ${browserVersion}.`, Severity.INFO);
             await runner.run();
             await context.sendTelemetry("Puppeteer Replay runner finished successfully.", Severity.INFO);
+
+            // Capture final screenshot
+            if (takeScreenshot) {
+                try {
+                    const finalScreenshot = await page.screenshot(screenshotOptions);
+                    const ext = screenshotOptions.type || "png";
+                    extension.attachments.push(create(AttachmentSchema, {
+                        name: `final-screenshot.${ext}`,
+                        mimeType: extension.getMimeType(screenshotOptions.type),
+                        data: finalScreenshot as Uint8Array
+                    }));
+                } catch (e) {
+                    await context.sendTelemetry(`Failed to take final screenshot: ${e}`, Severity.WARN);
+                }
+            }
 
             const endTime = new Date();
             const duration = endTime.getTime() - startTime.getTime();
@@ -156,6 +219,7 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
                     message: "Replay finished successfully"
                 },
                 reports: extension.reports,
+                attachments: extension.attachments,
                 summary: create(SummarySchema, {
                     startTime: timestampNow(),
                     totalDuration: msToDuration(duration),
