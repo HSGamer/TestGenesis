@@ -10,9 +10,8 @@ COPY implementation/server/testgenesis-cms/pom.xml /workspace/testgenesis-cms/
 WORKDIR /workspace/testgenesis-cms/
 
 # Download dependencies (go-offline)
-# We ignore errors in go-offline as some Quarkus/gRPC plugins might require source code to resolve fully,
-# but this will still cache the vast majority of artifacts.
-RUN mvn dependency:go-offline -B || true
+# We use quarkus:go-offline which is better at resolving Quarkus extensions than the standard maven-dependency-plugin.
+RUN mvn quarkus:go-offline -B || true
 
 # 2. Build application
 # Copy source code and build

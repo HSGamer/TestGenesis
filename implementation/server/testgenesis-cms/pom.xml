@@ -14,6 +14,7 @@
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.34.3</quarkus.platform.version>
         <quarkus.grpc.zero.version>0.0.9</quarkus.grpc.zero.version>
+        <protobuf.version>4.34.0</protobuf.version>
         <lombok.version>1.18.40</lombok.version>
 
         <skipITs>true</skipITs>
@@ -64,6 +65,21 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkiverse.grpc.zero</groupId>
+            <artifactId>quarkus-grpc-zero</artifactId>
+            <version>${quarkus.grpc.zero.version}</version>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>
         </dependency>
@@ -84,16 +100,6 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-websockets-next</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java-util</artifactId>
-            <version>4.33.2</version>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkiverse.grpc.zero</groupId>
-            <artifactId>quarkus-grpc-zero</artifactId>
-            <version>${quarkus.grpc.zero.version}</version>
         </dependency>
 
         <dependency>
