@@ -10,6 +10,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import me.hsgamer.testgenesis.uap.v1.TestState;
+
 import static me.hsgamer.testgenesis.cms.util.StatusUtil.isTerminal;
 
 @Getter
@@ -85,5 +87,27 @@ public class TestBatchSession {
         return sessions.stream()
             .filter(s -> s.getStatus() != null && isTerminal(s.getStatus().getState()))
             .count() + failedRegistrations.get();
+    }
+
+    public long getPassedCount() {
+        return sessions.stream()
+            .filter(s -> s.getStatus() != null && s.getStatus().getState() == TestState.TEST_STATE_COMPLETED)
+            .count();
+    }
+
+    public long getFailedCount() {
+        return sessions.stream()
+            .filter(s -> s.getStatus() != null && s.getStatus().getState() == TestState.TEST_STATE_FAILED)
+            .count() + failedRegistrations.get();
+    }
+
+    public long getRunningCount() {
+        return sessions.stream()
+            .filter(s -> s.getStatus() != null && s.getStatus().getState() == TestState.TEST_STATE_RUNNING)
+            .count();
+    }
+
+    public long getPendingCount() {
+        return totalIterations - getCompletedCount() - getRunningCount();
     }
 }

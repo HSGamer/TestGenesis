@@ -138,7 +138,7 @@ deploy path="~/TestGenesis" host="":
     echo "[Deploy] Syncing files to $HOST:$REMOTE_PATH..."
     eval "rsync $RSYNC_OPTS --exclude-from='.dockerignore' ./ \"$HOST:$REMOTE_PATH\""
     echo "[Deploy] Building and starting services on remote..."
-    $SSH_CMD "$HOST" "cd $REMOTE_PATH && docker compose up --build -d"
+    $SSH_CMD "$HOST" "cd $REMOTE_PATH && docker compose up --build -d --remove-orphans"
 
 # Deploy via ZIP bundle (Upload -> Unzip -> Build)
 # Usage: just deploy-zip [remote_path] [user@host]
@@ -164,7 +164,7 @@ deploy-zip path="~/TestGenesis" host="": bundle
     echo "[Deploy] Uploading bundle $BUNDLE to $HOST..."
     $SCP_CMD "$BUNDLE" "$HOST:$REMOTE_PATH.zip"
     echo "[Deploy] Extracting and starting on remote..."
-    $SSH_CMD "$HOST" "mkdir -p $REMOTE_PATH && unzip -o $REMOTE_PATH.zip -d $REMOTE_PATH && cd $REMOTE_PATH && docker compose up --build -d"
+    $SSH_CMD "$HOST" "mkdir -p $REMOTE_PATH && unzip -o $REMOTE_PATH.zip -d $REMOTE_PATH && cd $REMOTE_PATH && docker compose up --build -d --remove-orphans"
 
 # Configure a remote Docker context (Alternative method)
 # Usage: just setup-remote-context <name> <ssh-url>

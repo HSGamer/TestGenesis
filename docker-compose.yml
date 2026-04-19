@@ -10,6 +10,8 @@ services:
       - QUARKUS_DATASOURCE_JDBC_URL=jdbc:h2:file:/app/data/testgenesis;DB_CLOSE_DELAY=-1
     volumes:
       - cms_data:/app/data
+    networks:
+      - testgenesis
 
   side-agent:
     build:
@@ -22,6 +24,8 @@ services:
     depends_on:
       - cms
       - selenium-hub
+    networks:
+      - testgenesis
 
   puppeteer-agent:
     build:
@@ -33,6 +37,8 @@ services:
     shm_size: 2gb
     depends_on:
       - cms
+    networks:
+      - testgenesis
 
   selenium-junit-agent:
     build:
@@ -45,25 +51,33 @@ services:
     depends_on:
       - cms
       - selenium-hub
+    networks:
+      - testgenesis
 
-  # Selenium Grid for SideAgent
+  # Selenium Grid for SideAgent with Auto-Scaling (Dynamic Grid)
   selenium-hub:
-    image: selenium/hub:latest
+    image: selenium/standalone-docker:latest
     container_name: selenium-hub
     ports:
-      - "4442:4442"
-      - "4443:4443"
       - "4444:4444"
-
-  chrome:
-    image: selenium/node-chrome:latest
-    shm_size: 2gb
-    depends_on:
-      - selenium-hub
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - selenium_assets:/opt/selenium/assets
     environment:
-      - SE_EVENT_BUS_HOST=selenium-hub
-      - SE_EVENT_BUS_PUBLISH_PORT=4442
-      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_DYNAMIC_GRID_ENABLED=true
+      - SE_NODE_GRID_URL=http://selenium-hub:4444
+      - SE_DOCKER_NETWORK_NAME=testgenesis
+      - SE_DOCKER_NODE_SHM_SIZE=2gb
+      - SE_ASSETS_PATH=/opt/selenium/assets
+      - SE_DOCKER_NODE_ASSETS_PATH=/opt/selenium/assets
+      - SE_NODES_CONFIG_JSON={"capabilities":[{"browserName":"chrome","maxInstances":5,"image":"selenium/node-chrome:latest"},{"browserName":"firefox","maxInstances":5,"image":"selenium/node-firefox:latest"}]}
+    networks:
+      - testgenesis
+
+networks:
+  testgenesis:
+    driver: bridge
 
 volumes:
   cms_data:
+  selenium_assets:
