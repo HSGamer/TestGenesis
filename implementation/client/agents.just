@@ -1,5 +1,11 @@
 # Generated Agents Justfile - DO NOT EDIT MANUALLY
 
+build-junit-agent:
+    just build-client junit-agent
+
+run-junit-agent *args:
+    just run-client junit-agent {{args}}
+
 build-manual-java-agent:
     just build-client manual-java-agent
 

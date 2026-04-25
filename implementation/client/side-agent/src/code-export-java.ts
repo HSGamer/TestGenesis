@@ -32,12 +32,19 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
                     acceptedMimeTypes: ["application/json"]
                 }
             ],
-            targetPayloads: [{
-                type: "selenium-junit",
-                isRequired: true,
-                isRepeatable: true,
-                acceptedMimeTypes: ["text/x-java", "text/x-java-source", "application/x-java-source"]
-            }]
+            targetPayloads: [
+                {
+                    type: "java-junit",
+                    isRequired: true,
+                    isRepeatable: true,
+                    acceptedMimeTypes: ["text/x-java", "text/x-java-source", "application/x-java-source"]
+                },
+                {
+                    type: "junit-config",
+                    isRequired: false,
+                    acceptedMimeTypes: ["text/plain"]
+                }
+            ]
         });
     }
 
@@ -63,7 +70,6 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
 
         let variableCommands: CommandShape[] = [];
         let binaryPath = process.env.WEBDRIVER_CHROME_BINARY || process.env.CHROME_BINARY;
-        let remoteUrl = process.env.SELENIUM_REMOTE_URL;
 
         const variablePayloads = payloads.filter((p: any) => p.type === "selenium-variable");
         for (const variablePayload of variablePayloads) {
@@ -72,7 +78,6 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
                     const variableObject = JSON.parse(new TextDecoder().decode(variablePayload.attachment.data));
                     for (const [key, value] of Object.entries(variableObject)) {
                         if (key === "binaryPath") binaryPath = String(value);
-                        if (key === "remoteUrl") remoteUrl = String(value);
 
                         variableCommands.push({
                             id: "x-variable-" + variableCommands.length,
@@ -127,17 +132,25 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
         });
 
         // Apply transformations with self-detection script
-        body = this.transformSource(body, binaryPath, remoteUrl);
+        body = this.transformSource(body, binaryPath);
 
         await context.sendResult(create(TranslationResultSchema, {
             status: create(TranslationStatusSchema, {state: TranslationState.COMPLETED}),
             payloads: [
                 create(PayloadSchema, {
-                    type: "selenium-junit",
+                    type: "java-junit",
                     attachment: create(AttachmentSchema, {
                         name: filename,
                         mimeType: "text/x-java-source",
                         data: new TextEncoder().encode(body)
+                    })
+                }),
+                create(PayloadSchema, {
+                    type: "junit-config",
+                    attachment: create(AttachmentSchema, {
+                        name: "junit-config.txt",
+                        mimeType: "text/plain",
+                        data: new TextEncoder().encode("org.seleniumhq.selenium:selenium-java:4.43.0")
                     })
                 })
             ]
@@ -149,45 +162,46 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
         }));
     }
 
-    private transformSource(source: string, binPath: string | undefined, remoteUrl: string | undefined): string {
-        if (remoteUrl) {
-            return source
-                .replace("driver = new ChromeDriver();", 
-                    `org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
-    try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL("${remoteUrl}"), opt); }
-    catch (java.net.MalformedURLException e) { throw new RuntimeException(e); }`)
-                .replace("driver = new FirefoxDriver();", 
-                    `org.openqa.selenium.firefox.FirefoxOptions opt = new org.openqa.selenium.firefox.FirefoxOptions();
-    try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL("${remoteUrl}"), opt); }
-    catch (java.net.MalformedURLException e) { throw new RuntimeException(e); }`);
+    private transformSource(source: string, binPath: string | undefined): string {
+        const remoteUrl = `System.getenv("SELENIUM_REMOTE_URL")`;
+        
+        const chromeSnippet = `org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
+    String remote = ${remoteUrl};
+    if (remote != null && !remote.isEmpty()) {
+        try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL(remote), opt); }
+        catch (java.net.MalformedURLException e) { throw new RuntimeException(e); }
+    } else {
+        String bin = System.getProperty("webdriver.chrome.binary", "${binPath || ""}");
+        if (bin.isEmpty()) bin = System.getenv("CHROME_BINARY");
+        if (bin == null || bin.isEmpty()) {
+            for (String c : new String[]{"thorium-browser-avx", "google-chrome-stable", "google-chrome", "chromium"}) {
+                java.io.File f = new java.io.File("/usr/bin/" + c);
+                if (f.canExecute()) { bin = f.getAbsolutePath(); break; }
+            }
         }
+        if (bin != null && !bin.isEmpty()) opt.setBinary(bin);
+        driver = new org.openqa.selenium.chrome.ChromeDriver(opt);
+    }`;
 
-        // Self-detecting driver initialization script
-        const chromeDetectSnippet = `org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
-    String bin = System.getProperty("webdriver.chrome.binary", "${binPath || ""}");
-    if (bin.isEmpty()) bin = System.getenv("CHROME_BINARY");
-    if (bin == null || bin.isEmpty()) {
-        for (String c : new String[]{"thorium-browser-avx", "google-chrome-stable", "google-chrome", "chromium"}) {
-            java.io.File f = new java.io.File("/usr/bin/" + c);
-            if (f.canExecute()) { bin = f.getAbsolutePath(); break; }
+        const firefoxSnippet = `org.openqa.selenium.firefox.FirefoxOptions opt = new org.openqa.selenium.firefox.FirefoxOptions();
+    String remote = ${remoteUrl};
+    if (remote != null && !remote.isEmpty()) {
+        try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL(remote), opt); }
+        catch (java.net.MalformedURLException e) { throw new RuntimeException(e); }
+    } else {
+        String bin = System.getProperty("webdriver.gecko.binary");
+        if (bin == null) {
+            for (String c : new String[]{"thorium-browser-avx", "firefox"}) {
+                 java.io.File f = new java.io.File("/usr/bin/" + c);
+                 if (f.canExecute()) { bin = f.getAbsolutePath(); break; }
+            }
         }
-    }
-    if (bin != null && !bin.isEmpty()) opt.setBinary(bin);
-    driver = new org.openqa.selenium.chrome.ChromeDriver(opt);`;
-
-        const firefoxDetectSnippet = `org.openqa.selenium.firefox.FirefoxOptions opt = new org.openqa.selenium.firefox.FirefoxOptions();
-    String bin = System.getProperty("webdriver.gecko.binary");
-    if (bin == null) {
-        for (String c : new String[]{"thorium-browser-avx", "firefox"}) {
-             java.io.File f = new java.io.File("/usr/bin/" + c);
-             if (f.canExecute()) { bin = f.getAbsolutePath(); break; }
-        }
-    }
-    if (bin != null) opt.setBinary(bin);
-    driver = new org.openqa.selenium.firefox.FirefoxDriver(opt);`;
+        if (bin != null) opt.setBinary(bin);
+        driver = new org.openqa.selenium.firefox.FirefoxDriver(opt);
+    }`;
 
         return source
-            .replace("driver = new ChromeDriver();", chromeDetectSnippet)
-            .replace("driver = new FirefoxDriver();", firefoxDetectSnippet);
+            .replace("driver = new ChromeDriver();", chromeSnippet)
+            .replace("driver = new FirefoxDriver();", firefoxSnippet);
     }
 }

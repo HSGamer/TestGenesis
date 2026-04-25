@@ -40,13 +40,14 @@ services:
     networks:
       - testgenesis
 
-  selenium-junit-agent:
+  junit-agent:
     build:
       context: .
-      dockerfile: implementation/client/selenium-junit-agent/Dockerfile
+      dockerfile: implementation/client/junit-agent/Dockerfile
     environment:
       - HUB_URL=http://cms:9000
-      - CLIENT_NAME=SeleniumJUnitAgent-Docker
+      - CLIENT_NAME=JUnitAgent-Docker
+      - JUNIT_DEPENDENCIES=org.seleniumhq.selenium:selenium-java:4.43.0
       - SELENIUM_REMOTE_URL=http://selenium-hub:4444/wd/hub
     depends_on:
       - cms
