@@ -46,11 +46,7 @@ public class TestWebSocket extends BaseWebSocket<TestSession> {
     private ResultDTO mapResult(TestSession session, TestResult r) {
         AtomicInteger ai = new AtomicInteger(0);
         return new ResultDTO(
-            r.getReportsList().stream().map(report -> new StepReportDTO(
-                report.getStatus().name(), report.getName(),
-                new StepSummaryDTO(Durations.toMillis(report.getSummary().getTotalDuration()),
-                    ProtoUtil.structToMap(report.getSummary().getMetadata()))
-            )).toList(),
+            r.getReportsList().stream().map(this::mapReport).toList(),
             r.getAttachmentsList().stream().map(a -> {
                 int idx = ai.getAndIncrement();
                 return new AttachmentDTO(a.getMimeType(), a.getName(), "/tests/" + session.getSessionId() + "/attachments/" + idx);
@@ -59,11 +55,20 @@ public class TestWebSocket extends BaseWebSocket<TestSession> {
         );
     }
 
+    private StepReportDTO mapReport(me.hsgamer.testgenesis.uap.v1.StepReport report) {
+        return new StepReportDTO(
+            report.getStatus().name(),
+            report.getName(),
+            new StepSummaryDTO(Durations.toMillis(report.getSummary().getTotalDuration()),
+                ProtoUtil.structToMap(report.getSummary().getMetadata())),
+            report.getStepsList().stream().map(this::mapReport).toList()
+        );
+    }
 
     public record ResultDTO(List<StepReportDTO> reports, List<AttachmentDTO> attachments, ResultSummaryDTO summary) {
     }
 
-    public record StepReportDTO(String status, String name, StepSummaryDTO summary) {
+    public record StepReportDTO(String status, String name, StepSummaryDTO summary, List<StepReportDTO> steps) {
     }
 
     public record StepSummaryDTO(long totalDuration, Map<String, Object> metadata) {

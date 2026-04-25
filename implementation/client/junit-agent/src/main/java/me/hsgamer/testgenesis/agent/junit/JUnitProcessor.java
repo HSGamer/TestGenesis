@@ -97,16 +97,20 @@ public class JUnitProcessor implements TestSessionProcessor {
             List<StepReport> testReports = executeTests(className, workDir, allJars, context);
             boolean allPassed = testReports.stream()
                     .allMatch(r -> r.getStatus() == StepStatus.STEP_STATUS_PASSED);
-            pipelineReports.add(buildReport("Execute Tests",
-                    allPassed ? StepStatus.STEP_STATUS_PASSED : StepStatus.STEP_STATUS_FAILED, stepStart));
-
-            List<StepReport> allReports = new ArrayList<>(pipelineReports);
-            allReports.addAll(testReports);
+            pipelineReports.add(StepReport.newBuilder()
+                    .setName("Execute Tests")
+                    .setStatus(allPassed ? StepStatus.STEP_STATUS_PASSED : StepStatus.STEP_STATUS_FAILED)
+                    .setSummary(Summary.newBuilder()
+                            .setStartTime(UapUtils.toTimestamp(Instant.ofEpochMilli(stepStart)))
+                            .setTotalDuration(UapUtils.msToDuration(System.currentTimeMillis() - stepStart))
+                            .build())
+                    .addAllSteps(testReports)
+                    .build());
 
             TestState finalState = allPassed ? TestState.TEST_STATE_COMPLETED : TestState.TEST_STATE_FAILED;
             context.sendResult(TestResult.newBuilder()
                     .setStatus(TestStatus.newBuilder().setState(finalState).build())
-                    .addAllReports(allReports)
+                    .addAllReports(pipelineReports)
                     .setSummary(Summary.newBuilder()
                             .setStartTime(UapUtils.toTimestamp(Instant.ofEpochMilli(sessionStartMs)))
                             .setTotalDuration(UapUtils.msToDuration(System.currentTimeMillis() - sessionStartMs))

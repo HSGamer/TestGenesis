@@ -18,6 +18,18 @@ document.addEventListener('DOMContentLoaded', () => {
         t.querySelector('.metadata').textContent = JSON.stringify(s.summary?.metadata||{}, null, 2);
         
         t.querySelector('.step-header').onclick = () => card.querySelector('.details').classList.toggle('d-none');
+
+        if (s.steps && s.steps.length > 0) {
+            const nestedTmpl = el('nested-steps-template').content.cloneNode(true);
+            const nestedContainer = nestedTmpl.querySelector('.nested-steps');
+            
+            s.steps.forEach(subStep => {
+                nestedContainer.appendChild(render(subStep));
+            });
+            
+            card.querySelector('.details').appendChild(nestedContainer);
+        }
+
         return t;
     };
 

@@ -19,4 +19,7 @@ message StepReport {
 
   // Detailed summary of the step execution.
   Summary summary = 3;
+
+  // Optional nested sub-steps.
+  repeated StepReport steps = 4;
 }
