@@ -119,7 +119,7 @@ public class JUnitProcessor implements TestSessionProcessor {
 
         } catch (Exception e) {
             failAndReturn(sessionId, context, pipelineReports, "Unexpected Error",
-                    e.getMessage(), sessionStartMs);
+                    e.getMessage(), e, sessionStartMs);
         } finally {
             if (workDir != null) {
                 deleteDirectory(workDir.toFile());
@@ -270,17 +270,36 @@ public class JUnitProcessor implements TestSessionProcessor {
 
     private void failAndReturn(String sessionId, TestSessionContext context,
                                List<StepReport> reports, String step, String error, long startMs) {
-        logger.error("[{}] {} failed: {}", sessionId, step, error);
+        failAndReturn(sessionId, context, reports, step, error, null, startMs);
+    }
+
+    private void failAndReturn(String sessionId, TestSessionContext context,
+                               List<StepReport> reports, String step, String error, Throwable t, long startMs) {
+        if (t != null) {
+            logger.error("[{}] {} failed: {}", sessionId, step, error, t);
+        } else {
+            logger.error("[{}] {} failed: {}", sessionId, step, error);
+        }
         reports.add(buildReport(step, StepStatus.STEP_STATUS_FAILED, startMs));
+        
+        com.google.protobuf.Struct.Builder metadataBuilder = com.google.protobuf.Struct.newBuilder()
+                .putFields("error", com.google.protobuf.Value.newBuilder()
+                        .setStringValue(error != null ? error : "Unknown error")
+                        .build());
+                        
+        if (t != null) {
+            java.io.StringWriter sw = new java.io.StringWriter();
+            t.printStackTrace(new java.io.PrintWriter(sw));
+            metadataBuilder.putFields("stacktrace", com.google.protobuf.Value.newBuilder()
+                    .setStringValue(sw.toString())
+                    .build());
+        }
+
         context.sendResult(TestResult.newBuilder()
                 .setStatus(TestStatus.newBuilder().setState(TestState.TEST_STATE_FAILED).build())
                 .addAllReports(reports)
                 .setSummary(Summary.newBuilder()
-                        .setMetadata(Struct.newBuilder()
-                                .putFields("error", Value.newBuilder()
-                                        .setStringValue(error != null ? error : "Unknown error")
-                                        .build())
-                                .build())
+                        .setMetadata(metadataBuilder.build())
                         .build())
                 .build());
     }
