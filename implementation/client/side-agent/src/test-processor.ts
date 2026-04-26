@@ -17,6 +17,10 @@ import {
 import {TestLogger, TestRunner} from "@hsgamer/side-engine";
 import * as selenium from "selenium-webdriver";
 import {Builder, WebDriver} from "selenium-webdriver";
+import * as chrome from "selenium-webdriver/chrome";
+import * as firefox from "selenium-webdriver/firefox";
+import * as safari from "selenium-webdriver/safari";
+import * as edge from "selenium-webdriver/edge";
 import * as os from "os";
 import {CommandStates, PlaybackStates, Variables, WebDriverExecutor} from "@seleniumhq/side-runtime";
 import type {TestShape} from "@seleniumhq/side-model";
@@ -119,12 +123,16 @@ class TestSession {
             }
 
             let browser = "chrome";
+            let args: string[] = [];
             const configPayload = payloads.find((p: any) => p.type === "selenium-config");
             if (configPayload?.attachment) {
                 try {
                     const config = JSON.parse(new TextDecoder().decode(configPayload.attachment.data));
                     browser = config.browser || browser;
                     takeScreenshot = config.takeScreenshot || takeScreenshot;
+                    if (Array.isArray(config.args)) {
+                        args = config.args;
+                    }
                 } catch (e) {
                 }
             }
@@ -146,6 +154,18 @@ class TestSession {
 
             const builder = new Builder().forBrowser(browser);
             if (this.seleniumRemoteUrl) builder.usingServer(this.seleniumRemoteUrl);
+
+            if (args.length > 0) {
+                if (browser === "chrome") {
+                    builder.setChromeOptions(new chrome.Options().addArguments(...args) as any);
+                } else if (browser === "firefox") {
+                    builder.setFirefoxOptions(new firefox.Options().addArguments(...args));
+                } else if (browser === "edge") {
+                    builder.setEdgeOptions(new edge.Options().addArguments(...args) as any);
+                } else if (browser === "safari") {
+                    builder.setSafariOptions(new safari.Options());
+                }
+            }
 
             this.driver = await builder.build();
             this.onDriverCreated(this.driver);
