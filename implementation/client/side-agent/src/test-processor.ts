@@ -157,11 +157,15 @@ class TestSession {
 
             if (args.length > 0) {
                 if (browser === "chrome") {
-                    builder.setChromeOptions(new chrome.Options().addArguments(...args) as any);
+                    let options = new chrome.Options();
+                    options.addArguments(...args);
+                    builder.setChromeOptions(options);
                 } else if (browser === "firefox") {
                     builder.setFirefoxOptions(new firefox.Options().addArguments(...args));
                 } else if (browser === "edge") {
-                    builder.setEdgeOptions(new edge.Options().addArguments(...args) as any);
+                    let options = new edge.Options();
+                    options.addArguments(...args);
+                    builder.setEdgeOptions(options);
                 } else if (browser === "safari") {
                     builder.setSafariOptions(new safari.Options());
                 }
@@ -277,7 +281,8 @@ class TestSession {
                         os_arch: os.arch(),
                         cpu_model: os.cpus()[0]?.model,
                         cpu_count: os.cpus().length,
-                        memory_total_gb: Math.round(os.totalmem() / (1024 ** 3))
+                        memory_total_gb: Math.round(os.totalmem() / (1024 ** 3)),
+                        browser_args: args
                     })
                 }),
                 attachments
