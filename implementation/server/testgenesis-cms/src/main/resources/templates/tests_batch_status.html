@@ -45,6 +45,7 @@
                 <th>Agent</th>
                 <th>Session</th>
                 <th>Status</th>
+                <th>Negotiation</th>
                 <th style="text-align: right;">Action</th>
             </tr>
         </thead>
@@ -60,6 +61,13 @@
                             </span>
                         {#else}
                             <span class="status">PENDING</span>
+                        {/if}
+                    </td>
+                    <td>
+                        {#if session.negotiationDurationMs > 0}
+                            <span class="muted small">{session.negotiationDurationMs}ms</span>
+                        {#else}
+                            <span class="muted small">-</span>
                         {/if}
                     </td>
                     <td style="text-align: right;">

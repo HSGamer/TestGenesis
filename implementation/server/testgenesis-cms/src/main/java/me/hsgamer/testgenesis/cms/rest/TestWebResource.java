@@ -225,6 +225,7 @@ public class TestWebResource {
         entry.put("agentId", session.getAgentId());
         entry.put("agentName", session.getAgentName());
         entry.put("sessionId", session.getSessionId());
+        entry.put("negotiationDurationMs", session.getNegotiationDurationMs());
         entry.put("status", session.getStatus() != null ? session.getStatus().getState().name() : "PENDING");
         if (session.getResult() != null) {
             try {

@@ -1,6 +1,7 @@
 package me.hsgamer.testgenesis.cms.core;
 
 import lombok.Getter;
+import lombok.Setter;
 import me.hsgamer.testgenesis.cms.util.StatusUtil;
 import me.hsgamer.testgenesis.uap.v1.TestResponse;
 import me.hsgamer.testgenesis.uap.v1.TestResult;
@@ -27,6 +28,9 @@ public class TestSession extends AbstractSession<TestResponse> {
     private volatile TestStatus status;
     @Getter
     private volatile TestResult result;
+    @Setter
+    @Getter
+    private volatile long negotiationDurationMs;
 
     public TestSession(String sessionId, TestTicket ticket, String agentId, String agentName) {
         super(sessionId);

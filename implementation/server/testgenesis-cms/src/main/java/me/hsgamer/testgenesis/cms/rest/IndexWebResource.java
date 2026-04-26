@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.MediaType;
 import me.hsgamer.testgenesis.cms.service.AgentManager;
 import me.hsgamer.testgenesis.cms.service.BatchTestManager;
 import me.hsgamer.testgenesis.cms.service.PayloadService;
+import me.hsgamer.testgenesis.cms.service.StatisticsService;
 import me.hsgamer.testgenesis.cms.service.TestService;
 import me.hsgamer.testgenesis.cms.service.TestSessionManager;
 
@@ -34,6 +35,9 @@ public class IndexWebResource {
     @Inject
     TestSessionManager testSessionManager;
 
+    @Inject
+    StatisticsService statisticsService;
+
     @GET
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance get() {
@@ -41,6 +45,8 @@ public class IndexWebResource {
                     .data("tests", testService.listAll())
                     .data("payloads", payloadService.listAll())
                     .data("batches", batchTestManager.getBatchSessions())
-                    .data("sessions", testSessionManager.getTestSessions());
+                    .data("sessions", testSessionManager.getTestSessions())
+                    .data("avgNegotiationTime", String.format("%.2f", statisticsService.getAvgNegotiationTime()))
+                    .data("throughput", String.format("%.2f", statisticsService.getThroughputPerMinute()));
     }
 }

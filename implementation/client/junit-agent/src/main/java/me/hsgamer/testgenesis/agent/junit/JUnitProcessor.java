@@ -1,7 +1,5 @@
 package me.hsgamer.testgenesis.agent.junit;
 
-import com.google.protobuf.Struct;
-import com.google.protobuf.Value;
 import me.hsgamer.testgenesis.client.context.TestSessionContext;
 import me.hsgamer.testgenesis.client.processor.TestSessionProcessor;
 import me.hsgamer.testgenesis.client.utils.UapUtils;
@@ -77,23 +75,47 @@ public class JUnitProcessor implements TestSessionProcessor {
             String className = sourcePayload.getAttachment().getName().replace(".java", "");
             workDir = Files.createTempDirectory("uap-junit-" + sessionId);
             pipelineReports.add(buildReport("Extract Payloads", StepStatus.STEP_STATUS_PASSED, stepStart));
+            context.sendStatus(TestStatus.newBuilder()
+                    .setState(TestState.TEST_STATE_ACKNOWLEDGED)
+                    .setMessage("Payloads extracted")
+                    .build());
 
             stepStart = System.currentTimeMillis();
+            context.sendStatus(TestStatus.newBuilder()
+                .setState(TestState.TEST_STATE_RUNNING)
+                .setMessage("Resolving the dependencies")
+                .build());
             List<File> sessionJars = resolveSessionDependencies(sessionId, context);
             List<File> allJars = mergeJars(defaultJars, sessionJars);
             logger.info("[{}] Using {} JARs ({} default + {} session)",
                     sessionId, allJars.size(), defaultJars.size(), sessionJars.size());
             pipelineReports.add(buildReport("Resolve Dependencies", StepStatus.STEP_STATUS_PASSED, stepStart));
+            context.sendStatus(TestStatus.newBuilder()
+                .setState(TestState.TEST_STATE_RUNNING)
+                .setMessage("Resolved the dependencies")
+                .build());
 
             stepStart = System.currentTimeMillis();
+            context.sendStatus(TestStatus.newBuilder()
+                .setState(TestState.TEST_STATE_RUNNING)
+                .setMessage("Compiling the test")
+                .build());
             String compileError = compileSource(sourceCode, className, workDir, allJars);
             if (compileError != null) {
                 failAndReturn(sessionId, context, pipelineReports, "Compile", compileError, stepStart);
                 return;
             }
             pipelineReports.add(buildReport("Compile", StepStatus.STEP_STATUS_PASSED, stepStart));
+            context.sendStatus(TestStatus.newBuilder()
+                .setState(TestState.TEST_STATE_RUNNING)
+                .setMessage("Compiled the test")
+                .build());
 
             stepStart = System.currentTimeMillis();
+            context.sendStatus(TestStatus.newBuilder()
+                .setState(TestState.TEST_STATE_RUNNING)
+                .setMessage("Running the test")
+                .build());
             List<StepReport> testReports = executeTests(className, workDir, allJars, context);
             boolean allPassed = testReports.stream()
                     .allMatch(r -> r.getStatus() == StepStatus.STEP_STATUS_PASSED);
@@ -116,7 +138,6 @@ public class JUnitProcessor implements TestSessionProcessor {
                             .setTotalDuration(UapUtils.msToDuration(System.currentTimeMillis() - sessionStartMs))
                             .build())
                     .build());
-
         } catch (Exception e) {
             failAndReturn(sessionId, context, pipelineReports, "Unexpected Error",
                     e.getMessage(), e, sessionStartMs);

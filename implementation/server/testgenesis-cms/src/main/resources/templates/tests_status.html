@@ -5,7 +5,12 @@
 <section class="clearfix">
     <div class="title-area">
         <h2>Test Status</h2>
-        <p class="muted">Session: <code>{session.sessionId}</code></p>
+        <p class="muted">
+            Session: <code>{session.sessionId}</code>
+            {#if session.negotiationDurationMs > 0}
+                <span class="small" style="margin-left: 1rem;">(Negotiated in <strong>{session.negotiationDurationMs}ms</strong>)</span>
+            {/if}
+        </p>
     </div>
     <div class="action-area">
         <a href="/tests/{session.sessionId}/report/json" class="btn">JSON</a>

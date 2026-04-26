@@ -15,9 +15,13 @@ import java.util.function.Consumer;
 public class TestSessionManager {
     private final Map<String, TestSession> testSessions = new ConcurrentHashMap<>();
     private final Map<String, Consumer<SessionAcceptance>> pendingAcceptances = new ConcurrentHashMap<>();
+    private final Map<String, Long> negotiationStartTimes = new ConcurrentHashMap<>();
 
     @Inject
     AgentManager agentManager;
+
+    @Inject
+    StatisticsService statisticsService;
 
     @Inject
     TestService testService;
@@ -58,7 +62,17 @@ public class TestSessionManager {
 
                 if (agent instanceof AgentManager.AgentImpl agentImpl) {
                     agentImpl.activeSessions.add(sid);
-                    s.onCompletion(() -> agentImpl.activeSessions.remove(sid));
+                    s.onCompletion(() -> {
+                        agentImpl.activeSessions.remove(sid);
+                        statisticsService.reportSessionCompletion();
+                    });
+                }
+
+                Long startTime = negotiationStartTimes.remove(sid);
+                if (startTime != null) {
+                    long duration = System.currentTimeMillis() - startTime;
+                    s.setNegotiationDurationMs(duration);
+                    statisticsService.reportNegotiation(duration);
                 }
 
                 agentManager.sendToAgent(agentId, ListenResponse.newBuilder()
@@ -73,6 +87,7 @@ public class TestSessionManager {
                 .setTest(TestProposalDetails.newBuilder().setType(ticket.testType()).build())
                 .build();
 
+            negotiationStartTimes.put(sid, System.currentTimeMillis());
             agentManager.sendToAgent(agentId, ListenResponse.newBuilder()
                 .setSessionProposal(prop).build());
         });

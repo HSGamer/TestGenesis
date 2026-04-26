@@ -29,12 +29,16 @@
             <span class="value">{agents.size}</span>
         </div>
         <div class="stat-box">
-            <span class="label">Batches</span>
-            <span class="value">{batches.size}</span>
-        </div>
-        <div class="stat-box">
             <span class="label">Sessions</span>
             <span class="value">{sessions.size}</span>
+        </div>
+        <div class="stat-box" title="Avg. Negotiation Time (ms)">
+            <span class="label">Avg. Negotiate</span>
+            <span class="value">{avgNegotiationTime}ms</span>
+        </div>
+        <div class="stat-box" title="Throughput (Sessions/Min)">
+            <span class="label">Throughput</span>
+            <span class="value">{throughput}/m</span>
         </div>
     </div>
 </section>
