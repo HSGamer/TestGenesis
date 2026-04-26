@@ -30,6 +30,10 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
                     type: "selenium-variable",
                     isRepeatable: true,
                     acceptedMimeTypes: ["application/json"]
+                },
+                {
+                    type: "selenium-config",
+                    acceptedMimeTypes: ["application/json"]
                 }
             ],
             targetPayloads: [
@@ -91,6 +95,18 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
             }
         }
 
+        let browserArgs: string[] = [];
+        const configPayload = payloads.find((p: any) => p.type === "selenium-config");
+        if (configPayload?.attachment) {
+            try {
+                const config = JSON.parse(new TextDecoder().decode(configPayload.attachment.data));
+                if (Array.isArray(config.args)) {
+                    browserArgs = config.args;
+                }
+            } catch (e) {
+            }
+        }
+
         const test: TestShape = {
             id: parsedTest.id || sessionId,
             name: (parsedTest.name || "UAP_Execution").replace(/[^a-zA-Z0-0_]/g, "_"),
@@ -132,7 +148,7 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
         });
 
         // Apply transformations with self-detection script
-        body = this.transformSource(body, binaryPath);
+        body = this.transformSource(body, binaryPath, browserArgs);
 
         await context.sendResult(create(TranslationResultSchema, {
             status: create(TranslationStatusSchema, {state: TranslationState.COMPLETED}),
@@ -162,10 +178,16 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
         }));
     }
 
-    private transformSource(source: string, binPath: string | undefined): string {
+    private transformSource(source: string, binPath: string | undefined, args: string[]): string {
         const remoteUrl = `System.getenv("SELENIUM_REMOTE_URL")`;
+
+        let argsSnippet = "";
+        if (args.length > 0) {
+            argsSnippet = args.map(arg => `opt.addArguments("${arg}");`).join("\n    ");
+        }
         
         const chromeSnippet = `org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
+    ${argsSnippet}
     String remote = ${remoteUrl};
     if (remote != null && !remote.isEmpty()) {
         try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL(remote), opt); }
@@ -184,6 +206,7 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
     }`;
 
         const firefoxSnippet = `org.openqa.selenium.firefox.FirefoxOptions opt = new org.openqa.selenium.firefox.FirefoxOptions();
+    ${argsSnippet}
     String remote = ${remoteUrl};
     if (remote != null && !remote.isEmpty()) {
         try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL(remote), opt); }
