@@ -26,8 +26,19 @@ public class TestBatchSession {
     private final AtomicInteger failedRegistrations = new AtomicInteger(0);
     private final Instant createdAt;
 
-    @Setter
+    private Instant startedAt;
+    private Instant completedAt;
+
     private volatile BatchStatus status = BatchStatus.PENDING;
+
+    public void setStatus(BatchStatus status) {
+        this.status = status;
+        if (status == BatchStatus.RUNNING && startedAt == null) {
+            this.startedAt = Instant.now();
+        } else if (status == BatchStatus.COMPLETED) {
+            this.completedAt = Instant.now();
+        }
+    }
 
     public TestBatchSession(String testName, TestTicket ticket, int totalIterations) {
         this.batchId = "BCH-" + UUID.randomUUID();
@@ -109,5 +120,29 @@ public class TestBatchSession {
 
     public long getPendingCount() {
         return totalIterations - getCompletedCount() - getRunningCount();
+    }
+
+    public double getThroughput() {
+        if (startedAt == null) return 0;
+        Instant end = completedAt != null ? completedAt : Instant.now();
+        long durationMs = java.time.Duration.between(startedAt, end).toMillis();
+        if (durationMs < 1000) return 0;
+        return (getCompletedCount() * 60000.0) / durationMs;
+    }
+
+    public double getAverageNegotiationDuration() {
+        return sessions.stream()
+            .mapToLong(TestSession::getNegotiationDurationMs)
+            .filter(d -> d > 0)
+            .average()
+            .orElse(0);
+    }
+
+    public String getThroughputFormatted() {
+        return String.format("%.2f", getThroughput());
+    }
+
+    public String getAverageNegotiationDurationFormatted() {
+        return String.format("%.0f", getAverageNegotiationDuration());
     }
 }

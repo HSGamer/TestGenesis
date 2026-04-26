@@ -273,6 +273,8 @@ public class TestWebResource {
         report.put("status", batch.getStatus());
         report.put("iterations", batch.getTotalIterations());
         report.put("completed", batch.getCompletedCount());
+        report.put("throughput", batch.getThroughput());
+        report.put("averageNegotiationDuration", batch.getAverageNegotiationDuration());
 
         var results = batch.getSessions().stream().map(s -> resultToMap(s, full)).toList();
         report.put("sessions", results);
