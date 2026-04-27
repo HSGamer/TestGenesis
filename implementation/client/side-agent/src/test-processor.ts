@@ -299,8 +299,8 @@ class TestSession {
                         cpu_model: os.cpus()[0]?.model,
                         cpu_count: os.cpus().length,
                         memory_total_gb: Math.round(os.totalmem() / (1024 ** 3)),
-                        browser_args: args,
-                        browser_prefs: mergedPrefs
+                        browser_args: (capabilities?.get("goog:chromeOptions") || capabilities?.get("ms:edgeOptions") || {}).args || args,
+                        browser_prefs: (capabilities?.get("goog:chromeOptions") || capabilities?.get("ms:edgeOptions") || {}).prefs || mergedPrefs
                     })
                 }),
                 attachments

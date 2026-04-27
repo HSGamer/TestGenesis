@@ -145,7 +145,10 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
 
         let launchOptions: any = {
             headless: true,
-            args: []
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox"
+            ]
         };
 
         const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "puppeteer-profile-"));
@@ -324,13 +327,14 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
     }
 
     private getCommonMetadata(recordingTitle: string, browserVersion: string, launchOptions: any, prefs: any, duration: number, extension?: TestGenesisRunnerExtension) {
+        const actualArgs = (extension as any)?.browserObj?.process()?.spawnargs || launchOptions.args;
         return {
             recording_title: recordingTitle,
             total_steps: extension?.reports.length || 0,
             browser_name: launchOptions.product || "chrome",
             browser_version: browserVersion,
             headless: launchOptions.headless,
-            args: launchOptions.args,
+            args: actualArgs,
             prefs: prefs,
             execute_duration: duration,
             os_platform: os.platform(),
