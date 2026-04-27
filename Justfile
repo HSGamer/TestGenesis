@@ -51,7 +51,7 @@ build-client name:
         cd {{client_root}}/{{name}} && npm install && npm run build; \
     elif [ -f "{{client_root}}/{{name}}/pom.xml" ]; then \
         just build-java-client; \
-        mvn -f {{client_root}}/{{name}}/pom.xml compile; \
+        mvn -f {{client_root}}/{{name}}/pom.xml clean compile; \
     else \
         echo "Error: Unsupported project type in {{name}}"; exit 1; \
     fi
