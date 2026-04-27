@@ -96,12 +96,16 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
         }
 
         let browserArgs: string[] = [];
+        let userPrefs: any = {};
         const configPayload = payloads.find((p: any) => p.type === "selenium-config");
         if (configPayload?.attachment) {
             try {
                 const config = JSON.parse(new TextDecoder().decode(configPayload.attachment.data));
                 if (Array.isArray(config.args)) {
                     browserArgs = config.args;
+                }
+                if (config.prefs) {
+                    userPrefs = config.prefs;
                 }
             } catch (e) {
             }
@@ -148,7 +152,7 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
         });
 
         // Apply transformations with self-detection script
-        body = this.transformSource(body, binaryPath, browserArgs);
+        body = this.transformSource(body, binaryPath, browserArgs, userPrefs);
 
         await context.sendResult(create(TranslationResultSchema, {
             status: create(TranslationStatusSchema, {state: TranslationState.COMPLETED}),
@@ -178,16 +182,43 @@ export default class JavaCodeExportProcessor extends TranslationProcessor {
         }));
     }
 
-    private transformSource(source: string, binPath: string | undefined, args: string[]): string {
+    private transformSource(source: string, binPath: string | undefined, args: string[], prefs: any): string {
         const remoteUrl = `System.getenv("SELENIUM_REMOTE_URL")`;
 
         let argsSnippet = "";
         if (args.length > 0) {
             argsSnippet = args.map(arg => `opt.addArguments("${arg}");`).join("\n    ");
         }
+
+        const mergedPrefs = {
+            "profile.password_manager_leak_detection": false,
+            "profile.password_manager_enabled": false,
+            "profile.password_manager_leak_detection_enabled": false,
+            "credentials_enable_service": false,
+            ...prefs
+        };
+
+        // If user passed nested profile, flatten it for simpler Java code generation
+        if (prefs.profile) {
+            for (const [key, value] of Object.entries(prefs.profile)) {
+                mergedPrefs[`profile.${key}`] = value;
+            }
+            delete (mergedPrefs as any).profile;
+        }
+
+        let prefsSnippet = "java.util.Map<String, Object> prefs = new java.util.HashMap<>();\n";
+        for (const [key, value] of Object.entries(mergedPrefs)) {
+            if (typeof value === "string") {
+                prefsSnippet += `    prefs.put("${key}", "${value}");\n`;
+            } else {
+                prefsSnippet += `    prefs.put("${key}", ${value});\n`;
+            }
+        }
         
         const chromeSnippet = `org.openqa.selenium.chrome.ChromeOptions opt = new org.openqa.selenium.chrome.ChromeOptions();
     ${argsSnippet}
+    ${prefsSnippet}
+    opt.setExperimentalOption("prefs", prefs);
     String remote = ${remoteUrl};
     if (remote != null && !remote.isEmpty()) {
         try { driver = new org.openqa.selenium.remote.RemoteWebDriver(new java.net.URL(remote), opt); }

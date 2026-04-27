@@ -124,6 +124,7 @@ class TestSession {
 
             let browser = "chrome";
             let args: string[] = [];
+            let userPrefs: any = {};
             const configPayload = payloads.find((p: any) => p.type === "selenium-config");
             if (configPayload?.attachment) {
                 try {
@@ -132,6 +133,9 @@ class TestSession {
                     takeScreenshot = config.takeScreenshot || takeScreenshot;
                     if (Array.isArray(config.args)) {
                         args = config.args;
+                    }
+                    if (config.prefs) {
+                        userPrefs = config.prefs;
                     }
                 } catch (e) {
                 }
@@ -155,20 +159,33 @@ class TestSession {
             const builder = new Builder().forBrowser(browser);
             if (this.seleniumRemoteUrl) builder.usingServer(this.seleniumRemoteUrl);
 
-            if (args.length > 0) {
-                if (browser === "chrome") {
-                    let options = new chrome.Options();
-                    options.addArguments(...args);
-                    builder.setChromeOptions(options);
-                } else if (browser === "firefox") {
-                    builder.setFirefoxOptions(new firefox.Options().addArguments(...args));
-                } else if (browser === "edge") {
-                    let options = new edge.Options();
-                    options.addArguments(...args);
-                    builder.setEdgeOptions(options);
-                } else if (browser === "safari") {
-                    builder.setSafariOptions(new safari.Options());
-                }
+            const mergedPrefs = {
+                profile: {
+                    password_manager_leak_detection: false,
+                    password_manager_enabled: false,
+                    password_manager_leak_detection_enabled: false,
+                    ...userPrefs.profile
+                },
+                credentials_enable_service: false,
+                ...userPrefs
+            };
+
+            if (browser === "chrome") {
+                let options = new chrome.Options();
+                if (args.length > 0) options.addArguments(...args);
+                options.setUserPreferences(mergedPrefs);
+                builder.setChromeOptions(options);
+            } else if (browser === "firefox") {
+                let options = new firefox.Options();
+                if (args.length > 0) options.addArguments(...args);
+                builder.setFirefoxOptions(options);
+            } else if (browser === "edge") {
+                let options = new edge.Options();
+                if (args.length > 0) options.addArguments(...args);
+                options.setUserPreferences(mergedPrefs);
+                builder.setEdgeOptions(options);
+            } else if (browser === "safari") {
+                builder.setSafariOptions(new safari.Options());
             }
 
             this.driver = await builder.build();
@@ -282,7 +299,8 @@ class TestSession {
                         cpu_model: os.cpus()[0]?.model,
                         cpu_count: os.cpus().length,
                         memory_total_gb: Math.round(os.totalmem() / (1024 ** 3)),
-                        browser_args: args
+                        browser_args: args,
+                        browser_prefs: mergedPrefs
                     })
                 }),
                 attachments

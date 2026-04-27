@@ -19,6 +19,8 @@ import {
 
 import puppeteer from "puppeteer";
 import * as os from "os";
+import * as fs from "fs";
+import * as path from "path";
 import {createRunner, parse, PuppeteerRunnerExtension, Step, UserFlow} from "@puppeteer/replay";
 
 class TestGenesisRunnerExtension extends PuppeteerRunnerExtension {
@@ -132,6 +134,22 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
         let browser: puppeteer.Browser | null = null;
         let extension: TestGenesisRunnerExtension | undefined;
         let recordingTitle = "Unknown";
+        let takeScreenshot = false;
+        let screenshotOptions: puppeteer.ScreenshotOptions = {
+            type: "jpeg",
+            quality: 80,
+            optimizeForSpeed: true
+        };
+        let userPrefs: any = {};
+        let mergedPrefs: any = {};
+
+        let launchOptions: any = {
+            headless: true,
+            args: []
+        };
+
+        const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "puppeteer-profile-"));
+        launchOptions.userDataDir = userDataDir;
 
         try {
             // 2. Extract Recording
@@ -148,23 +166,7 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             const recording = parse(recordingJson);
             recordingTitle = recording.title;
 
-            await context.sendStatus({
-                state: TestState.RUNNING,
-                message: "Launching browser and starting replay..."
-            });
-
-            // 3. Execution Config
-            let launchOptions: any = {
-                headless: true,
-                args: []
-            };
-            let takeScreenshot = false;
-            let screenshotOptions: puppeteer.ScreenshotOptions = {
-                type: "jpeg",
-                quality: 80,
-                optimizeForSpeed: true
-            };
-
+            // 3. Extract Config
             const configPayload = context.init.payloads.find(p => p.type === "puppeteer-config");
             if (configPayload?.attachment) {
                 try {
@@ -182,10 +184,34 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
                     if (config.screenshotConfig) {
                         screenshotOptions = { ...screenshotOptions, ...config.screenshotConfig };
                     }
+                    if (config.prefs) {
+                        userPrefs = config.prefs;
+                    }
                 } catch (e) {
                     await context.sendTelemetry(`Failed to parse puppeteer-config: ${e}`, Severity.WARN);
                 }
             }
+
+            // 4. Pre-configure Preferences
+            const defaultDir = path.join(userDataDir, "Default");
+            fs.mkdirSync(defaultDir, { recursive: true });
+
+            mergedPrefs = {
+                profile: {
+                    password_manager_leak_detection: false,
+                    password_manager_enabled: false,
+                    password_manager_leak_detection_enabled: false,
+                    ...userPrefs.profile
+                },
+                credentials_enable_service: false,
+                ...userPrefs
+            };
+            fs.writeFileSync(path.join(defaultDir, "Preferences"), JSON.stringify(mergedPrefs));
+
+            await context.sendStatus({
+                state: TestState.RUNNING,
+                message: "Launching browser and starting replay..."
+            });
 
             browser = await puppeteer.launch(launchOptions);
             const page = await browser.newPage();
@@ -228,7 +254,7 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
                     startTime: timestampFromDate(startTime),
                     totalDuration: msToDuration(duration),
                     metadata: cleanObject({
-                        ...this.getCommonMetadata(recordingTitle, browserVersion, launchOptions, duration, extension)
+                        ...this.getCommonMetadata(recordingTitle, browserVersion, launchOptions, mergedPrefs, duration, extension)
                     })
                 })
             });
@@ -273,7 +299,7 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
                     startTime: timestampFromDate(startTime),
                     totalDuration: msToDuration(duration),
                     metadata: cleanObject({
-                        ...this.getCommonMetadata(recordingTitle, "Unknown", {}, duration, extension),
+                        ...this.getCommonMetadata(recordingTitle, "Unknown", launchOptions, mergedPrefs, duration, extension),
                         error: err.message,
                         stack: err.stack,
                     })
@@ -287,10 +313,17 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             if (browser) {
                 await browser.close().catch(e => console.error("[PuppeteerReplay] Error closing browser:", e));
             }
+            if (userDataDir) {
+                try {
+                    fs.rmSync(userDataDir, { recursive: true, force: true });
+                } catch (e) {
+                    console.error("[PuppeteerReplay] Error cleaning up userDataDir:", e);
+                }
+            }
         }
     }
 
-    private getCommonMetadata(recordingTitle: string, browserVersion: string, launchOptions: any, duration: number, extension?: TestGenesisRunnerExtension) {
+    private getCommonMetadata(recordingTitle: string, browserVersion: string, launchOptions: any, prefs: any, duration: number, extension?: TestGenesisRunnerExtension) {
         return {
             recording_title: recordingTitle,
             total_steps: extension?.reports.length || 0,
@@ -298,6 +331,7 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             browser_version: browserVersion,
             headless: launchOptions.headless,
             args: launchOptions.args,
+            prefs: prefs,
             execute_duration: duration,
             os_platform: os.platform(),
             os_release: os.release(),
