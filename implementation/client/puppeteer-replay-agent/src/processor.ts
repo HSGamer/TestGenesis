@@ -24,7 +24,8 @@ import {createRunner, parse, PuppeteerRunnerExtension, Step, UserFlow} from "@pu
 class TestGenesisRunnerExtension extends PuppeteerRunnerExtension {
     public reports: StepReport[] = [];
     public attachments: Attachment[] = [];
-    private stepStartTime: number = 0;
+    public stepStartTime: number = 0;
+    public currentStep?: Step;
 
     constructor(
         private browserObj: puppeteer.Browser,
@@ -40,7 +41,7 @@ class TestGenesisRunnerExtension extends PuppeteerRunnerExtension {
         super(browserObj, pageObj);
     }
 
-    private getStepDetail(step: Step): string {
+    public getStepDetail(step: Step): string {
         const parts: string[] = [step.type];
         if ("url" in step) parts.push(`(${step.url})`);
         if ("selector" in step) {
@@ -53,6 +54,7 @@ class TestGenesisRunnerExtension extends PuppeteerRunnerExtension {
 
     async beforeEachStep(step: Step, flow: UserFlow) {
         if (super.beforeEachStep) await super.beforeEachStep(step, flow);
+        this.currentStep = step;
         this.stepStartTime = Date.now();
         const detail = this.getStepDetail(step);
         await this.context.sendTelemetry(`[Step Start] ${detail}`, Severity.INFO);
@@ -128,6 +130,8 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
 
         const startTime = new Date();
         let browser: puppeteer.Browser | null = null;
+        let extension: TestGenesisRunnerExtension | undefined;
+        let recordingTitle = "Unknown";
 
         try {
             // 2. Extract Recording
@@ -142,6 +146,7 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             const recordingText = new TextDecoder().decode(payload.attachment.data);
             const recordingJson = JSON.parse(recordingText);
             const recording = parse(recordingJson);
+            recordingTitle = recording.title;
 
             await context.sendStatus({
                 state: TestState.RUNNING,
@@ -151,7 +156,7 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             // 3. Execution Config
             let launchOptions: any = {
                 headless: true,
-                args: ["--no-sandbox", "--disable-setuid-sandbox"]
+                args: []
             };
             let takeScreenshot = false;
             let screenshotOptions: puppeteer.ScreenshotOptions = {
@@ -183,9 +188,8 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             }
 
             browser = await puppeteer.launch(launchOptions);
-
             const page = await browser.newPage();
-            const extension = new TestGenesisRunnerExtension(browser, page, context, takeScreenshot, screenshotOptions);
+            extension = new TestGenesisRunnerExtension(browser, page, context, takeScreenshot, screenshotOptions);
             const runner = await createRunner(recording, extension);
 
             const browserVersion = await browser.version();
@@ -221,22 +225,10 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
                 reports: extension.reports,
                 attachments: extension.attachments,
                 summary: create(SummarySchema, {
-                    startTime: timestampNow(),
+                    startTime: timestampFromDate(startTime),
                     totalDuration: msToDuration(duration),
                     metadata: cleanObject({
-                        recording_title: recording.title,
-                        total_steps: extension.reports.length,
-                        browser_name: launchOptions.product || "chrome",
-                        browser_version: browserVersion,
-                        headless: launchOptions.headless,
-                        args: launchOptions.args,
-                        execute_duration: duration,
-                        os_platform: os.platform(),
-                        os_release: os.release(),
-                        os_arch: os.arch(),
-                        cpu_model: os.cpus()[0]?.model,
-                        cpu_count: os.cpus().length,
-                        memory_total_gb: Math.round(os.totalmem() / (1024 ** 3))
+                        ...this.getCommonMetadata(recordingTitle, browserVersion, launchOptions, duration, extension)
                     })
                 })
             });
@@ -246,27 +238,73 @@ export class PuppeteerReplayTestProcessor implements TestSessionProcessor {
             });
         } catch (err: any) {
             console.error(`[PuppeteerReplay Error] ${err.message}`);
+            const endTime = new Date();
+            const duration = endTime.getTime() - startTime.getTime();
+
+            // Try to add a failed report for the current step if it failed
+            if (extension && extension.currentStep) {
+                const lastReport = extension.reports[extension.reports.length - 1];
+                const currentStepDetail = extension.getStepDetail(extension.currentStep);
+                
+                if (!lastReport || lastReport.name !== currentStepDetail) {
+                    extension.reports.push(create(StepReportSchema, {
+                        name: currentStepDetail,
+                        status: StepStatus.FAILED,
+                        summary: create(SummarySchema, {
+                            startTime: timestampFromDate(new Date(extension.stepStartTime || Date.now())),
+                            totalDuration: msToDuration(Date.now() - (extension.stepStartTime || Date.now())),
+                            metadata: cleanObject({
+                                step: extension.currentStep,
+                                error: err.message
+                            })
+                        })
+                    }));
+                }
+            }
+
             await context.sendResult({
                 status: {
                     state: TestState.FAILED,
                     message: `Replay failed: ${err.message}`
                 },
+                reports: extension?.reports || [],
+                attachments: extension?.attachments || [],
                 summary: create(SummarySchema, {
-                    startTime: timestampNow(),
+                    startTime: timestampFromDate(startTime),
+                    totalDuration: msToDuration(duration),
                     metadata: cleanObject({
+                        ...this.getCommonMetadata(recordingTitle, "Unknown", {}, duration, extension),
                         error: err.message,
-                        stack: err.stack
+                        stack: err.stack,
                     })
                 })
             });
             await context.sendStatus({
                 state: TestState.FAILED,
-                message: "Execution cycle failed."
+                message: `Execution failed: ${err.message}`
             });
         } finally {
             if (browser) {
                 await browser.close().catch(e => console.error("[PuppeteerReplay] Error closing browser:", e));
             }
         }
+    }
+
+    private getCommonMetadata(recordingTitle: string, browserVersion: string, launchOptions: any, duration: number, extension?: TestGenesisRunnerExtension) {
+        return {
+            recording_title: recordingTitle,
+            total_steps: extension?.reports.length || 0,
+            browser_name: launchOptions.product || "chrome",
+            browser_version: browserVersion,
+            headless: launchOptions.headless,
+            args: launchOptions.args,
+            execute_duration: duration,
+            os_platform: os.platform(),
+            os_release: os.release(),
+            os_arch: os.arch(),
+            cpu_model: os.cpus()[0]?.model,
+            cpu_count: os.cpus().length,
+            memory_total_gb: Math.round(os.totalmem() / (1024 ** 3))
+        };
     }
 }

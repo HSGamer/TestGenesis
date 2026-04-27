@@ -43,6 +43,63 @@
     </div>
 </section>
 
+<!-- Connected Agents -->
+<section>
+    <h3>Connected Agents</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>Agent</th>
+            <th>Capabilities</th>
+        </tr>
+        </thead>
+        <tbody>
+        {#for agent in agents}
+            <tr>
+                <td style="width: 30%;">
+                    <strong>{agent.displayName}</strong><br>
+                    <code class="muted small">{agent.id}</code>
+                </td>
+                <td>
+                    {#for cap in agent.capabilities}
+                        {#if cap.hasTest}
+                            <code>{cap.test.type}</code>
+                        {#else if cap.hasTranslation}
+                            <code style="color: #d2a8ff; background: rgba(210, 168, 255, 0.1);">{cap.translation.type}</code>
+                        {/if}
+                    {/for}
+                </td>
+            </tr>
+        {#else}
+            <tr>
+                <td colspan="2" class="muted small">No agents connected.</td>
+            </tr>
+        {/for}
+        </tbody>
+    </table>
+</section>
+
+<!-- Recent Tests -->
+<section>
+    <h3>Recent Configurations</h3>
+    <ul>
+        {#for test in tests}
+            <li class="clearfix">
+                <div class="title-area">
+                    <strong>{test.name}</strong>
+                    <code class="muted small">{test.testType}</code>
+                </div>
+                <div class="action-area">
+                    <a href="/tests/{test.id}/run" class="btn small">Launch</a>
+                    <a href="/tests/{test.id}/edit" class="btn small">Edit</a>
+                </div>
+            </li>
+        {#else}
+            <li class="muted small">No configurations found.</li>
+        {/for}
+    </ul>
+</section>
+
 <!-- Active Batch Sessions -->
 <section>
     <h3>Active Batches</h3>
@@ -89,63 +146,6 @@
             <li class="muted small">No individual sessions active.</li>
         {/for}
     </ul>
-</section>
-
-<!-- Recent Tests -->
-<section>
-    <h3>Recent Configurations</h3>
-    <ul>
-        {#for test in tests}
-            <li class="clearfix">
-                <div class="title-area">
-                    <strong>{test.name}</strong>
-                    <code class="muted small">{test.testType}</code>
-                </div>
-                <div class="action-area">
-                    <a href="/tests/{test.id}/run" class="btn small">Launch</a>
-                    <a href="/tests/{test.id}/edit" class="btn small">Edit</a>
-                </div>
-            </li>
-        {#else}
-            <li class="muted small">No configurations found.</li>
-        {/for}
-    </ul>
-</section>
-
-<!-- Connected Agents -->
-<section>
-    <h3>Connected Agents</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Agent</th>
-                <th>Capabilities</th>
-            </tr>
-        </thead>
-        <tbody>
-            {#for agent in agents}
-                <tr>
-                    <td style="width: 30%;">
-                        <strong>{agent.displayName}</strong><br>
-                        <code class="muted small">{agent.id}</code>
-                    </td>
-                    <td>
-                        {#for cap in agent.capabilities}
-                            {#if cap.hasTest}
-                                <code>{cap.test.type}</code>
-                            {#else if cap.hasTranslation}
-                                <code style="color: #d2a8ff; background: rgba(210, 168, 255, 0.1);">{cap.translation.type}</code>
-                            {/if}
-                        {/for}
-                    </td>
-                </tr>
-            {#else}
-                <tr>
-                    <td colspan="2" class="muted small">No agents connected.</td>
-                </tr>
-            {/for}
-        </tbody>
-    </table>
 </section>
 {/body}
 {/include}
