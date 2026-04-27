@@ -66,9 +66,10 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Copy built library and agent
-COPY --from=build /workspace/testgenesis-client-node /app/testgenesis-client-node
-COPY --from=build /workspace/puppeteer-agent /app/puppeteer-agent
+COPY --from=build --chown=node:node /workspace/testgenesis-client-node /app/testgenesis-client-node
+COPY --from=build --chown=node:node /workspace/puppeteer-agent /app/puppeteer-agent
 
+USER node
 WORKDIR /app/puppeteer-agent
 
 # Default environment variables

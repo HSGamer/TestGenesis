@@ -35,6 +35,8 @@ services:
       - HUB_URL=http://cms:9000
       - CLIENT_NAME=PuppeteerAgent-Docker
     shm_size: 2gb
+    cap_add:
+      - SYS_ADMIN
     depends_on:
       - cms
     networks:
