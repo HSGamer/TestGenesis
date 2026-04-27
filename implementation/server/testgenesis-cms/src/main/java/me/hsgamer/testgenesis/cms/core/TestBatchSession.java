@@ -1,7 +1,6 @@
 package me.hsgamer.testgenesis.cms.core;
 
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Instant;
 import java.util.List;
@@ -87,7 +86,7 @@ public class TestBatchSession {
             .count();
 
         if (terminalCount + failedRegistrations.get() >= totalIterations) {
-            status = BatchStatus.COMPLETED;
+            setStatus(BatchStatus.COMPLETED);
         }
 
         // Always notify on completion/terminal state to trigger manager
